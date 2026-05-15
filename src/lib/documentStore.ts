@@ -52,6 +52,7 @@ function createDocumentStore() {
     markDirty: () => update((s) => ({ ...s, isDirty: true })),
     setLoading: (loading: boolean) =>
       update((s) => ({ ...s, isLoading: loading })),
+    setState: (state: DocumentState) => set(state),
     newFromTemplate: (content: string, name: string) =>
       set({
         content,

@@ -3,23 +3,21 @@
   import EditorPane from "./components/editor/EditorPane.svelte";
   import PreviewPane from "./components/preview/PreviewPane.svelte";
   import TitleBar from "./components/layout/TitleBar.svelte";
+  import TabBar from "./components/layout/TabBar.svelte";
   import StatusBar from "./components/layout/StatusBar.svelte";
   import SplitPane from "./components/layout/SplitPane.svelte";
   import OutlineSidebar from "./components/layout/OutlineSidebar.svelte";
   import SettingsModal from "./components/settings/SettingsModal.svelte";
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
-  import HelpModal from "./components/help/HelpModal.svelte";
   import { initKeyboardShortcuts } from "./lib/keyboard";
   import { silentUpdateCheck } from "./lib/updater";
 
   let settingsOpen = $state(false);
   let templateBrowserOpen = $state(false);
   let saveTemplateOpen = $state(false);
-  let helpOpen = $state(false);
 
   onMount(() => {
-    // Silent background update check on startup
     silentUpdateCheck().catch(() => {});
     return initKeyboardShortcuts();
   });
@@ -30,8 +28,9 @@
     onOpenSettings={() => (settingsOpen = true)}
     onOpenTemplateBrowser={() => (templateBrowserOpen = true)}
     onOpenSaveTemplate={() => (saveTemplateOpen = true)}
-    onOpenHelp={() => (helpOpen = true)}
+    onOpenHelp={() => (settingsOpen = true)}
   />
+  <TabBar />
   <div class="workspace">
     <OutlineSidebar />
     <SplitPane>
@@ -47,7 +46,6 @@
   <SettingsModal bind:open={settingsOpen} />
   <TemplateBrowser bind:open={templateBrowserOpen} />
   <SaveTemplateDialog bind:open={saveTemplateOpen} />
-  <HelpModal bind:open={helpOpen} />
 </div>
 
 <style>

@@ -17,6 +17,7 @@ pub struct Settings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ThemeSetting {
     Light,
     Dark,

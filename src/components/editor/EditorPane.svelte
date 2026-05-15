@@ -4,7 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { documentStore } from "../../lib/documentStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
@@ -120,6 +120,34 @@
     }
   }
 
+  async function loadFontSettings() {
+    try {
+      const s = await invoke<any>("get_settings");
+      if (s && editorView) {
+        setEditorFont(
+          editorView,
+          s.editor_font_family,
+          s.editor_font_size,
+          s.line_height
+        );
+      }
+    } catch (e) {
+      console.error("Failed to load font settings:", e);
+    }
+  }
+
+  function handleSettingsChanged(event: CustomEvent) {
+    const detail = event.detail || {};
+    if (editorView && detail.fontFamily !== undefined) {
+      setEditorFont(
+        editorView,
+        detail.fontFamily,
+        detail.fontSize ?? 14,
+        detail.lineHeight ?? 1.7
+      );
+    }
+  }
+
   onMount(() => {
     const editor = initEditor(container, $documentStore.content, {
       onChange: (newContent) => {
@@ -137,6 +165,9 @@
       },
     });
     editorView = editor.view;
+
+    // Load and apply font settings
+    loadFontSettings();
 
     const observer = new MutationObserver(() => {
       const theme = document.documentElement.getAttribute("data-theme");
@@ -157,10 +188,19 @@
       }
     });
 
+    window.addEventListener(
+      "markz:settings-changed",
+      handleSettingsChanged as EventListener
+    );
+
     return () => {
       observer.disconnect();
       unsub();
       editor.destroy();
+      window.removeEventListener(
+        "markz:settings-changed",
+        handleSettingsChanged as EventListener
+      );
     };
   });
 </script>

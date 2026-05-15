@@ -15,6 +15,7 @@ import { tags } from "@lezer/highlight";
 import type { CursorPosition } from "../../lib/editorStore";
 
 const themeCompartment = new Compartment();
+const fontCompartment = new Compartment();
 
 function createEditorTheme(isDark: boolean) {
   return EditorView.theme(
@@ -27,7 +28,6 @@ function createEditorTheme(isDark: boolean) {
         color: "var(--text-primary)",
         caretColor: "var(--accent-default)",
         padding: "16px 0",
-        fontFamily: "var(--font-mono)",
       },
       ".cm-cursor": {
         borderLeftColor: "var(--accent-default)",
@@ -50,14 +50,26 @@ function createEditorTheme(isDark: boolean) {
       ".cm-activeLine": {
         backgroundColor: "transparent",
       },
-      ".cm-scroller": {
-        fontFamily: "var(--font-mono)",
-        fontSize: "var(--text-base)",
-        lineHeight: "1.7",
-      },
     },
     { dark: isDark }
   );
+}
+
+function createFontExtension(
+  fontFamily: string,
+  fontSize: number,
+  lineHeight: number
+) {
+  return EditorView.theme({
+    ".cm-content": {
+      fontFamily: `${fontFamily}, monospace`,
+    },
+    ".cm-scroller": {
+      fontFamily: `${fontFamily}, monospace`,
+      fontSize: `${fontSize}px`,
+      lineHeight: `${lineHeight}`,
+    },
+  });
 }
 
 const markdownHighlightStyle = HighlightStyle.define([
@@ -101,6 +113,9 @@ const markdownHighlightStyle = HighlightStyle.define([
 ]);
 
 export interface EditorConfig {
+  fontFamily?: string;
+  fontSize?: number;
+  lineHeight?: number;
   onChange: (content: string) => void;
   onCursorChange?: (pos: CursorPosition) => void;
   onScroll?: () => void;
@@ -121,8 +136,13 @@ export function initEditor(
     (document.documentElement.getAttribute("data-theme") === "system" &&
       window.matchMedia("(prefers-color-scheme: dark)").matches);
 
+  const fontFamily = config.fontFamily ?? "JetBrains Mono";
+  const fontSize = config.fontSize ?? 14;
+  const lineHeight = config.lineHeight ?? 1.7;
+
   const extensions = [
     themeCompartment.of(createEditorTheme(isDark)),
+    fontCompartment.of(createFontExtension(fontFamily, fontSize, lineHeight)),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightActiveLine(),
@@ -176,5 +196,18 @@ export function initEditor(
 export function setEditorTheme(view: EditorView, isDark: boolean) {
   view.dispatch({
     effects: themeCompartment.reconfigure(createEditorTheme(isDark)),
+  });
+}
+
+export function setEditorFont(
+  view: EditorView,
+  fontFamily: string,
+  fontSize: number,
+  lineHeight: number
+) {
+  view.dispatch({
+    effects: fontCompartment.reconfigure(
+      createFontExtension(fontFamily, fontSize, lineHeight)
+    ),
   });
 }

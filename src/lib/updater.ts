@@ -3,7 +3,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { get } from "svelte/store";
 import { writable } from "svelte/store";
-import { documentStore } from "./documentStore";
+import { tabStore } from "./tabStore";
 
 export const updateAvailable = writable(false);
 export const updateDownloading = writable(false);
@@ -87,10 +87,9 @@ export async function installAndRestart() {
 export async function confirmAndRestart() {
   if (!currentUpdate) return;
 
-  const doc = get(documentStore);
-  if (doc.isDirty) {
+  if (tabStore.hasDirtyTabs()) {
     const proceed = await confirm(
-      "You have unsaved changes that will be lost if you restart now.\n\nRestart anyway?",
+      "You have unsaved changes in one or more tabs that will be lost if you restart now.\n\nRestart anyway?",
       { title: "Update Ready — Unsaved Changes", kind: "warning" }
     );
     if (!proceed) return;

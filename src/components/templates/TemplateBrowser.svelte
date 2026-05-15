@@ -1,6 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { documentStore } from "../../lib/documentStore";
+  import { tabStore } from "../../lib/tabStore";
 
   interface Template {
     id: string;
@@ -38,7 +38,7 @@
   async function applyTemplate(id: string, name: string) {
     try {
       const content = await invoke<string>("apply_template", { id });
-      documentStore.newFromTemplate(content, name);
+      tabStore.newTab(content, name, null);
       open = false;
     } catch (e) {
       console.error("Failed to apply template:", e);

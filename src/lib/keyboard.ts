@@ -1,6 +1,7 @@
 import { get } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
 import { documentStore } from "./documentStore";
+import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
 
 export async function saveDocument() {
@@ -36,9 +37,20 @@ export async function openDocument() {
   );
   if (!result) return;
 
+  const active = tabStore.getActiveTab();
+  const shouldReplace =
+    active &&
+    !active.isDirty &&
+    active.path === null &&
+    active.content.trim() === "";
+
   documentStore.setLoading(true);
   try {
-    documentStore.loadDocument(result.content, result.path);
+    if (shouldReplace) {
+      documentStore.loadDocument(result.content, result.path);
+    } else {
+      tabStore.newTab(result.content, undefined, result.path);
+    }
     addRecentFile(result.path);
   } catch (e) {
     console.error("Open failed:", e);
@@ -49,19 +61,41 @@ export async function openDocument() {
 }
 
 export async function openDocumentByPath(path: string) {
+  const active = tabStore.getActiveTab();
+  const shouldReplace =
+    active &&
+    !active.isDirty &&
+    active.path === null &&
+    active.content.trim() === "";
+
   documentStore.setLoading(true);
   try {
     const info = await invoke<{ content: string; path: string }>(
       "open_document",
       { path }
     );
-    documentStore.loadDocument(info.content, info.path);
+    if (shouldReplace) {
+      documentStore.loadDocument(info.content, info.path);
+    } else {
+      tabStore.newTab(info.content, undefined, info.path);
+    }
     addRecentFile(info.path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));
   } finally {
     documentStore.setLoading(false);
+  }
+}
+
+export function newDocument() {
+  tabStore.newTab("", "Untitled", null);
+}
+
+export function closeActiveTab() {
+  const active = tabStore.getActiveTab();
+  if (active) {
+    tabStore.closeTab(active.id);
   }
 }
 
@@ -84,6 +118,12 @@ export function initKeyboardShortcuts() {
     } else if (key === "b") {
       e.preventDefault();
       toggleSidebar();
+    } else if (key === "t") {
+      e.preventDefault();
+      newDocument();
+    } else if (key === "w") {
+      e.preventDefault();
+      closeActiveTab();
     }
   };
 
