@@ -1,7 +1,19 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { getVersion } from "@tauri-apps/api/app";
+  import {
+    checkForUpdate,
+    downloadUpdate,
+    installAndRestart,
+    updateStatus,
+    updateVersion,
+    updateError,
+  } from "../../lib/updater";
+
   let { open = $bindable(false) } = $props();
 
   let activeTab = $state<"shortcuts" | "about">("shortcuts");
+  let appVersion = $state<string>("");
 
   const shortcuts = [
     { keys: ["Ctrl", "O"], action: "Open file" },
@@ -11,6 +23,30 @@
     { keys: ["Ctrl", "I"], action: "Italic (in editor)", context: "editor" },
     { keys: ["Esc"], action: "Close modal / dropdown" },
   ];
+
+  onMount(() => {
+    getVersion().then((v) => (appVersion = v)).catch(() => (appVersion = ""));
+  });
+
+  async function handleCheckUpdate() {
+    const update = await checkForUpdate(false);
+    if (update) {
+      await downloadUpdate();
+    }
+  }
+
+  function statusLabel(status: string): string {
+    switch (status) {
+      case "idle": return "Idle";
+      case "checking": return "Checking for updates…";
+      case "available": return "Update available";
+      case "downloading": return "Downloading update…";
+      case "ready": return "Update ready — restart to apply";
+      case "up-to-date": return "You're on the latest version";
+      case "error": return "Update check failed";
+      default: return status;
+    }
+  }
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
@@ -75,12 +111,40 @@
           <div class="about-content">
             <div class="about-logo">
               <span class="logo-text">MarkZ</span>
-              <span class="logo-version">v0.1.0</span>
+              <span class="logo-version">v{appVersion}</span>
             </div>
             <p class="about-description">
               A dual-pane Markdown editor for engineers. Built with Tauri, Svelte 5,
               CodeMirror 6, and Rust.
             </p>
+
+            <!-- Updates -->
+            <div class="about-updates">
+              <h4>Updates</h4>
+              <div class="update-row">
+                <span class="update-status" class:ready={$updateStatus === "ready"} class:error={$updateStatus === "error"}>
+                  {statusLabel($updateStatus)}
+                  {#if $updateVersion && ($updateStatus === "available" || $updateStatus === "downloading" || $updateStatus === "ready")}
+                    <span class="update-version">(v{$updateVersion})</span>
+                  {/if}
+                </span>
+                {#if $updateStatus === "ready"}
+                  <button class="update-btn primary" onclick={installAndRestart}>
+                    Restart to Update
+                  </button>
+                {:else if $updateStatus === "downloading" || $updateStatus === "checking"}
+                  <button class="update-btn" disabled>Checking…</button>
+                {:else}
+                  <button class="update-btn" onclick={handleCheckUpdate}>
+                    Check for Updates
+                  </button>
+                {/if}
+              </div>
+              {#if $updateError}
+                <p class="update-error">{$updateError}</p>
+              {/if}
+            </div>
+
             <div class="about-features">
               <h4>Features</h4>
               <ul>
@@ -91,6 +155,7 @@
                 <li>Dark / light / system themes</li>
               </ul>
             </div>
+
             <div class="about-tech">
               <h4>Tech Stack</h4>
               <div class="tech-grid">
@@ -101,6 +166,22 @@
                 <span class="tech-badge">TypeScript</span>
                 <span class="tech-badge">Vite</span>
               </div>
+            </div>
+
+            <div class="about-credits">
+              <h4>Credits</h4>
+              <p class="credits-text">
+                Built by <a href="https://github.com/tzero86" target="_blank" rel="noopener">tzero86</a>.
+                Powered by open source — thank you to the teams behind
+                <a href="https://tauri.app" target="_blank" rel="noopener">Tauri</a>,
+                <a href="https://svelte.dev" target="_blank" rel="noopener">Svelte</a>,
+                <a href="https://codemirror.net" target="_blank" rel="noopener">CodeMirror</a>,
+                <a href="https://pulldown-cmark.rs" target="_blank" rel="noopener">pulldown-cmark</a>,
+                <a href="https://katex.org" target="_blank" rel="noopener">KaTeX</a>,
+                <a href="https://mermaid.js.org" target="_blank" rel="noopener">Mermaid</a>,
+                <a href="https://highlightjs.org" target="_blank" rel="noopener">highlight.js</a>,
+                and <a href="https://docx-rs.rs" target="_blank" rel="noopener">docx-rs</a>.
+              </p>
             </div>
           </div>
         {/if}
@@ -266,7 +347,9 @@
     margin: 0;
   }
   .about-features h4,
-  .about-tech h4 {
+  .about-tech h4,
+  .about-updates h4,
+  .about-credits h4 {
     font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
@@ -297,6 +380,92 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
+  }
+
+  /* Updates */
+  .about-updates {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+  .update-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .update-status {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .update-status.ready {
+    color: var(--accent-default);
+    font-weight: 600;
+  }
+  .update-status.error {
+    color: #ef4444;
+  }
+  .update-version {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .update-btn {
+    padding: 6px 14px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+    white-space: nowrap;
+  }
+  .update-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .update-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .update-btn.primary {
+    background: var(--accent-default);
+    border-color: var(--accent-default);
+    color: white;
+  }
+  .update-btn.primary:hover {
+    background: var(--accent-hover);
+  }
+  .update-error {
+    font-size: 12px;
+    color: #ef4444;
+    margin: var(--space-2) 0 0 0;
+  }
+
+  /* Credits */
+  .about-credits {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+  .credits-text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0;
+  }
+  .credits-text a {
+    color: var(--accent-default);
+    text-decoration: none;
+  }
+  .credits-text a:hover {
+    text-decoration: underline;
   }
 
   @keyframes fadeIn {
