@@ -173,6 +173,7 @@ pub fn parse(markdown: &str) -> Document {
                 }
                 Tag::Item => {
                     blocks_stack.push(Vec::new());
+                    inline_stack.push(Vec::new());
                     current_task = None;
                 }
                 Tag::Emphasis => {
@@ -535,6 +536,25 @@ mod tests {
         if let Block::List { items, .. } = &doc.blocks[0] {
             assert_eq!(items[0].task, Some(true));
             assert_eq!(items[1].task, Some(false));
+        } else {
+            panic!("expected list");
+        }
+    }
+
+    #[test]
+    fn test_parse_tight_list_multiple_items() {
+        let doc = parse("- one\n- two\n- three");
+        assert_eq!(doc.blocks.len(), 1);
+        if let Block::List { items, .. } = &doc.blocks[0] {
+            assert_eq!(items.len(), 3);
+            for (i, expected) in ["one", "two", "three"].iter().enumerate() {
+                assert_eq!(
+                    items[i].blocks[0],
+                    Block::Paragraph {
+                        text: vec![Inline::Text(expected.to_string())],
+                    }
+                );
+            }
         } else {
             panic!("expected list");
         }
