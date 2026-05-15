@@ -11,14 +11,13 @@
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
   import { initKeyboardShortcuts } from "./lib/keyboard";
-  import { silentUpdateCheck } from "./lib/updater";
+  
 
   let settingsOpen = $state(false);
   let templateBrowserOpen = $state(false);
   let saveTemplateOpen = $state(false);
 
   onMount(() => {
-    silentUpdateCheck().catch(() => {});
     return initKeyboardShortcuts();
   });
 </script>
