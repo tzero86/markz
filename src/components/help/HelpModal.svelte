@@ -4,7 +4,7 @@
   import {
     checkForUpdate,
     downloadUpdate,
-    installAndRestart,
+    confirmAndRestart,
     updateStatus,
     updateVersion,
     updateError,
@@ -129,7 +129,7 @@
                   {/if}
                 </span>
                 {#if $updateStatus === "ready"}
-                  <button class="update-btn primary" onclick={installAndRestart}>
+                  <button class="update-btn primary" onclick={confirmAndRestart}>
                     Restart to Update
                   </button>
                 {:else if $updateStatus === "downloading" || $updateStatus === "checking"}

@@ -1,6 +1,9 @@
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { confirm } from "@tauri-apps/plugin-dialog";
+import { get } from "svelte/store";
 import { writable } from "svelte/store";
+import { documentStore } from "./documentStore";
 
 export const updateAvailable = writable(false);
 export const updateDownloading = writable(false);
@@ -79,6 +82,21 @@ export async function installAndRestart() {
     console.error("Relaunch failed:", e);
     updateError.set("Failed to restart app. Please close and reopen manually.");
   }
+}
+
+export async function confirmAndRestart() {
+  if (!currentUpdate) return;
+
+  const doc = get(documentStore);
+  if (doc.isDirty) {
+    const proceed = await confirm(
+      "You have unsaved changes that will be lost if you restart now.\n\nRestart anyway?",
+      { title: "Update Ready — Unsaved Changes", kind: "warning" }
+    );
+    if (!proceed) return;
+  }
+
+  await installAndRestart();
 }
 
 export async function silentUpdateCheck() {

@@ -4,7 +4,7 @@
   import { themeStore, type Theme } from "../../lib/themeStore";
   import { openDocument, saveDocument, openDocumentByPath } from "../../lib/keyboard";
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
-  import { updateReady, installAndRestart } from "../../lib/updater";
+  import { updateReady, confirmAndRestart } from "../../lib/updater";
   import { invoke } from "@tauri-apps/api/core";
   import Toast from "../ui/Toast.svelte";
 
@@ -202,7 +202,7 @@
     {#if $updateReady}
       <button
         class="update-badge"
-        onclick={installAndRestart}
+        onclick={confirmAndRestart}
         aria-label="Restart to update"
         data-tooltip="Update ready — click to restart"
       >
