@@ -57,7 +57,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE4RjU1MDc4QkY0MURGOUMKUldTYzMwRy9lRkQxcUpBNk9Ec3ppN1dQU1VkNitOQ2lJcWx6UnMvM0liR25QVkNIL2hSZDFOaHIK",
       "endpoints": [
-        "https://api.github.com/repos/tzero86/markz/releases/latest"
+        "https://github.com/tzero86/markz/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"
