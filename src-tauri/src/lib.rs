@@ -325,6 +325,18 @@ async fn delete_template(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn log_frontend(level: String, message: String) {
+    match level.as_str() {
+        "trace" => log::trace!("{}", message),
+        "debug" => log::debug!("{}", message),
+        "info" => log::info!("{}", message),
+        "warn" => log::warn!("{}", message),
+        "error" => log::error!("{}", message),
+        _ => log::info!("{}", message),
+    }
+}
+
+#[tauri::command]
 async fn apply_template(id: String) -> Result<String, String> {
     let template = markz_templates::get_template(&id)
         .map_err(|e| e.to_string())?
@@ -386,6 +398,7 @@ pub fn run() {
             save_template,
             delete_template,
             apply_template,
+            log_frontend,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
