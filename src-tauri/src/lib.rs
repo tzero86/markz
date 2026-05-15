@@ -1,0 +1,231 @@
+use markz_core::frontmatter;
+use markz_core::html;
+use markz_core::parser;
+use markz_core::toc;
+use markz_convert::context::ConvertContext;
+use std::sync::Mutex;
+
+pub struct AppState {
+    pub current_path: Mutex<Option<String>>,
+}
+
+#[tauri::command]
+async fn render_preview(markdown: String) -> Result<String, String> {
+    let mut doc = parser::parse(&markdown);
+    let remaining = frontmatter::parse_into_document(&markdown, &mut doc);
+    if !remaining.is_empty() {
+        doc.blocks = parser::parse(&remaining).blocks;
+    }
+    Ok(html::render(&doc))
+}
+
+#[tauri::command]
+async fn open_document(path: String) -> Result<DocumentInfo, String> {
+    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    Ok(DocumentInfo { path, content })
+}
+
+#[tauri::command]
+async fn save_document(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn generate_toc(markdown: String) -> Result<Vec<markz_core::toc::TocEntry>, String> {
+    let text = parser::preprocess_math(&markdown);
+    let mut doc = parser::parse(&text);
+    let remaining = frontmatter::parse_into_document(&text, &mut doc);
+    if !remaining.is_empty() {
+        doc.blocks = parser::parse(&remaining).blocks;
+    }
+    Ok(toc::generate_toc(&doc))
+}
+
+#[tauri::command]
+async fn process_pasted_image(
+    image_data: Vec<u8>,
+    filename: String,
+    doc_path: Option<String>,
+) -> Result<markz_images::ImageResult, String> {
+    markz_images::save_image(&image_data, &filename, doc_path.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn process_dropped_image(
+    image_data: Vec<u8>,
+    filename: String,
+    doc_path: Option<String>,
+) -> Result<markz_images::ImageResult, String> {
+    markz_images::save_image(&image_data, &filename, doc_path.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_settings() -> Result<markz_config::Settings, String> {
+    let settings = if let Some(path) = markz_config::settings_path() {
+        if path.exists() {
+            let data = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+            serde_json::from_str(&data).unwrap_or_default()
+        } else {
+            markz_config::Settings::default()
+        }
+    } else {
+        markz_config::Settings::default()
+    };
+    Ok(settings)
+}
+
+#[tauri::command]
+async fn update_settings(settings: markz_config::Settings) -> Result<(), String> {
+    if let Some(path) = markz_config::settings_path() {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let data = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+        std::fs::write(&path, data).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn parse_document(markdown: &str) -> markz_core::ast::Document {
+    let text = parser::preprocess_math(markdown);
+    let mut doc = parser::parse(&text);
+    let remaining = frontmatter::parse_into_document(&text, &mut doc);
+    if !remaining.is_empty() {
+        doc.blocks = parser::parse(&remaining).blocks;
+    }
+    doc
+}
+
+fn read_settings_sync() -> Option<markz_config::Settings> {
+    let path = markz_config::settings_path()?;
+    if !path.exists() {
+        return None;
+    }
+    let data = std::fs::read_to_string(&path).ok()?;
+    serde_json::from_str(&data).ok()
+}
+
+fn make_context(doc_path: Option<String>) -> ConvertContext {
+    let embed_remote_images = read_settings_sync()
+        .map(|s| s.embed_remote_images)
+        .unwrap_or(false);
+    ConvertContext::new(doc_path.map(std::path::PathBuf::from))
+        .with_embed_remote_images(embed_remote_images)
+}
+
+#[tauri::command]
+async fn convert_to_jira(markdown: String, doc_path: Option<String>) -> Result<String, String> {
+    let doc = parse_document(&markdown);
+    let ctx = make_context(doc_path);
+    Ok(markz_convert::jira::convert(&doc, &ctx))
+}
+
+#[tauri::command]
+async fn convert_to_confluence(markdown: String, doc_path: Option<String>) -> Result<String, String> {
+    let doc = parse_document(&markdown);
+    let ctx = make_context(doc_path);
+    Ok(markz_convert::confluence::convert(&doc, &ctx))
+}
+
+#[tauri::command]
+async fn convert_to_slack(markdown: String, doc_path: Option<String>) -> Result<String, String> {
+    let doc = parse_document(&markdown);
+    let ctx = make_context(doc_path);
+    Ok(markz_convert::slack::convert(&doc, &ctx))
+}
+
+#[tauri::command]
+async fn convert_to_github(markdown: String, doc_path: Option<String>) -> Result<String, String> {
+    let doc = parse_document(&markdown);
+    let ctx = make_context(doc_path);
+    Ok(markz_convert::github::convert(&doc, &ctx))
+}
+
+#[tauri::command]
+async fn export_to_docx(markdown: String, doc_path: Option<String>, output_path: String) -> Result<(), String> {
+    let doc = parse_document(&markdown);
+    let ctx = make_context(doc_path);
+    let bytes = markz_convert::docx::convert(&doc, &ctx).map_err(|e| e.to_string())?;
+    std::fs::write(&output_path, bytes).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn list_templates() -> Result<Vec<markz_templates::Template>, String> {
+    markz_templates::list_templates().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_template(id: String) -> Result<Option<markz_templates::Template>, String> {
+    markz_templates::get_template(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn save_template(
+    id: String,
+    name: String,
+    category: String,
+    description: String,
+    content: String,
+) -> Result<(), String> {
+    let template = markz_templates::Template {
+        id,
+        name,
+        category,
+        description,
+        content,
+        builtin: false,
+    };
+    markz_templates::save_template(&template).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_template(id: String) -> Result<(), String> {
+    markz_templates::delete_template(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn apply_template(id: String) -> Result<String, String> {
+    let template = markz_templates::get_template(&id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Template not found".to_string())?;
+    Ok(markz_templates::substitute_variables(&template.content))
+}
+
+#[derive(serde::Serialize)]
+pub struct DocumentInfo {
+    path: String,
+    content: String,
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .manage(AppState {
+            current_path: Mutex::new(None),
+        })
+        .plugin(tauri_plugin_log::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![
+            render_preview,
+            open_document,
+            save_document,
+            get_settings,
+            update_settings,
+            generate_toc,
+            process_pasted_image,
+            process_dropped_image,
+            convert_to_jira,
+            convert_to_confluence,
+            convert_to_slack,
+            convert_to_github,
+            export_to_docx,
+            list_templates,
+            get_template,
+            save_template,
+            delete_template,
+            apply_template,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

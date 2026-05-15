@@ -1,0 +1,15 @@
+[package]
+name = "markz-convert"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+markz-core = { path = "../markz-core" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+docx-rs = { workspace = true }
+ureq = { workspace = true }

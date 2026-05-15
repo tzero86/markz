@@ -1,0 +1,63 @@
+import { get } from "svelte/store";
+import { invoke } from "@tauri-apps/api/core";
+import { documentStore } from "./documentStore";
+
+export async function saveDocument() {
+  const doc = get(documentStore);
+  const path = doc.path ?? window.prompt("Save to path:");
+  if (!path) return;
+
+  try {
+    await invoke("save_document", { path, content: doc.content });
+    documentStore.markClean();
+    if (!doc.path) documentStore.setPath(path);
+  } catch (e) {
+    console.error("Save failed:", e);
+    alert("Save failed: " + String(e));
+  }
+}
+
+export async function openDocument() {
+  const path = window.prompt("Open file path:");
+  if (!path) return;
+
+  documentStore.setLoading(true);
+  try {
+    const info = await invoke<{ content: string; path: string }>(
+      "open_document",
+      { path }
+    );
+    documentStore.loadDocument(info.content, info.path);
+  } catch (e) {
+    console.error("Open failed:", e);
+    alert("Open failed: " + String(e));
+  } finally {
+    documentStore.setLoading(false);
+  }
+}
+
+export function toggleSidebar() {
+  window.dispatchEvent(new CustomEvent("markz:toggle-sidebar"));
+}
+
+export function initKeyboardShortcuts() {
+  const handler = (e: KeyboardEvent) => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod) return;
+
+    const key = e.key.toLowerCase();
+    if (key === "s") {
+      e.preventDefault();
+      saveDocument();
+    } else if (key === "o") {
+      e.preventDefault();
+      openDocument();
+    } else if (key === "b") {
+      e.preventDefault();
+      toggleSidebar();
+    }
+  };
+
+  window.addEventListener("keydown", handler);
+  return () => window.removeEventListener("keydown", handler);
+}

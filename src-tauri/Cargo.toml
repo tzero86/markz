@@ -1,0 +1,29 @@
+[package]
+name = "markz"
+version.workspace = true
+description = "MarkZ — A dual-pane Markdown editor for engineers"
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "markz_lib"
+crate-type = ["staticlib", "rlib"]
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+serde_json = { workspace = true }
+serde = { workspace = true }
+log = { workspace = true }
+tauri = { workspace = true }
+tauri-plugin-log = "2"
+
+markz-core = { path = "../crates/markz-core" }
+markz-convert = { path = "../crates/markz-convert" }
+markz-config = { path = "../crates/markz-config" }
+markz-images = { path = "../crates/markz-images" }
+markz-templates = { path = "../crates/markz-templates" }
