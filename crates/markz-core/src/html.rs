@@ -67,7 +67,15 @@ fn render_block(output: &mut String, block: &Block) {
                 output.push_str("<ul>\n");
             }
             for item in items {
-                output.push_str("<li>");
+                if let Some(checked) = item.task {
+                    let checked_attr = if checked { " checked" } else { "" };
+                    output.push_str("<li class=\"task-list-item\">");
+                    output.push_str("<input type=\"checkbox\" disabled");
+                    output.push_str(checked_attr);
+                    output.push_str("> ");
+                } else {
+                    output.push_str("<li>");
+                }
                 for b in &item.blocks {
                     render_block(output, b);
                 }
@@ -301,6 +309,35 @@ mod tests {
         assert!(html.contains("<li><p>one</p></li>"));
         assert!(html.contains("<li><p>two</p></li>"));
         assert!(html.ends_with("</ul>"));
+    }
+
+    #[test]
+    fn test_render_task_list() {
+        let doc = Document {
+            frontmatter: None,
+            blocks: vec![Block::List {
+                ordered: false,
+                start: None,
+                items: vec![
+                    ListItem {
+                        blocks: vec![Block::Paragraph {
+                            text: vec![Inline::Text("Done".to_string())],
+                        }],
+                        task: Some(true),
+                    },
+                    ListItem {
+                        blocks: vec![Block::Paragraph {
+                            text: vec![Inline::Text("Todo".to_string())],
+                        }],
+                        task: Some(false),
+                    },
+                ],
+            }],
+        };
+        let rendered = render(&doc);
+        let html = rendered.trim();
+        assert!(html.contains(r#"<li class="task-list-item"><input type="checkbox" disabled checked> <p>Done</p></li>"#));
+        assert!(html.contains(r#"<li class="task-list-item"><input type="checkbox" disabled> <p>Todo</p></li>"#));
     }
 
     #[test]
