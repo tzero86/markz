@@ -255,7 +255,7 @@
                 class="dropdown-item"
                 role="menuitem"
                 onclick={() => openRecent(file)}
-                title={file.path}
+                title={`${file.name}\n${file.path}`}
               >
                 <span class="dropdown-filename">{file.name}</span>
                 <span class="dropdown-path">{file.path}</span>
@@ -508,6 +508,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
   }
   .dropdown-path {
     font-size: 11px;
@@ -515,6 +516,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
   }
   .dropdown-item:has(.dropdown-filename) {
     display: flex;
