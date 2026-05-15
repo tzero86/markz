@@ -19,6 +19,12 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libglib2.0-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -74,7 +80,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libglib2.0-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
