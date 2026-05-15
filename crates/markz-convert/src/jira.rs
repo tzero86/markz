@@ -7,11 +7,13 @@ struct RenderContext {
 
 pub fn convert(document: &Document, ctx: &ConvertContext) -> String {
     let mut output = String::new();
-    for block in &document.blocks {
+    for (i, block) in document.blocks.iter().enumerate() {
         render_block(&mut output, block, 0, ctx);
-        output.push('\n');
+        if i < document.blocks.len() - 1 {
+            output.push_str("\n\n");
+        }
     }
-    output.trim().to_string()
+    output
 }
 
 fn render_block(output: &mut String, block: &Block, depth: usize, ctx: &ConvertContext) {
@@ -226,7 +228,7 @@ mod tests {
             Block::Heading { level: 6, text: vec![Inline::Text("H6".to_string())] },
         ]);
         let result = convert(&doc, &ctx);
-        assert_eq!(result, "h1. H1\nh2. H2\nh3. H3\nh4. H4\nh5. H5\nh6. H6");
+        assert_eq!(result, "h1. H1\n\nh2. H2\n\nh3. H3\n\nh4. H4\n\nh5. H5\n\nh6. H6");
     }
 
     #[test]

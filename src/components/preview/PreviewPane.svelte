@@ -79,6 +79,69 @@
     }
   }
 
+  function cleanNodeForClipboard(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent || "";
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return "";
+    }
+    const el = node as Element;
+    const tag = el.tagName.toLowerCase();
+    if (tag === "script" || tag === "style") {
+      return "";
+    }
+
+    // Only keep structural tags and safe attributes
+    const allowedTags = new Set([
+      "p", "h1", "h2", "h3", "h4", "h5", "h6",
+      "strong", "em", "del", "code", "pre", "a", "img",
+      "ul", "ol", "li", "blockquote", "table", "thead", "tbody", "tr", "th", "td",
+      "br", "hr", "div", "span"
+    ]);
+    if (!allowedTags.has(tag)) {
+      return "";
+    }
+
+    let attrs = "";
+    if (tag === "a") {
+      const href = el.getAttribute("href");
+      if (href) attrs += ` href="${href.replace(/"/g, "&quot;")}"`;
+    }
+    if (tag === "img") {
+      const src = el.getAttribute("src");
+      const alt = el.getAttribute("alt") || "";
+      if (src) attrs += ` src="${src.replace(/"/g, "&quot;")}"`;
+      attrs += ` alt="${alt.replace(/"/g, "&quot;")}"`;
+    }
+
+    let html = `<${tag}${attrs}>`;
+    for (const child of el.childNodes) {
+      html += cleanNodeForClipboard(child);
+    }
+    html += `</${tag}>`;
+    return html;
+  }
+
+  function onCopy(e: ClipboardEvent) {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    // Only intercept if selection is inside our preview pane
+    if (!previewDiv || !previewDiv.contains(range.commonAncestorContainer)) {
+      return;
+    }
+
+    const fragment = range.cloneContents();
+    const container = document.createElement("div");
+    container.appendChild(fragment);
+    const cleanHtml = cleanNodeForClipboard(container);
+
+    e.clipboardData?.setData("text/html", cleanHtml);
+    e.clipboardData?.setData("text/plain", selection.toString());
+    e.preventDefault();
+  }
+
   async function copyOutput() {
     try {
       const text = activeFormat === "html"
@@ -145,7 +208,7 @@
       </svg>
     </button>
   </div>
-  <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll}>
+  <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     {#key htmlContent}
       {#if activeFormat === "html"}
         <div class="preview-content" bind:this={contentDiv}>
