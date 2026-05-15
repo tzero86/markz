@@ -9,6 +9,7 @@ import {
 import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import type { CursorPosition } from "../../lib/editorStore";
@@ -127,7 +128,8 @@ export function initEditor(
     highlightActiveLine(),
     drawSelection(),
     history(),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
+    keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
+    highlightSelectionMatches(),
     markdown(),
     syntaxHighlighting(markdownHighlightStyle),
     EditorView.updateListener.of((update) => {

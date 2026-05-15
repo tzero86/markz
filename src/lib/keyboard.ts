@@ -1,6 +1,7 @@
 import { get } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
 import { documentStore } from "./documentStore";
+import { addRecentFile } from "./recentFiles";
 
 export async function saveDocument() {
   const doc = get(documentStore);
@@ -11,6 +12,7 @@ export async function saveDocument() {
     await invoke("save_document", { path, content: doc.content });
     documentStore.markClean();
     if (!doc.path) documentStore.setPath(path);
+    addRecentFile(path);
   } catch (e) {
     console.error("Save failed:", e);
     alert("Save failed: " + String(e));
@@ -28,6 +30,24 @@ export async function openDocument() {
       { path }
     );
     documentStore.loadDocument(info.content, info.path);
+    addRecentFile(info.path);
+  } catch (e) {
+    console.error("Open failed:", e);
+    alert("Open failed: " + String(e));
+  } finally {
+    documentStore.setLoading(false);
+  }
+}
+
+export async function openDocumentByPath(path: string) {
+  documentStore.setLoading(true);
+  try {
+    const info = await invoke<{ content: string; path: string }>(
+      "open_document",
+      { path }
+    );
+    documentStore.loadDocument(info.content, info.path);
+    addRecentFile(info.path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));

@@ -2,7 +2,8 @@
   import { get } from "svelte/store";
   import { documentStore } from "../../lib/documentStore";
   import { themeStore, type Theme } from "../../lib/themeStore";
-  import { openDocument, saveDocument } from "../../lib/keyboard";
+  import { openDocument, saveDocument, openDocumentByPath } from "../../lib/keyboard";
+  import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
   import { invoke } from "@tauri-apps/api/core";
   import Toast from "../ui/Toast.svelte";
 
@@ -28,6 +29,8 @@
   );
 
   let dropdownOpen = $state(false);
+  let recentOpen = $state(false);
+  let recentFiles = $state<RecentFile[]>([]);
   let activeIndex = $state(-1);
   let toastMessage = $state("");
   let toastVisible = $state(false);
@@ -63,6 +66,23 @@
     toastTimer = setTimeout(() => {
       toastVisible = false;
     }, 3000);
+  }
+
+  function toggleRecentDropdown() {
+    recentOpen = !recentOpen;
+    if (recentOpen) {
+      recentFiles = getRecentFiles();
+    }
+  }
+
+  async function openRecent(file: RecentFile) {
+    recentOpen = false;
+    await openDocumentByPath(file.path);
+  }
+
+  function clearRecent() {
+    clearRecentFiles();
+    recentFiles = [];
   }
 
   async function handleCopy(command: string, label: string, mode: "copy" | "export") {
@@ -143,6 +163,8 @@
     }
   }
 
+  let recentDropdownRef: HTMLDivElement | undefined = $state();
+
   function handleClickOutside(event: MouseEvent) {
     if (
       dropdownOpen &&
@@ -152,10 +174,17 @@
       dropdownOpen = false;
       activeIndex = -1;
     }
+    if (
+      recentOpen &&
+      recentDropdownRef &&
+      !recentDropdownRef.contains(event.target as Node)
+    ) {
+      recentOpen = false;
+    }
   }
 
   $effect(() => {
-    if (dropdownOpen) {
+    if (dropdownOpen || recentOpen) {
       document.addEventListener("click", handleClickOutside);
       return () => document.removeEventListener("click", handleClickOutside);
     }
@@ -183,6 +212,44 @@
         <polyline points="7 3 7 8 15 8"></polyline>
       </svg>
     </button>
+    <div class="dropdown" bind:this={recentDropdownRef}>
+      <button
+        class="ghost-btn"
+        onclick={toggleRecentDropdown}
+        aria-haspopup="menu"
+        aria-expanded={recentOpen}
+        aria-label="Recent files"
+        data-tooltip="Recent files"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+      </button>
+      {#if recentOpen}
+        <div class="dropdown-panel recent-panel" role="menu">
+          {#if recentFiles.length === 0}
+            <div class="dropdown-item disabled">No recent files</div>
+          {:else}
+            {#each recentFiles as file}
+              <button
+                class="dropdown-item"
+                role="menuitem"
+                onclick={() => openRecent(file)}
+                title={file.path}
+              >
+                <span class="dropdown-filename">{file.name}</span>
+                <span class="dropdown-path">{file.path}</span>
+              </button>
+            {/each}
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" role="menuitem" onclick={clearRecent}>
+              Clear history
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </div>
     <div class="dropdown" bind:this={dropdownRef}>
       <button
         class="ghost-btn"
@@ -382,6 +449,42 @@
   .dropdown-item.active {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+  .dropdown-item.disabled {
+    opacity: 0.5;
+    cursor: default;
+    pointer-events: none;
+  }
+  .recent-panel {
+    min-width: 240px;
+    max-width: 320px;
+  }
+  .dropdown-filename {
+    font-weight: 500;
+    font-size: var(--text-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dropdown-path {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dropdown-item:has(.dropdown-filename) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+    padding: var(--space-2) var(--space-3);
+    gap: 2px;
+  }
+  .dropdown-divider {
+    height: 1px;
+    background: var(--border-default);
+    margin: var(--space-1) var(--space-3);
   }
 
   /* Custom tooltips — native title can be flaky in Tauri/WebView2 */
