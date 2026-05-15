@@ -8,6 +8,7 @@
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
+  import { startupCheckpoint } from "../../lib/debug";
 
   let container: HTMLDivElement;
   let editorView = $state<EditorView | null>(null);
@@ -149,6 +150,7 @@
   }
 
   onMount(() => {
+    startupCheckpoint("EditorPane mounting");
     const editor = initEditor(container, $documentStore.content, {
       onChange: (newContent) => {
         documentStore.setContent(newContent);
@@ -168,6 +170,7 @@
 
     // Load and apply font settings
     loadFontSettings();
+    startupCheckpoint("EditorPane mounted");
 
     const observer = new MutationObserver(() => {
       const theme = document.documentElement.getAttribute("data-theme");

@@ -27,6 +27,7 @@
 
   // Load settings once on mount
   $effect(() => {
+    startupCheckpoint("PreviewPane settings load");
     invoke("get_settings")
       .then((s) => { settings = s as { embed_remote_images: boolean }; })
       .catch(() => { settings = { embed_remote_images: false }; });

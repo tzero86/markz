@@ -2,7 +2,7 @@
   import { get } from "svelte/store";
   import { documentStore } from "../../lib/documentStore";
   import { themeStore, type Theme } from "../../lib/themeStore";
-  import { openDocument, saveDocument, openDocumentByPath } from "../../lib/keyboard";
+  import { openDocument, saveDocument, openDocumentByPath, newDocument } from "../../lib/keyboard";
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
   import { updateReady, confirmAndRestart } from "../../lib/updater";
   import { invoke } from "@tauri-apps/api/core";

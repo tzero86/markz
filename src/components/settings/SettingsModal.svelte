@@ -439,7 +439,8 @@
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
     width: 560px;
     max-width: 90vw;
-    max-height: 80vh;
+    height: 640px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
     animation: slideUp 200ms ease-out;

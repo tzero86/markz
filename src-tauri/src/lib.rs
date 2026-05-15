@@ -5,6 +5,8 @@ use markz_core::toc;
 use markz_convert::context::ConvertContext;
 use std::sync::Mutex;
 use base64::Engine;
+use log::LevelFilter;
+use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
 pub struct AppState {
     pub current_path: Mutex<Option<String>>,
@@ -346,7 +348,20 @@ pub fn run() {
         .manage(AppState {
             current_path: Mutex::new(None),
         })
-        .plugin(tauri_plugin_log::Builder::default().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .clear_targets()
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("markz".into()),
+                    }),
+                ])
+                .level(LevelFilter::Debug)
+                .rotation_strategy(RotationStrategy::KeepAll)
+                .max_file_size(500_000)
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::default().build())

@@ -11,6 +11,7 @@
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
   import { initKeyboardShortcuts } from "./lib/keyboard";
+  import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   
 
   let settingsOpen = $state(false);
@@ -18,6 +19,8 @@
   let saveTemplateOpen = $state(false);
 
   onMount(() => {
+    initDebugLogging();
+    startupCheckpoint("App mounted");
     return initKeyboardShortcuts();
   });
 </script>
