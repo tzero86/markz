@@ -13,6 +13,8 @@ export async function saveDocument() {
       : "untitled.md";
     path = await invoke<string | null>("save_file_dialog", {
       defaultName,
+      filterName: "Markdown",
+      filterExtensions: ["md", "mdx", "txt"],
     });
     if (!path) return;
   }

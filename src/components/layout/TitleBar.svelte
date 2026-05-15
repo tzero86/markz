@@ -93,6 +93,8 @@
         const defaultName = doc.title ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "document";
         const outputPath = await invoke<string | null>("save_file_dialog", {
           defaultName: `${defaultName}.docx`,
+          filterName: "Word Document",
+          filterExtensions: ["docx"],
         });
         if (!outputPath) {
           dropdownOpen = false;

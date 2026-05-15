@@ -162,11 +162,19 @@ async fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<DocumentInfo>,
 async fn save_file_dialog(
     app: tauri::AppHandle,
     default_name: Option<String>,
+    filter_name: Option<String>,
+    filter_extensions: Option<Vec<String>>,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
 
     let mut dialog = app.dialog().file();
-    dialog = dialog.add_filter("Markdown", &["md", "mdx", "markdown"]);
+
+    if let (Some(name), Some(exts)) = (filter_name, filter_extensions) {
+        let ext_refs: Vec<&str> = exts.iter().map(|s| s.as_str()).collect();
+        dialog = dialog.add_filter(&name, &ext_refs);
+    } else {
+        dialog = dialog.add_filter("Markdown", &["md", "mdx", "markdown"]);
+    }
 
     if let Some(name) = default_name {
         dialog = dialog.set_file_name(&name);
