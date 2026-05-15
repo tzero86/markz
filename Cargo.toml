@@ -3,7 +3,7 @@ members = ["crates/*", "src-tauri"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 rust-version = "1.77.2"
 authors = ["MarkZ Contributors"]
@@ -34,3 +34,6 @@ docx-rs = "0.4"
 
 # HTTP Client
 ureq = "3"
+
+# Base64 encoding (local image embedding in preview)
+base64 = "0.22"

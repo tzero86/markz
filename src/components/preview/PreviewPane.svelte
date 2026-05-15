@@ -1,7 +1,6 @@
 <script lang="ts">
   import { documentStore } from "../../lib/documentStore";
-  import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-  import { dirname, join } from "@tauri-apps/api/path";
+  import { invoke } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
   import { highlightCodeBlocks, setHljsTheme } from "./syntaxHighlighter";
@@ -44,7 +43,7 @@
     timeout = setTimeout(async () => {
       try {
         if (format === "html") {
-          const result = await invoke<string>("render_preview", { markdown: content });
+          const result = await invoke<string>("render_preview", { markdown: content, docPath: $documentStore.path });
           htmlContent = result;
         } else {
           const command = `convert_to_${format}`;
@@ -100,37 +99,6 @@
     });
   }
 
-  async function resolveLocalImages(container: HTMLElement) {
-    const docPath = $documentStore.path;
-    if (!docPath) return;
-
-    const baseDir = await dirname(docPath);
-    const images = container.querySelectorAll("img");
-
-    for (const img of Array.from(images)) {
-      const src = img.getAttribute("src");
-      if (!src) continue;
-      if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) continue;
-
-      let path = src;
-      if (path.startsWith("file://")) {
-        path = path.slice(7);
-      }
-
-      // Skip if already converted
-      if (path.startsWith("http://") || path.startsWith("https://")) continue;
-
-      let absPath: string;
-      if (path.startsWith("/") || path.startsWith("\\") || /^[a-zA-Z]:/.test(path)) {
-        absPath = path;
-      } else {
-        absPath = await join(baseDir, path);
-      }
-
-      img.src = convertFileSrc(absPath);
-    }
-  }
-
   // Post-process after DOM update
   $effect(() => {
     const _content = htmlContent;
@@ -141,7 +109,6 @@
       renderMathBlocks(contentDiv);
       renderMermaidBlocks(contentDiv).catch(console.error);
       highlightCodeBlocks(contentDiv);
-      resolveLocalImages(contentDiv).catch(console.error);
     }
   });
 

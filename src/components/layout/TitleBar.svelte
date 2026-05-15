@@ -4,6 +4,7 @@
   import { themeStore, type Theme } from "../../lib/themeStore";
   import { openDocument, saveDocument, openDocumentByPath } from "../../lib/keyboard";
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
+  import { updateReady, installAndRestart } from "../../lib/updater";
   import { invoke } from "@tauri-apps/api/core";
   import Toast from "../ui/Toast.svelte";
 
@@ -90,7 +91,9 @@
       const doc = get(documentStore);
       if (mode === "export") {
         const defaultName = doc.title ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "document";
-        const outputPath = window.prompt("Save DOCX as:", `${defaultName}.docx`);
+        const outputPath = await invoke<string | null>("save_file_dialog", {
+          defaultName: `${defaultName}.docx`,
+        });
         if (!outputPath) {
           dropdownOpen = false;
           activeIndex = -1;
@@ -194,6 +197,20 @@
 <div class="titlebar" data-tauri-drag-region>
   <div class="titlebar-left">
     <span class="app-name">MarkZ</span>
+    {#if $updateReady}
+      <button
+        class="update-badge"
+        onclick={installAndRestart}
+        aria-label="Restart to update"
+        data-tooltip="Update ready — click to restart"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          <polyline points="21 3 21 9 15 9"/>
+          <line x1="12" y1="14" x2="21" y2="5"/>
+        </svg>
+      </button>
+    {/if}
     <span class="doc-title">{$documentStore.title}</span>
     {#if $documentStore.isDirty}
       <span class="dirty-dot" aria-label="Unsaved changes">●</span>
@@ -372,6 +389,30 @@
   .dirty-dot {
     font-size: 8px;
     color: var(--accent-default);
+  }
+  .update-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin-left: 4px;
+    background: var(--accent-default);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    animation: pulse 2s infinite;
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+  .update-badge:hover {
+    background: var(--accent-hover);
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
   }
   .titlebar-right {
     display: flex;

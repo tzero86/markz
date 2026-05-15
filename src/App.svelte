@@ -11,6 +11,7 @@
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
   import HelpModal from "./components/help/HelpModal.svelte";
   import { initKeyboardShortcuts } from "./lib/keyboard";
+  import { silentUpdateCheck } from "./lib/updater";
 
   let settingsOpen = $state(false);
   let templateBrowserOpen = $state(false);
@@ -18,6 +19,8 @@
   let helpOpen = $state(false);
 
   onMount(() => {
+    // Silent background update check on startup
+    silentUpdateCheck().catch(() => {});
     return initKeyboardShortcuts();
   });
 </script>

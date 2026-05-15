@@ -3,3 +3,7 @@ target/
 dist/
 .graphify*
 graphify-out/
+
+# Tauri updater signing key
+src-tauri/.tauri-signing-key
+

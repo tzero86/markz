@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "MarkZ",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "dev.markz.app",
   "build": {
     "frontendDist": "../dist",
@@ -33,7 +33,9 @@
           "description": "Default capabilities for MarkZ",
           "windows": ["main"],
           "permissions": [
-            "core:default"
+            "core:default",
+            "dialog:default",
+            "updater:default"
           ]
         }
       ]
@@ -42,6 +44,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -49,5 +52,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE4RjU1MDc4QkY0MURGOUMKUldTYzMwRy9lRkQxcUpBNk9Ec3ppN1dQU1VkNitOQ2lJcWx6UnMvM0liR25QVkNIL2hSZDFOaHIK",
+      "endpoints": [
+        "https://api.github.com/repos/tzero86/markz/releases/latest"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

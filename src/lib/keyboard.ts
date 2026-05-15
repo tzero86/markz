@@ -5,8 +5,17 @@ import { addRecentFile } from "./recentFiles";
 
 export async function saveDocument() {
   const doc = get(documentStore);
-  const path = doc.path ?? window.prompt("Save to path:");
-  if (!path) return;
+  let path = doc.path;
+
+  if (!path) {
+    const defaultName = doc.title
+      ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") + ".md"
+      : "untitled.md";
+    path = await invoke<string | null>("save_file_dialog", {
+      defaultName,
+    });
+    if (!path) return;
+  }
 
   try {
     await invoke("save_document", { path, content: doc.content });
@@ -20,17 +29,15 @@ export async function saveDocument() {
 }
 
 export async function openDocument() {
-  const path = window.prompt("Open file path:");
-  if (!path) return;
+  const result = await invoke<{ path: string; content: string } | null>(
+    "open_file_dialog"
+  );
+  if (!result) return;
 
   documentStore.setLoading(true);
   try {
-    const info = await invoke<{ content: string; path: string }>(
-      "open_document",
-      { path }
-    );
-    documentStore.loadDocument(info.content, info.path);
-    addRecentFile(info.path);
+    documentStore.loadDocument(result.content, result.path);
+    addRecentFile(result.path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));
