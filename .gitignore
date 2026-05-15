@@ -7,3 +7,8 @@ graphify-out/
 # Tauri updater signing key
 src-tauri/.tauri-signing-key
 
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
