@@ -51,15 +51,6 @@ function createTabStore() {
 
   let syncing = false;
 
-  // Push initial tab into documentStore
-  documentStore.setState({
-    content: defaultTab.content,
-    path: defaultTab.path,
-    title: defaultTab.title,
-    isDirty: defaultTab.isDirty,
-    isLoading: defaultTab.isLoading,
-  });
-
   // Sync documentStore changes back to active tab
   const unsub = documentStore.subscribe((doc) => {
     if (syncing) return;
@@ -131,20 +122,30 @@ function createTabStore() {
       const newTabs = s.tabs.filter((t) => t.id !== id);
       if (newTabs.length === 0) {
         const fresh = makeDefaultTab();
-        syncToDocument(fresh);
         return { tabs: [fresh], activeTabId: fresh.id };
       }
       if (!isActive) {
         return { ...s, tabs: newTabs };
       }
-      const newActiveId = newTabs[0].id;
-      syncToDocument(newTabs[0]);
-      return { tabs: newTabs, activeTabId: newActiveId };
+      return { tabs: newTabs, activeTabId: newTabs[0].id };
     });
+
+    if (isActive) {
+      const newState = get({ subscribe });
+      const activeTab = newState.tabs.find(
+        (t) => t.id === newState.activeTabId
+      );
+      if (activeTab) {
+        syncToDocument(activeTab);
+      }
+    }
+
     return true;
   }
 
   function switchTab(id: string) {
+    let tabToSync: Tab | null = null;
+
     update((state) => {
       if (state.activeTabId === id) return state;
       const currentIdx = state.tabs.findIndex(
@@ -167,9 +168,13 @@ function createTabStore() {
         };
       }
 
-      syncToDocument(newTabs[newIdx]);
+      tabToSync = newTabs[newIdx];
       return { tabs: newTabs, activeTabId: id };
     });
+
+    if (tabToSync) {
+      syncToDocument(tabToSync);
+    }
   }
 
   function getActiveTab(): Tab | null {
