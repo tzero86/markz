@@ -308,9 +308,11 @@
     max-width: 820px;
     margin: 0 auto;
     padding: var(--space-6) var(--space-8);
+    font-family: var(--font-sans);
     font-size: var(--text-md);
     line-height: 1.7;
     color: var(--text-primary);
+    font-variant-emoji: emoji;
     animation: fadeIn 150ms ease;
   }
   .preview-content.text-format {
