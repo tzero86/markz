@@ -873,7 +873,7 @@
     font-weight: 600;
   }
   .update-status.error {
-    color: #ef4444;
+    color: var(--error);
   }
   .update-version {
     color: var(--text-muted);
@@ -909,7 +909,7 @@
   }
   .update-error {
     font-size: 12px;
-    color: #ef4444;
+    color: var(--error);
     margin: var(--space-2) 0 0 0;
   }
 

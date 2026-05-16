@@ -55,6 +55,7 @@
   --text-primary: #18181b;
   --text-secondary: #52525b;
   --text-tertiary: #a1a1aa;
+  --text-muted: #c1c1c6;
   --text-inverse: #ffffff;
   --text-accent: #0d9488;
 
@@ -95,6 +96,7 @@
   --text-primary: #fafafa;
   --text-secondary: #a1a1aa;
   --text-tertiary: #71717a;
+  --text-muted: #52525b;
   --text-inverse: #09090b;
   --text-accent: #2dd4bf;
 

@@ -323,7 +323,7 @@
     opacity: 1;
   }
   .delete-btn:hover {
-    color: var(--text-danger, #ef4444);
+    color: var(--error);
   }
   .template-desc {
     font-size: var(--text-xs);
