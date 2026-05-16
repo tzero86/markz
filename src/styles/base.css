@@ -11,8 +11,8 @@ html, body, #app {
 }
 
 html {
-  transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-              color 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 300ms var(--ease-in-out),
+              color 300ms var(--ease-in-out);
 }
 
 body {
@@ -27,20 +27,32 @@ body {
 
 /* Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-tertiary);
-  opacity: 0.3;
+  background: var(--text-muted);
   border-radius: var(--radius-full);
+  opacity: 0.3;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-  opacity: 0.5;
+  background: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+/* Accessible focus styles */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+/* Smooth scrolling for preview */
+.preview-scroller {
+  scroll-behavior: smooth;
 }
 
 /* Reduced motion */
