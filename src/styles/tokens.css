@@ -1,4 +1,7 @@
 :root {
+  --ui-font-size: 14px;
+  font-size: var(--ui-font-size);
+
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -21,13 +24,14 @@
   --radius-lg: 8px;
   --radius-full: 9999px;
 
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 14px;
-  --text-md: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  /* Text sizes use rem so --ui-font-size scales them */
+  --text-xs: 0.786rem;   /* ~11px at 14px base */
+  --text-sm: 0.929rem;   /* ~13px at 14px base */
+  --text-base: 1rem;     /* 14px at 14px base */
+  --text-md: 1.071rem;   /* ~15px at 14px base */
+  --text-lg: 1.214rem;   /* ~17px at 14px base */
+  --text-xl: 1.429rem;   /* ~20px at 14px base */
+  --text-2xl: 1.714rem;  /* ~24px at 14px base */
 
   --sidebar-width: 220px;
 }
@@ -61,6 +65,16 @@
   --warning-bg: #fffbee;
   --success: #0d8a5d;
   --info: #2563eb;
+}
+
+/* Reduced motion */
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* Dark theme */

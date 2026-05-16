@@ -2,15 +2,20 @@ import { writable, derived, get } from "svelte/store";
 
 export type Theme = "light" | "dark" | "system";
 
+function resolveTheme(theme: Theme): "light" | "dark" {
+  if (theme === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return theme;
+}
+
 function applyTheme(theme: Theme) {
   const html = document.documentElement;
-  html.setAttribute("data-theme", theme);
-  html.style.colorScheme =
-    theme === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : theme;
+  const resolved = resolveTheme(theme);
+  html.setAttribute("data-theme", resolved);
+  html.style.colorScheme = resolved;
 }
 
 const stored =

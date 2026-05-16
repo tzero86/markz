@@ -7,6 +7,7 @@
   import { renderMermaidBlocks, setMermaidTheme } from "./mermaidRenderer";
   import { renderMathBlocks } from "./mathRenderer";
   import { slugify } from "../../lib/toc";
+  import { contentZoomStore } from "../../lib/contentZoomStore";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
 
@@ -15,7 +16,7 @@
   let previewDiv: HTMLDivElement;
   let contentDiv: HTMLDivElement | undefined = $state();
   let activeFormat = $state<PreviewFormat>("html");
-  let settings = $state<{ embed_remote_images: boolean } | null>(null);
+  let settings = $state<{ embed_remote_images: boolean; preview_font_size: number } | null>(null);
 
   const formats: { id: PreviewFormat; label: string }[] = [
     { id: "html", label: "HTML" },
@@ -27,8 +28,8 @@
 
   // Load settings once on mount
   invoke("get_settings")
-    .then((s) => { settings = s as { embed_remote_images: boolean }; })
-    .catch(() => { settings = { embed_remote_images: false }; });
+    .then((s) => { settings = s as { embed_remote_images: boolean; preview_font_size: number }; })
+    .catch(() => { settings = { embed_remote_images: false, preview_font_size: 16 }; });
 
   // Debounced render
   let timeout: ReturnType<typeof setTimeout>;
@@ -209,11 +210,11 @@
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     {#key htmlContent}
       {#if activeFormat === "html"}
-        <div class="preview-content" bind:this={contentDiv}>
+        <div class="preview-content" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
           {@html htmlContent}
         </div>
       {:else}
-        <div class="preview-content text-format" bind:this={contentDiv}>
+        <div class="preview-content text-format" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
           <pre><code>{@html htmlContent}</code></pre>
         </div>
       {/if}
@@ -324,7 +325,7 @@
   .preview-content.text-format code {
     background: transparent;
     padding: 0;
-    font-size: 13px;
+    font-size: 0.8125em;
     line-height: 1.6;
     white-space: pre;
   }
@@ -333,7 +334,7 @@
     to { opacity: 1; }
   }
   .preview-content :global(h1) {
-    font-size: 28px;
+    font-size: 1.75em;
     font-weight: 700;
     margin-top: var(--space-10);
     margin-bottom: var(--space-4);
@@ -342,7 +343,7 @@
     padding-bottom: var(--space-3);
   }
   .preview-content :global(h2) {
-    font-size: 22px;
+    font-size: 1.375em;
     font-weight: 600;
     margin-top: var(--space-8);
     margin-bottom: var(--space-3);
@@ -351,7 +352,7 @@
     padding-bottom: var(--space-2);
   }
   .preview-content :global(h3) {
-    font-size: 18px;
+    font-size: 1.125em;
     font-weight: 600;
     margin-top: var(--space-6);
     margin-bottom: var(--space-3);
@@ -384,7 +385,7 @@
   .preview-content :global(pre code) {
     background: none;
     padding: 0;
-    font-size: 13px;
+    font-size: 0.8125em;
     line-height: 1.6;
   }
   .preview-content :global(blockquote) {
@@ -416,13 +417,20 @@
   }
   .preview-content :global(li.task-list-item) {
     list-style-type: none;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
     padding-left: 0;
-    margin-left: -20px;
+    margin-left: 0;
   }
-  .preview-content :global(input[type="checkbox"]) {
-    margin-right: var(--space-2);
-    vertical-align: middle;
+  .preview-content :global(li.task-list-item) > :global(input[type="checkbox"]) {
+    flex-shrink: 0;
+    margin-top: 4px;
     accent-color: var(--accent-default);
+    cursor: default;
+  }
+  .preview-content :global(li.task-list-item) > :global(p) {
+    margin: 0;
   }
   .preview-content :global(hr) {
     border: none;

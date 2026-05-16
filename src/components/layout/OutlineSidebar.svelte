@@ -2,8 +2,9 @@
   import { documentStore } from "../../lib/documentStore";
   import { generateToc, type TocEntry } from "../../lib/toc";
 
+  let { visible }: { visible: boolean } = $props();
+
   let toc = $state<TocEntry[]>([]);
-  let visible = $state(true);
   let activeAnchor = $state<string | null>(null);
 
   $effect(() => {
@@ -20,7 +21,7 @@
   }
 
   function toggle() {
-    visible = !visible;
+    window.dispatchEvent(new CustomEvent("markz:toggle-sidebar"));
   }
 </script>
 

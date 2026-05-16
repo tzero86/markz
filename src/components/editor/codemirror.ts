@@ -6,6 +6,7 @@ import {
   highlightActiveLine,
   drawSelection,
 } from "@codemirror/view";
+import { type Extension } from "@codemirror/state";
 import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
@@ -16,6 +17,7 @@ import type { CursorPosition } from "../../lib/editorStore";
 
 const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
+const wrapCompartment = new Compartment();
 
 function createEditorTheme(isDark: boolean) {
   return EditorView.theme(
@@ -143,6 +145,7 @@ export function initEditor(
   const extensions = [
     themeCompartment.of(createEditorTheme(isDark)),
     fontCompartment.of(createFontExtension(fontFamily, fontSize, lineHeight)),
+    wrapCompartment.of([]),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightActiveLine(),
@@ -209,5 +212,12 @@ export function setEditorFont(
     effects: fontCompartment.reconfigure(
       createFontExtension(fontFamily, fontSize, lineHeight)
     ),
+  });
+}
+
+export function setWordWrap(view: EditorView, enabled: boolean) {
+  const ext: Extension = enabled ? EditorView.lineWrapping : [];
+  view.dispatch({
+    effects: wrapCompartment.reconfigure(ext),
   });
 }

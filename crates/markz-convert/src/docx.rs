@@ -8,6 +8,11 @@ const BULLET_NUM_ID: usize = 1;
 const ORDERED_ABSTRACT_NUM_ID: usize = 2;
 const ORDERED_NUM_ID: usize = 2;
 
+/// Max image width in EMUs: 6 inches at 914400 EMUs/inch
+const MAX_IMAGE_WIDTH_EMU: u64 = 6 * 914400;
+/// EMUs per pixel at 96 DPI
+const EMU_PER_PX: u64 = 9525;
+
 #[derive(Debug)]
 pub enum ConvertDocxError {
     Io(std::io::Error),
@@ -123,6 +128,37 @@ pub fn convert(document: &Document, ctx: &ConvertContext) -> Result<Vec<u8>, Con
     Ok(buf.into_inner())
 }
 
+/// Compute scaled image dimensions in EMUs, fitting within the page width.
+fn scaled_image_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    use image::ImageReader;
+
+    let reader = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()?;
+    let (width_px, height_px) = reader.into_dimensions().ok()?;
+
+    let width_emu = (width_px as u64) * EMU_PER_PX;
+    let height_emu = (height_px as u64) * EMU_PER_PX;
+
+    if width_emu > MAX_IMAGE_WIDTH_EMU {
+        let scale = MAX_IMAGE_WIDTH_EMU as f64 / width_emu as f64;
+        let new_width = (width_emu as f64 * scale) as u32;
+        let new_height = (height_emu as f64 * scale) as u32;
+        Some((new_width, new_height))
+    } else {
+        Some((width_emu as u32, height_emu as u32))
+    }
+}
+
+/// Create a styled image Pic that fits the page.
+fn create_pic(bytes: &[u8]) -> Pic {
+    if let Some((w, h)) = scaled_image_size(bytes) {
+        Pic::new(bytes).size(w, h)
+    } else {
+        Pic::new(bytes)
+    }
+}
+
 fn append_block(
     docx: Docx,
     block: &Block,
@@ -149,6 +185,7 @@ fn append_block(
         Block::CodeBlock { language: _, content } => {
             let run = Run::new()
                 .fonts(RunFonts::new().ascii("Courier New").hi_ansi("Courier New"))
+                .shading(Shading::new().shd_type(ShdType::Clear).fill("F2F2F2"))
                 .add_text(content);
             Ok(docx.add_paragraph(Paragraph::new().add_run(run)))
         }
@@ -210,7 +247,11 @@ fn append_block(
                     inlines_to_paragraph(Paragraph::new(), &cell.text, ctx)
                         .add_run(Run::new().add_text("").bold())
                 })
-                .map(|para| docx_rs::TableCell::new().add_paragraph(para))
+                .map(|para| {
+                    docx_rs::TableCell::new()
+                        .add_paragraph(para)
+                        .shading(Shading::new().shd_type(ShdType::Clear).fill("E8E8E8"))
+                })
                 .collect();
             table_rows.push(TableRow::new(header_cells));
 
@@ -225,7 +266,15 @@ fn append_block(
                 table_rows.push(TableRow::new(cells));
             }
 
-            Ok(docx.add_table(Table::new(table_rows)))
+            let borders = TableBorders::new()
+                .set(TableBorder::new(TableBorderPosition::Top).size(4).color("CCCCCC"))
+                .set(TableBorder::new(TableBorderPosition::Bottom).size(4).color("CCCCCC"))
+                .set(TableBorder::new(TableBorderPosition::Left).size(4).color("CCCCCC"))
+                .set(TableBorder::new(TableBorderPosition::Right).size(4).color("CCCCCC"))
+                .set(TableBorder::new(TableBorderPosition::InsideH).size(4).color("CCCCCC"))
+                .set(TableBorder::new(TableBorderPosition::InsideV).size(4).color("CCCCCC"));
+
+            Ok(docx.add_table(Table::new(table_rows).set_borders(borders)))
         }
         Block::ThematicBreak => {
             Ok(docx.add_paragraph(Paragraph::new().add_run(Run::new().add_break(BreakType::Page))))
@@ -251,9 +300,17 @@ fn extract_first_run(para: &Paragraph) -> Option<Run> {
 fn inlines_to_paragraph(para: Paragraph, inlines: &[Inline], ctx: &ConvertContext) -> Paragraph {
     let mut paragraph = para;
     for inline in inlines {
-        paragraph = append_inline_to_paragraph(paragraph, inline, ctx, false, false);
+        paragraph = append_inline_to_paragraph(paragraph, inline, ctx, false, false, false);
     }
     paragraph
+}
+
+fn apply_style(run: Run, bold: bool, italic: bool, strike: bool) -> Run {
+    let mut r = run;
+    if bold { r = r.bold(); }
+    if italic { r = r.italic(); }
+    if strike { r = r.strike(); }
+    r
 }
 
 fn append_inline_to_paragraph(
@@ -262,66 +319,61 @@ fn append_inline_to_paragraph(
     ctx: &ConvertContext,
     bold: bool,
     italic: bool,
+    strike: bool,
 ) -> Paragraph {
-    fn apply_style(run: Run, bold: bool, italic: bool) -> Run {
-        let mut r = run;
-        if bold { r = r.bold(); }
-        if italic { r = r.italic(); }
-        r
-    }
-
     match inline {
         Inline::Text(text) => {
-            para.add_run(apply_style(Run::new().add_text(text), bold, italic))
+            para.add_run(apply_style(Run::new().add_text(text), bold, italic, strike))
         }
         Inline::Code(code) => {
             para.add_run(
                 Run::new()
                     .fonts(RunFonts::new().ascii("Courier New").hi_ansi("Courier New"))
+                    .shading(Shading::new().shd_type(ShdType::Clear).fill("F2F2F2"))
                     .add_text(code),
             )
         }
         Inline::Emphasis(inner) => {
             let mut p = para;
             for i in inner {
-                p = append_inline_to_paragraph(p, i, ctx, bold, true);
+                p = append_inline_to_paragraph(p, i, ctx, bold, true, strike);
             }
             p
         }
         Inline::Strong(inner) => {
             let mut p = para;
             for i in inner {
-                p = append_inline_to_paragraph(p, i, ctx, true, italic);
+                p = append_inline_to_paragraph(p, i, ctx, true, italic, strike);
             }
             p
         }
         Inline::Strikethrough(inner) => {
             let mut p = para;
             for i in inner {
-                p = append_inline_to_paragraph(p, i, ctx, bold, italic);
+                p = append_inline_to_paragraph(p, i, ctx, bold, italic, true);
             }
             p
         }
         Inline::Link { text, url, .. } => {
             let link_text = extract_plain_text(text);
             let hyperlink = Hyperlink::new(url, HyperlinkType::External)
-                .add_run(apply_style(Run::new().add_text(link_text).color("0563C1").underline("single"), bold, italic));
+                .add_run(apply_style(Run::new().add_text(link_text).color("0563C1").underline("single"), bold, italic, strike));
             para.add_hyperlink(hyperlink)
         }
         Inline::Image { alt, url, .. } => {
             if let Some(bytes) = resolve_image_bytes(url, ctx) {
                 if !bytes.is_empty() {
-                    let pic = Pic::new(&bytes);
-                    return para.add_run(apply_style(Run::new().add_image(pic), bold, italic));
+                    let pic = create_pic(&bytes);
+                    return para.add_run(apply_style(Run::new().add_image(pic), bold, italic, strike));
                 }
             }
-            para.add_run(apply_style(Run::new().add_text(format!("[{}]", alt)), bold, italic))
+            para.add_run(apply_style(Run::new().add_text(format!("[{}]", alt)), bold, italic, strike))
         }
         Inline::HardBreak | Inline::SoftBreak => {
-            para.add_run(apply_style(Run::new().add_break(BreakType::TextWrapping), bold, italic))
+            para.add_run(apply_style(Run::new().add_break(BreakType::TextWrapping), bold, italic, strike))
         }
         Inline::Html(html) => {
-            para.add_run(apply_style(Run::new().add_text(html), bold, italic))
+            para.add_run(apply_style(Run::new().add_text(html), bold, italic, strike))
         }
     }
 }
@@ -379,6 +431,17 @@ mod tests {
                 Inline::Emphasis(vec![Inline::Text("italic".to_string())]),
                 Inline::Text(" ".to_string()),
                 Inline::Code("code".to_string()),
+            ],
+        }]);
+        let ctx = ConvertContext::default();
+        assert!(convert(&doc, &ctx).is_ok());
+    }
+
+    #[test]
+    fn test_strikethrough() {
+        let doc = doc_with_blocks(vec![Block::Paragraph {
+            text: vec![
+                Inline::Strikethrough(vec![Inline::Text("deleted".to_string())]),
             ],
         }]);
         let ctx = ConvertContext::default();

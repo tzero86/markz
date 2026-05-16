@@ -11,10 +11,12 @@
     updateError,
   } from "../../lib/updater";
   import { themeStore, type Theme } from "../../lib/themeStore";
+  import logo from "../../assets/logo.png";
 
-  let { open = $bindable(false) } = $props();
+  let { open = $bindable(false), initialTab = "settings" as "settings" | "help" | "about" } = $props();
 
   let activeTab = $state<"settings" | "help" | "about">("settings");
+  let prevOpen = $state(false);
   let settings: {
     theme: string;
     editor_font_size: number;
@@ -27,6 +29,11 @@
     auto_save: boolean;
     auto_save_interval_seconds: number;
     embed_remote_images: boolean;
+    show_outline: boolean;
+    view_mode: string;
+    preview_font_size: number;
+    reduced_motion: boolean;
+    ui_font_size: number;
   } | null = $state(null);
 
   let loading = $state(true);
@@ -49,7 +56,10 @@
     { keys: ["Ctrl", "W"], action: "Close tab" },
     { keys: ["Ctrl", "O"], action: "Open file" },
     { keys: ["Ctrl", "S"], action: "Save file" },
-    { keys: ["Ctrl", "B"], action: "Toggle sidebar" },
+    { keys: ["Ctrl", "B"], action: "Toggle outline sidebar" },
+    { keys: ["Ctrl", "+"], action: "Zoom in" },
+    { keys: ["Ctrl", "-"], action: "Zoom out" },
+    { keys: ["Ctrl", "0"], action: "Reset zoom" },
     { keys: ["Ctrl", "B"], action: "Bold (in editor)", context: "editor" },
     { keys: ["Ctrl", "I"], action: "Italic (in editor)", context: "editor" },
     { keys: ["Esc"], action: "Close modal / dropdown" },
@@ -59,6 +69,10 @@
     if (open && !settings) {
       loadSettings();
     }
+    if (open && !prevOpen) {
+      activeTab = initialTab;
+    }
+    prevOpen = open;
   });
 
   async function loadSettings() {
@@ -78,13 +92,19 @@
       await invoke("update_settings", { settings });
       // Apply theme immediately
       themeStore.set(settings.theme as Theme);
-      // Notify editor to apply font changes
+      // Notify app to reload settings
       window.dispatchEvent(
         new CustomEvent("markz:settings-changed", {
           detail: {
             fontFamily: settings.editor_font_family,
             fontSize: settings.editor_font_size,
             lineHeight: settings.line_height,
+            showOutline: settings.show_outline,
+            viewMode: settings.view_mode,
+            previewFontSize: settings.preview_font_size,
+            reducedMotion: settings.reduced_motion,
+            uiFontSize: settings.ui_font_size,
+            wordWrap: settings.word_wrap,
           },
         })
       );
@@ -269,6 +289,64 @@
               </label>
             </div>
 
+            <!-- Layout -->
+            <div class="settings-section">
+              <h3>Layout</h3>
+              <label class="toggle-row">
+                <span class="toggle-label">
+                  Show outline panel
+                  <span class="toggle-hint">Display the document outline sidebar by default</span>
+                </span>
+                <input type="checkbox" bind:checked={settings.show_outline} />
+              </label>
+              <div class="field-row">
+                <label class="field-label" for="view-mode">Default view mode</label>
+                <select id="view-mode" bind:value={settings.view_mode}>
+                  <option value="split">Split (editor + preview)</option>
+                  <option value="editor">Editor only</option>
+                  <option value="preview">Preview only</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Accessibility -->
+            <div class="settings-section">
+              <h3>Accessibility</h3>
+              <div class="field-row">
+                <label class="field-label" for="ui-font-size">Interface font size</label>
+                <div class="input-group">
+                  <input
+                    id="ui-font-size"
+                    type="number"
+                    min="10"
+                    max="24"
+                    bind:value={settings.ui_font_size}
+                  />
+                  <span class="input-suffix">px</span>
+                </div>
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="preview-font-size">Preview font size</label>
+                <div class="input-group">
+                  <input
+                    id="preview-font-size"
+                    type="number"
+                    min="8"
+                    max="32"
+                    bind:value={settings.preview_font_size}
+                  />
+                  <span class="input-suffix">px</span>
+                </div>
+              </div>
+              <label class="toggle-row">
+                <span class="toggle-label">
+                  Reduced motion
+                  <span class="toggle-hint">Disable animations and transitions throughout the app</span>
+                </span>
+                <input type="checkbox" bind:checked={settings.reduced_motion} />
+              </label>
+            </div>
+
             <!-- Auto Save -->
             <div class="settings-section">
               <h3>Auto Save</h3>
@@ -330,6 +408,7 @@
         {:else}
           <div class="about-content">
             <div class="about-logo">
+              <img src={logo} alt="MarkZ logo" class="about-logo-img" />
               <span class="logo-text">MarkZ</span>
               <span class="logo-version">v{appVersion}</span>
             </div>
@@ -708,8 +787,13 @@
   }
   .about-logo {
     display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .about-logo-img {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
   }
   .logo-text {
     font-size: 28px;

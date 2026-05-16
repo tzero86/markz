@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { documentStore } from "./documentStore";
 import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
+import { contentZoomStore } from "./contentZoomStore";
 
 export async function saveDocument() {
   const doc = get(documentStore);
@@ -124,6 +125,15 @@ export function initKeyboardShortcuts() {
     } else if (key === "w") {
       e.preventDefault();
       closeActiveTab();
+    } else if (key === "=" || key === "+") {
+      e.preventDefault();
+      contentZoomStore.increase();
+    } else if (key === "-" || key === "_") {
+      e.preventDefault();
+      contentZoomStore.decrease();
+    } else if (key === "0") {
+      e.preventDefault();
+      contentZoomStore.reset();
     }
   };
 

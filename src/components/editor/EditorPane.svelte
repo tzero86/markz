@@ -4,17 +4,22 @@
   import { invoke } from "@tauri-apps/api/core";
   import { documentStore } from "../../lib/documentStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme, setEditorFont } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont, setWordWrap } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
   import { startupCheckpoint } from "../../lib/debug";
+  import { contentZoomStore } from "../../lib/contentZoomStore";
 
   let container: HTMLDivElement;
   let editorView = $state<EditorView | null>(null);
   let isDragOver = $state(false);
   let isPasteFlash = $state(false);
   let dragCounter = 0;
+  let baseFontFamily = $state("JetBrains Mono");
+  let baseFontSize = $state(14);
+  let baseLineHeight = $state(1.7);
+  let wordWrap = $state(true);
 
   function triggerPasteFlash() {
     isPasteFlash = true;
@@ -121,16 +126,33 @@
     }
   }
 
+  function applyEditorFont() {
+    if (editorView) {
+      setEditorFont(
+        editorView,
+        baseFontFamily,
+        Math.round(baseFontSize * $contentZoomStore),
+        baseLineHeight
+      );
+    }
+  }
+
+  function applyWordWrap() {
+    if (editorView) {
+      setWordWrap(editorView, wordWrap);
+    }
+  }
+
   async function loadFontSettings() {
     try {
       const s = await invoke<any>("get_settings");
-      if (s && editorView) {
-        setEditorFont(
-          editorView,
-          s.editor_font_family,
-          s.editor_font_size,
-          s.line_height
-        );
+      if (s) {
+        baseFontFamily = s.editor_font_family ?? "JetBrains Mono";
+        baseFontSize = s.editor_font_size ?? 14;
+        baseLineHeight = s.line_height ?? 1.7;
+        wordWrap = s.word_wrap ?? true;
+        applyEditorFont();
+        applyWordWrap();
       }
     } catch (e) {
       console.error("Failed to load font settings:", e);
@@ -139,19 +161,24 @@
 
   function handleSettingsChanged(event: CustomEvent) {
     const detail = event.detail || {};
-    if (editorView && detail.fontFamily !== undefined) {
-      setEditorFont(
-        editorView,
-        detail.fontFamily,
-        detail.fontSize ?? 14,
-        detail.lineHeight ?? 1.7
-      );
+    if (detail.fontFamily !== undefined) {
+      baseFontFamily = detail.fontFamily;
+      baseFontSize = detail.fontSize ?? 14;
+      baseLineHeight = detail.lineHeight ?? 1.7;
+      applyEditorFont();
+    }
+    if (detail.wordWrap !== undefined) {
+      wordWrap = detail.wordWrap;
+      applyWordWrap();
     }
   }
 
   onMount(() => {
     startupCheckpoint("EditorPane mounting");
     const editor = initEditor(container, $documentStore.content, {
+      fontFamily: baseFontFamily,
+      fontSize: Math.round(baseFontSize * $contentZoomStore),
+      lineHeight: baseLineHeight,
       onChange: (newContent) => {
         documentStore.setContent(newContent);
       },
@@ -196,9 +223,14 @@
       handleSettingsChanged as EventListener
     );
 
+    const unsubZoom = contentZoomStore.subscribe(() => {
+      applyEditorFont();
+    });
+
     return () => {
       observer.disconnect();
       unsub();
+      unsubZoom();
       editor.destroy();
       window.removeEventListener(
         "markz:settings-changed",

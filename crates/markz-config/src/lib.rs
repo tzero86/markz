@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Settings {
     pub theme: ThemeSetting,
     pub editor_font_size: u8,
@@ -14,6 +15,11 @@ pub struct Settings {
     pub auto_save: bool,
     pub auto_save_interval_seconds: u16,
     pub embed_remote_images: bool,
+    pub show_outline: bool,
+    pub view_mode: ViewMode,
+    pub preview_font_size: u8,
+    pub reduced_motion: bool,
+    pub ui_font_size: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,6 +28,15 @@ pub enum ThemeSetting {
     Light,
     Dark,
     System,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ViewMode {
+    #[default]
+    Split,
+    Editor,
+    Preview,
 }
 
 impl Default for Settings {
@@ -38,6 +53,11 @@ impl Default for Settings {
             auto_save: true,
             auto_save_interval_seconds: 30,
             embed_remote_images: false,
+            show_outline: true,
+            view_mode: ViewMode::Split,
+            preview_font_size: 16,
+            reduced_motion: false,
+            ui_font_size: 14,
         }
     }
 }
