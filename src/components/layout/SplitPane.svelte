@@ -81,11 +81,28 @@
     z-index: 10;
     position: relative;
     transition: background 150ms ease;
+    border-radius: 2px;
+  }
+  .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 32px;
+    background: var(--border-default);
+    border-radius: 1px;
+    transition: background 150ms ease, height 150ms ease;
+  }
+  .divider:hover::after,
+  .divider.dragging::after {
+    background: var(--accent-default);
+    height: 48px;
   }
   .divider:hover,
   .divider.dragging {
-    background: var(--accent-default);
-    opacity: 0.4;
+    background: transparent;
   }
   .right {
     flex: 1;

@@ -189,12 +189,13 @@
     <div class="render-bar"></div>
   {/if}
   <div class="preview-toolbar">
-    <div class="format-tabs">
+    <div class="format-tabs" role="group" aria-label="Preview format">
       {#each formats as fmt}
         <button
           class="format-tab"
           class:active={activeFormat === fmt.id}
           onclick={() => (activeFormat = fmt.id)}
+          aria-pressed={activeFormat === fmt.id}
         >
           {fmt.label}
         </button>
@@ -279,37 +280,45 @@
   }
   .format-tabs {
     display: flex;
-    gap: var(--space-1);
+    align-items: center;
+    background: var(--bg-base);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    gap: 1px;
   }
   .format-tab {
-    padding: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-3);
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: calc(var(--radius-md) - 2px);
     color: var(--text-secondary);
     font-size: var(--text-xs);
     font-weight: 500;
     cursor: pointer;
     transition: background 150ms ease, color 150ms ease;
+    white-space: nowrap;
   }
   .format-tab:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
   .format-tab.active {
-    background: var(--bg-hover);
-    color: var(--accent-default);
+    background: var(--bg-active);
+    color: var(--text-primary);
+    font-weight: 600;
   }
   .ghost-btn {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--text-secondary);
-    font-size: var(--text-xs);
     cursor: pointer;
     transition: background 150ms ease, color 150ms ease;
   }
