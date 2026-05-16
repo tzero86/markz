@@ -223,6 +223,23 @@
 </div>
 
 <style>
+  /* Force emoji codepoints to use system emoji fonts on Windows/WebView2 */
+  @font-face {
+    font-family: "MarkZEmoji";
+    src: local("Segoe UI Emoji"), local("Apple Color Emoji"), local("Noto Color Emoji");
+    unicode-range:
+      U+1F300-1F5FF,   /* Miscellaneous Symbols and Pictographs */
+      U+1F600-1F64F,   /* Emoticons */
+      U+1F680-1F6FF,   /* Transport and Map Symbols */
+      U+1F700-1F77F,   /* Alchemical Symbols */
+      U+1F780-1F7FF,   /* Geometric Shapes Extended */
+      U+1F800-1F8FF,   /* Supplemental Arrows-C */
+      U+1F900-1F9FF,   /* Supplemental Symbols and Pictographs */
+      U+1FA00-1FA6F,   /* Chess Symbols */
+      U+1FA70-1FAFF,   /* Symbols and Pictographs Extended-A */
+      U+2600-26FF,     /* Miscellaneous Symbols */
+      U+2700-27BF;     /* Dingbats */
+  }
   .preview-pane {
     flex: 1;
     display: flex;
@@ -308,7 +325,7 @@
     max-width: 820px;
     margin: 0 auto;
     padding: var(--space-6) var(--space-8);
-    font-family: var(--font-sans);
+    font-family: "MarkZEmoji", var(--font-sans);
     font-size: var(--text-md);
     line-height: 1.7;
     color: var(--text-primary);
