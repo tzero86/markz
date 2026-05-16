@@ -25,22 +25,27 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbars */
+/* Scrollbars — refined, thinner, more subtle */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--text-tertiary);
-  opacity: 0.3;
+  opacity: 0.2;
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-  opacity: 0.5;
+  opacity: 0.4;
+}
+
+/* Selection color */
+::selection {
+  background: var(--accent-subtle);
+  color: var(--text-primary);
 }
 
 /* Reduced motion */
