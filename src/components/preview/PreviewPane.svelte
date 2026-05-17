@@ -8,8 +8,13 @@
   import { renderMathBlocks } from "./mathRenderer";
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
+  import { FORMAT_ICONS } from "../../lib/formatIcons";
+  import DOMPurify from "dompurify";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
+
+  /** Cache of content hash → rendered HTML to avoid redundant re-renders */
+  const renderCache = new Map<string, string>();
 
   let htmlContent = $state("<p>Loading preview...</p>");
   let isRendering = $state(false);
@@ -21,24 +26,48 @@
   let renderProgress = $state(0);
 
   const formats: { id: PreviewFormat; label: string; icon: string }[] = [
-    { id: "html", label: "HTML", icon: "<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><polyline points='16 18 22 12 16 6'/><polyline points='8 6 2 12 8 18'/></svg>" },
-    { id: "jira", label: "JIRA", icon: "<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M12 2L2 7l10 5 10-5-10-5z'/><path d='M2 17l10 5 10-5'/><path d='M2 12l10 5 10-5'/></svg>" },
-    { id: "confluence", label: "Confluence", icon: "<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><circle cx='12' cy='12' r='10'/><path d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/><path d='M2 12h20'/></svg>" },
-    { id: "slack", label: "Slack", icon: "<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5'/><path d='M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z'/><path d='M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5'/><path d='M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5s.67-1.5 1.5-1.5z'/><path d='M14 14.5c0-.83.67-1.5 1.5-1.5h5'/><path d='M15.5 19H14'/><path d='M10 9.5c0 .83-.67 1.5-1.5 1.5h-5'/><path d='M8.5 5H10'/></svg>" },
-    { id: "github", label: "GitHub", icon: "<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22'/></svg>" },
+    { id: "html", label: "HTML", icon: FORMAT_ICONS.html_sm },
+    { id: "jira", label: "JIRA", icon: FORMAT_ICONS.jira_sm },
+    { id: "confluence", label: "Confluence", icon: FORMAT_ICONS.confluence_sm },
+    { id: "slack", label: "Slack", icon: FORMAT_ICONS.slack_sm },
+    { id: "github", label: "GitHub", icon: FORMAT_ICONS.github_sm },
   ];
+
+  /** Simple string hash for cache key */
+  function hash(str: string): string {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0;
+    }
+    return `h${h}`;
+  }
 
   // Load settings once on mount
   invoke("get_settings")
     .then((s) => { settings = s as { embed_remote_images: boolean; preview_font_size: number }; })
     .catch(() => { settings = { embed_remote_images: false, preview_font_size: 16 }; });
 
-  // Debounced render with progress animation
+  // Debounced render with progress animation and content hash caching
   let timeout: ReturnType<typeof setTimeout>;
+  let lastContentHash = "";
   $effect(() => {
     const content = $documentStore.content;
+    const contentHash = hash(content + activeFormat);
+    // Skip re-render if content hasn't actually changed
+    if (contentHash === lastContentHash && htmlContent !== "<p>Loading preview...</p>") {
+      return;
+    }
+    lastContentHash = contentHash;
+
+    // Check cache
+    const cached = renderCache.get(contentHash);
+    if (cached) {
+      htmlContent = cached;
+      return;
+    }
+
     const format = activeFormat;
-    const _settings = settings;
     clearTimeout(timeout);
     isRendering = true;
     renderProgress = 0;
@@ -49,16 +78,25 @@
       try {
         clearInterval(progressInterval);
         renderProgress = 90;
+        let result: string;
         if (format === "html") {
-          const result = await invoke<string>("render_preview", { markdown: content, docPath: $documentStore.path });
-          htmlContent = result;
+          result = await invoke<string>("render_preview", { markdown: content, docPath: $documentStore.path });
+          // Sanitize HTML to prevent XSS from untrusted markdown content
+          result = DOMPurify.sanitize(result);
         } else {
           const command = `convert_to_${format}`;
-          const result = await invoke<string>(command, {
+          result = await invoke<string>(command, {
             markdown: content,
             docPath: $documentStore.path,
           });
-          htmlContent = escapeHtml(result);
+          result = escapeHtml(result);
+        }
+        htmlContent = result;
+        renderCache.set(contentHash, result);
+        // Limit cache size to 10 entries to avoid memory leak
+        if (renderCache.size > 10) {
+          const firstKey = renderCache.keys().next().value;
+          if (firstKey) renderCache.delete(firstKey);
         }
         renderProgress = 100;
       } catch (e) {
@@ -70,7 +108,7 @@
           renderProgress = 0;
         }, 200);
       }
-    }, 80);
+    }, 150); // Increased debounce from 80ms to 150ms for better performance
     return () => {
       clearTimeout(timeout);
       clearInterval(progressInterval);

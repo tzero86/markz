@@ -3,6 +3,16 @@ use crate::context::{ConvertContext, resolve_image_bytes};
 use docx_rs::*;
 use std::io::Cursor;
 
+#[derive(Debug, thiserror::Error)]
+pub enum ConvertDocxError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("DOCX error: {0}")]
+    Docx(#[from] docx_rs::DocxError),
+    #[error("{0}")]
+    Other(String),
+}
+
 const BULLET_ABSTRACT_NUM_ID: usize = 1;
 const BULLET_NUM_ID: usize = 1;
 const ORDERED_ABSTRACT_NUM_ID: usize = 2;
@@ -12,39 +22,6 @@ const ORDERED_NUM_ID: usize = 2;
 const MAX_IMAGE_WIDTH_EMU: u64 = 6 * 914400;
 /// EMUs per pixel at 96 DPI
 const EMU_PER_PX: u64 = 9525;
-
-#[derive(Debug)]
-pub enum ConvertDocxError {
-    Io(std::io::Error),
-    Docx(docx_rs::DocxError),
-    Other(String),
-}
-
-impl std::fmt::Display for ConvertDocxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConvertDocxError::Io(e) => write!(f, "IO error: {e}"),
-            ConvertDocxError::Docx(e) => write!(f, "DOCX error: {e}"),
-            ConvertDocxError::Other(msg) => write!(f, "{msg}"),
-        }
-    }
-}
-
-impl std::error::Error for ConvertDocxError {}
-
-impl From<std::io::Error> for ConvertDocxError {
-    fn from(e: std::io::Error) -> Self {
-        ConvertDocxError::Io(e)
-    }
-}
-
-impl From<docx_rs::DocxError> for ConvertDocxError {
-    fn from(e: docx_rs::DocxError) -> Self {
-        ConvertDocxError::Docx(e)
-    }
-}
-
-
 
 /// Convert a MarkZ AST Document into a DOCX file as a byte vector.
 /// Local images are embedded; remote images become hyperlink text.

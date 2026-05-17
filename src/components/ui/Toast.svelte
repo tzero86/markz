@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { toastIcon, toastColor } from "../../lib/formatIcons";
+
   interface Props {
     message: string;
     visible: boolean;
@@ -37,28 +39,6 @@
       };
     }
   });
-
-  function iconForType(t: string) {
-    switch (t) {
-      case "success":
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
-      case "error":
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
-      case "info":
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
-      default:
-        return "";
-    }
-  }
-
-  function colorForType(t: string) {
-    switch (t) {
-      case "success": return "var(--success)";
-      case "error": return "var(--error)";
-      case "info": return "var(--info)";
-      default: return "var(--accent-default)";
-    }
-  }
 </script>
 
 {#if visible}
@@ -70,12 +50,12 @@
     onclick={() => onDismiss?.()}
   >
     {#if type !== "default"}
-      <span class="toast-icon" style="color: {colorForType(type)}">
-        {@html iconForType(type)}
+      <span class="toast-icon" style="color: {toastColor(type)}">
+        {@html toastIcon(type)}
       </span>
     {/if}
     <span class="toast-message">{message}</span>
-    <div class="toast-progress" style="--progress: {progress}%; --progress-color: {colorForType(type)}"></div>
+    <div class="toast-progress" style="--progress: {progress}%; --progress-color: {toastColor(type)}"></div>
   </div>
 {/if}
 

@@ -17,6 +17,8 @@
   let loading = $state(true);
   let search = $state("");
   let selectedCategory = $state("All");
+  /** Simple cache to avoid re-fetching templates when modal is reopened */
+  let templateCache: Template[] | null = null;
 
   $effect(() => {
     if (open) {
@@ -27,7 +29,12 @@
   async function loadTemplates() {
     loading = true;
     try {
-      templates = await invoke<Template[]>("list_templates");
+      if (templateCache) {
+        templates = templateCache;
+      } else {
+        templates = await invoke<Template[]>("list_templates");
+        templateCache = templates;
+      }
     } catch (e) {
       console.error("Failed to load templates:", e);
     } finally {
@@ -49,6 +56,7 @@
     if (!confirm("Delete this template?")) return;
     try {
       await invoke("delete_template", { id });
+      templateCache = null; // Invalidate cache to force re-fetch
       await loadTemplates();
     } catch (e) {
       console.error("Failed to delete template:", e);

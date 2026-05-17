@@ -8,7 +8,7 @@
   let wordCount = $derived(
     $documentStore.content.trim() === ""
       ? 0
-      : $documentStore.content.content.trim().split(/\s+/).filter((w) => w.length > 0).length
+      : $documentStore.content.trim().split(/\s+/).filter((w) => w.length > 0).length
   );
   let charCount = $derived($documentStore.content.length);
 
