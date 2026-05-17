@@ -60,9 +60,10 @@
     }
     lastContentHash = contentHash;
 
-    // Check cache
+    // Check cache — clear any pending render before returning
     const cached = renderCache.get(contentHash);
     if (cached) {
+      clearTimeout(timeout);
       htmlContent = cached;
       return;
     }
