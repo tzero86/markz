@@ -11,7 +11,7 @@
   import SettingsModal from "./components/settings/SettingsModal.svelte";
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
-  import { initKeyboardShortcuts } from "./lib/keyboard";
+  import { initKeyboardShortcuts, newDocument } from "./lib/keyboard";
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
 
@@ -78,7 +78,7 @@
     onOpenSaveTemplate={() => (saveTemplateOpen = true)}
     onOpenHelp={() => { settingsInitialTab = "help"; settingsOpen = true; }}
   />
-  <TabBar />
+  <TabBar onNewTab={newDocument} />
   <div class="workspace">
     <OutlineSidebar visible={outlineVisible} />
     {#if viewMode === "split"}
@@ -115,8 +115,8 @@
     overflow: hidden;
     background: var(--bg-base);
     color: var(--text-primary);
-    transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-                color 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 300ms var(--ease-in-out),
+                color 300ms var(--ease-in-out);
   }
   .workspace {
     flex: 1;

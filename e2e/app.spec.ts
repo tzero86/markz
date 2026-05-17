@@ -198,7 +198,7 @@ test("theme toggle keeps icon, data-theme, and CSS in sync", async ({ page }) =>
     if (isDark) {
       expect(before.bgBase).toBe("#0d0d0d");
     } else {
-      expect(before.bgBase).toBe("#ffffff");
+      expect(before.bgBase).toBe("#fafafa");
     }
 
     // colorScheme style should also match
@@ -246,7 +246,7 @@ test("reduced motion setting applies data attribute to html", async ({ page }) =
 });
 
 test("zoom in and out with keyboard shortcuts", async ({ page }) => {
-  const zoomIndicator = page.locator(".zoom-indicator");
+  const zoomIndicator = page.locator(".zoom-badge");
   await expect(zoomIndicator).toHaveText("100%");
 
   // Zoom in
@@ -267,7 +267,7 @@ test("zoom in and out with keyboard shortcuts", async ({ page }) => {
 });
 
 test("zoom indicator resets zoom when clicked", async ({ page }) => {
-  const zoomIndicator = page.locator(".zoom-indicator");
+  const zoomIndicator = page.locator(".zoom-badge");
 
   // Zoom in first
   await page.keyboard.press("Control+Equal");

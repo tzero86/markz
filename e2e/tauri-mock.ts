@@ -267,7 +267,13 @@ export const tauriMockScriptString = `
     process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     export_to_docx: () => null,
+    "plugin:app|version": () => "0.1.12",
   };
+
+  // Mock dialog plugin commands used by @tauri-apps/plugin-dialog
+  responses["plugin:dialog|confirm"] = () => true;
+  responses["plugin:dialog|open"] = () => null;
+  responses["plugin:dialog|save"] = () => null;
 
   window.__TAURI_INTERNALS__ = {
     invoke: function(cmd, args) {
@@ -279,6 +285,14 @@ export const tauriMockScriptString = `
       return Promise.resolve(handler(args));
     },
     convertFileSrc: function(path) { return path; },
+  };
+
+  // Mock navigator.clipboard for copy operations in test environment
+  if (!navigator.clipboard) {
+    navigator.clipboard = {};
+  }
+  navigator.clipboard.writeText = function(text) {
+    return Promise.resolve();
   };
 })();
 `;

@@ -8,8 +8,13 @@
   import { renderMathBlocks } from "./mathRenderer";
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
+  import { FORMAT_ICONS } from "../../lib/formatIcons";
+  import DOMPurify from "dompurify";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
+
+  /** Cache of content hash → rendered HTML to avoid redundant re-renders */
+  const renderCache = new Map<string, string>();
 
   let htmlContent = $state("<p>Loading preview...</p>");
   let isRendering = $state(false);
@@ -17,48 +22,98 @@
   let contentDiv: HTMLDivElement | undefined = $state();
   let activeFormat = $state<PreviewFormat>("html");
   let settings = $state<{ embed_remote_images: boolean; preview_font_size: number } | null>(null);
+  let copyFeedback = $state(false);
+  let renderProgress = $state(0);
 
-  const formats: { id: PreviewFormat; label: string }[] = [
-    { id: "html", label: "HTML" },
-    { id: "jira", label: "JIRA" },
-    { id: "confluence", label: "Confluence" },
-    { id: "slack", label: "Slack" },
-    { id: "github", label: "GitHub" },
+  const formats: { id: PreviewFormat; label: string; icon: string }[] = [
+    { id: "html", label: "HTML", icon: FORMAT_ICONS.html_sm },
+    { id: "jira", label: "JIRA", icon: FORMAT_ICONS.jira_sm },
+    { id: "confluence", label: "Confluence", icon: FORMAT_ICONS.confluence_sm },
+    { id: "slack", label: "Slack", icon: FORMAT_ICONS.slack_sm },
+    { id: "github", label: "GitHub", icon: FORMAT_ICONS.github_sm },
   ];
+
+  /** Simple string hash for cache key */
+  function hash(str: string): string {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0;
+    }
+    return `h${h}`;
+  }
 
   // Load settings once on mount
   invoke("get_settings")
     .then((s) => { settings = s as { embed_remote_images: boolean; preview_font_size: number }; })
     .catch(() => { settings = { embed_remote_images: false, preview_font_size: 16 }; });
 
-  // Debounced render
+  // Debounced render with progress animation and content hash caching
   let timeout: ReturnType<typeof setTimeout>;
+  let lastContentHash = "";
   $effect(() => {
     const content = $documentStore.content;
+    const contentHash = hash(content + activeFormat);
+    // Skip re-render if content hasn't actually changed
+    if (contentHash === lastContentHash && htmlContent !== "<p>Loading preview...</p>") {
+      return;
+    }
+    lastContentHash = contentHash;
+
+    // Check cache — clear any pending render before returning
+    const cached = renderCache.get(contentHash);
+    if (cached) {
+      clearTimeout(timeout);
+      htmlContent = cached;
+      return;
+    }
+
     const format = activeFormat;
-    const _settings = settings;
     clearTimeout(timeout);
     isRendering = true;
+    renderProgress = 0;
+    const progressInterval = setInterval(() => {
+      renderProgress = Math.min(renderProgress + 15, 85);
+    }, 50);
     timeout = setTimeout(async () => {
       try {
+        clearInterval(progressInterval);
+        renderProgress = 90;
+        let result: string;
         if (format === "html") {
-          const result = await invoke<string>("render_preview", { markdown: content, docPath: $documentStore.path });
-          htmlContent = result;
+          result = await invoke<string>("render_preview", { markdown: content, docPath: $documentStore.path });
+          // Sanitize HTML to prevent XSS from untrusted markdown content
+          result = DOMPurify.sanitize(result);
         } else {
           const command = `convert_to_${format}`;
-          const result = await invoke<string>(command, {
+          result = await invoke<string>(command, {
             markdown: content,
             docPath: $documentStore.path,
           });
-          htmlContent = escapeHtml(result);
+          result = escapeHtml(result);
         }
+        htmlContent = result;
+        renderCache.set(contentHash, result);
+        // Limit cache size to 10 entries to avoid memory leak
+        if (renderCache.size > 10) {
+          const firstKey = renderCache.keys().next().value;
+          if (firstKey) renderCache.delete(firstKey);
+        }
+        renderProgress = 100;
       } catch (e) {
         htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
       } finally {
-        isRendering = false;
+        clearInterval(progressInterval);
+        setTimeout(() => {
+          isRendering = false;
+          renderProgress = 0;
+        }, 200);
       }
-    }, 80);
-    return () => clearTimeout(timeout);
+    }, 150); // Increased debounce from 80ms to 150ms for better performance
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(progressInterval);
+    };
   });
 
   function escapeHtml(text: string): string {
@@ -91,7 +146,6 @@
       return "";
     }
 
-    // Only keep structural tags and safe attributes
     const allowedTags = new Set([
       "p", "h1", "h2", "h3", "h4", "h5", "h6",
       "strong", "em", "del", "code", "pre", "a", "img",
@@ -126,7 +180,6 @@
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
-    // Only intercept if selection is inside our preview pane
     if (!previewDiv || !previewDiv.contains(range.commonAncestorContainer)) {
       return;
     }
@@ -144,9 +197,11 @@
   async function copyOutput() {
     try {
       const text = activeFormat === "html"
-        ? htmlContent.replace(/<[^>]+>/g, "") // rough text extract for HTML
+        ? htmlContent.replace(/<[^>]+>/g, "")
         : htmlContent.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
       await navigator.clipboard.writeText(text);
+      copyFeedback = true;
+      setTimeout(() => copyFeedback = false, 1500);
     } catch (e) {
       console.error("Copy failed:", e);
     }
@@ -161,7 +216,6 @@
     });
   }
 
-  // Post-process after DOM update
   $effect(() => {
     const _content = htmlContent;
     if (!contentDiv) return;
@@ -174,7 +228,6 @@
     }
   });
 
-  // Listen for theme changes
   $effect(() => {
     const theme = $resolvedTheme;
     setHljsTheme(theme);
@@ -186,7 +239,7 @@
 
 <div class="preview-pane">
   {#if isRendering}
-    <div class="render-bar"></div>
+    <div class="render-progress-bar" style="--progress: {renderProgress}%"></div>
   {/if}
   <div class="preview-toolbar">
     <div class="format-tabs">
@@ -195,17 +248,34 @@
           class="format-tab"
           class:active={activeFormat === fmt.id}
           onclick={() => (activeFormat = fmt.id)}
+          aria-pressed={activeFormat === fmt.id}
         >
-          {fmt.label}
+          <span class="format-icon">{@html fmt.icon}</span>
+          <span class="format-label">{fmt.label}</span>
         </button>
       {/each}
     </div>
-    <button class="ghost-btn" onclick={copyOutput} aria-label="Copy output" data-tooltip="Copy output">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-      </svg>
-    </button>
+    <div class="toolbar-actions">
+      <button
+        class="action-btn"
+        class:success={copyFeedback}
+        onclick={copyOutput}
+        aria-label={copyFeedback ? "Copied!" : "Copy output"}
+        data-tooltip={copyFeedback ? "Copied!" : "Copy output"}
+      >
+        {#if copyFeedback}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        {:else}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        {/if}
+        <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
+      </button>
+    </div>
   </div>
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     {#key htmlContent}
@@ -223,23 +293,23 @@
 </div>
 
 <style>
-  /* Force emoji codepoints to use system emoji fonts on Windows/WebView2 */
   @font-face {
     font-family: "MarkZEmoji";
     src: local("Segoe UI Emoji"), local("Apple Color Emoji"), local("Noto Color Emoji");
     unicode-range:
-      U+1F300-1F5FF,   /* Miscellaneous Symbols and Pictographs */
-      U+1F600-1F64F,   /* Emoticons */
-      U+1F680-1F6FF,   /* Transport and Map Symbols */
-      U+1F700-1F77F,   /* Alchemical Symbols */
-      U+1F780-1F7FF,   /* Geometric Shapes Extended */
-      U+1F800-1F8FF,   /* Supplemental Arrows-C */
-      U+1F900-1F9FF,   /* Supplemental Symbols and Pictographs */
-      U+1FA00-1FA6F,   /* Chess Symbols */
-      U+1FA70-1FAFF,   /* Symbols and Pictographs Extended-A */
-      U+2600-26FF,     /* Miscellaneous Symbols */
-      U+2700-27BF;     /* Dingbats */
+      U+1F300-1F5FF,
+      U+1F600-1F64F,
+      U+1F680-1F6FF,
+      U+1F700-1F77F,
+      U+1F780-1F7FF,
+      U+1F800-1F8FF,
+      U+1F900-1F9FF,
+      U+1FA00-1FA6F,
+      U+1FA70-1FAFF,
+      U+2600-26FF,
+      U+2700-27BF;
   }
+
   .preview-pane {
     flex: 1;
     display: flex;
@@ -247,76 +317,133 @@
     overflow: hidden;
     background: var(--bg-base);
     position: relative;
-    transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 300ms var(--ease-in-out);
   }
-  .render-bar {
+
+  /* Progress bar */
+  .render-progress-bar {
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
     height: 2px;
+    width: var(--progress);
     background: var(--accent-default);
-    animation: shimmer 1s infinite;
     z-index: 5;
+    transition: width 50ms ease;
+    border-radius: 0 1px 1px 0;
   }
-  @keyframes shimmer {
-    0% { opacity: 0.4; }
-    50% { opacity: 1; }
-    100% { opacity: 0.4; }
-  }
+
+  /* Toolbar */
   .preview-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--border-subtle);
     background: var(--bg-surface);
     flex-shrink: 0;
-    height: 44px;
+    height: 42px;
     box-sizing: border-box;
-    transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
-                border-color 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 300ms var(--ease-in-out),
+                border-color 300ms var(--ease-in-out);
   }
+
   .format-tabs {
     display: flex;
-    gap: var(--space-1);
+    gap: 2px;
+    padding: 2px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
   }
   .format-tab {
-    padding: var(--space-1) var(--space-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     font-size: var(--text-xs);
     font-weight: 500;
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    transition: all 150ms var(--ease-out);
+    white-space: nowrap;
   }
   .format-tab:hover {
     background: var(--bg-hover);
-    color: var(--text-primary);
+    color: var(--text-secondary);
   }
   .format-tab.active {
-    background: var(--bg-hover);
+    background: var(--bg-active);
     color: var(--accent-default);
+    font-weight: 600;
+    box-shadow: var(--shadow-xs);
   }
-  .ghost-btn {
+  .format-icon {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
-    cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    opacity: 0.7;
+    transition: opacity 150ms ease;
   }
-  .ghost-btn:hover {
+  .format-tab:hover .format-icon,
+  .format-tab.active .format-icon {
+    opacity: 1;
+  }
+  .format-label {
+    transition: color 150ms ease;
+  }
+
+  /* Toolbar actions */
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms var(--ease-out);
+    box-shadow: var(--shadow-xs);
+  }
+  .action-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+    border-color: var(--border-focus);
+    transform: translateY(-0.5px);
   }
+  .action-btn:active {
+    transform: scale(0.97);
+  }
+  .action-btn.success {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+    animation: successPulse 300ms var(--ease-spring);
+  }
+  .action-btn.success:hover {
+    background: var(--accent-hover);
+  }
+  .action-label {
+    font-size: 11px;
+  }
+  @keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
   .preview-scroller {
     flex: 1;
     overflow: auto;
@@ -330,7 +457,7 @@
     line-height: 1.7;
     color: var(--text-primary);
     font-variant-emoji: emoji;
-    animation: fadeIn 150ms ease;
+    animation: fadeIn 200ms var(--ease-out);
   }
   .preview-content.text-format {
     max-width: 900px;
@@ -349,16 +476,18 @@
     white-space: pre;
   }
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
+
+  /* Content styles */
   .preview-content :global(h1) {
     font-size: 1.75em;
     font-weight: 700;
     margin-top: var(--space-10);
     margin-bottom: var(--space-4);
     letter-spacing: -0.02em;
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--border-subtle);
     padding-bottom: var(--space-3);
   }
   .preview-content :global(h2) {
@@ -367,7 +496,7 @@
     margin-top: var(--space-8);
     margin-bottom: var(--space-3);
     letter-spacing: -0.02em;
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--border-subtle);
     padding-bottom: var(--space-2);
   }
   .preview-content :global(h3) {
@@ -383,9 +512,11 @@
   .preview-content :global(a) {
     color: var(--accent-default);
     text-decoration: none;
+    transition: opacity 150ms ease;
   }
   .preview-content :global(a:hover) {
     text-decoration: underline;
+    opacity: 0.85;
   }
   .preview-content :global(code) {
     font-family: var(--font-mono);
@@ -400,6 +531,7 @@
     border-radius: var(--radius-md);
     overflow-x: auto;
     margin: var(--space-4) 0;
+    border: 1px solid var(--border-subtle);
   }
   .preview-content :global(pre code) {
     background: none;
@@ -418,18 +550,10 @@
     margin: var(--space-4) 0;
     padding-left: var(--space-8);
   }
-  .preview-content :global(ul) {
-    list-style-type: disc;
-  }
-  .preview-content :global(ul ul) {
-    list-style-type: circle;
-  }
-  .preview-content :global(ul ul ul) {
-    list-style-type: square;
-  }
-  .preview-content :global(li) > :global(p) {
-    margin: var(--space-1) 0;
-  }
+  .preview-content :global(ul) { list-style-type: disc; }
+  .preview-content :global(ul ul) { list-style-type: circle; }
+  .preview-content :global(ul ul ul) { list-style-type: square; }
+  .preview-content :global(li) > :global(p) { margin: var(--space-1) 0; }
   .preview-content :global(li) {
     margin: var(--space-1) 0;
     padding-left: var(--space-1);
@@ -448,18 +572,19 @@
     accent-color: var(--accent-default);
     cursor: default;
   }
-  .preview-content :global(li.task-list-item) > :global(p) {
-    margin: 0;
-  }
+  .preview-content :global(li.task-list-item) > :global(p) { margin: 0; }
   .preview-content :global(hr) {
     border: none;
-    border-top: 1px solid var(--border-default);
+    border-top: 1px solid var(--border-subtle);
     margin: var(--space-6) 0;
   }
   .preview-content :global(table) {
     width: 100%;
     border-collapse: collapse;
     margin: var(--space-4) 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-default);
   }
   .preview-content :global(th), .preview-content :global(td) {
     border: 1px solid var(--border-default);
@@ -470,20 +595,46 @@
     background: var(--bg-hover);
     font-weight: 600;
   }
-  .preview-content :global(tr:nth-child(even)) {
-    background: var(--bg-subtle);
-  }
+  .preview-content :global(tr:nth-child(even)) { background: var(--bg-subtle); }
   .preview-content :global(img) {
     max-width: 100%;
     border-radius: var(--radius-md);
     margin: var(--space-4) 0;
+    box-shadow: var(--shadow-sm);
   }
   .preview-content :global(.mermaid-diagram) {
     display: flex;
     justify-content: center;
     margin: var(--space-4) 0;
   }
-  .preview-content :global(.mermaid-diagram svg) {
-    max-width: 100%;
+  .preview-content :global(.mermaid-diagram svg) { max-width: 100%; }
+
+  /* Tooltips */
+  [data-tooltip] {
+    position: relative;
+  }
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.95);
+    padding: 4px 8px;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 120ms ease, transform 120ms var(--ease-out);
+    z-index: 200;
+  }
+  [data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
   }
 </style>
