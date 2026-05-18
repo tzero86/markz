@@ -71,21 +71,27 @@
     min-width: 0;
   }
   .left {
-    border-right: 1px solid var(--border-default);
+    border-right: none;
   }
   .divider {
-    width: 5px;
-    margin-left: -2px;
-    margin-right: -2px;
+    width: 1px;
     cursor: col-resize;
-    z-index: 10;
+    z-index: 100;
     position: relative;
+    background: var(--border-default);
     transition: background 150ms ease;
+    flex-shrink: 0;
+  }
+  /* 4px invisible hit area via pseudo-element */
+  .divider::after {
+    content: '';
+    position: absolute;
+    inset: 0 -4px;
+    z-index: -1;
   }
   .divider:hover,
   .divider.dragging {
     background: var(--accent-default);
-    opacity: 0.4;
   }
   .right {
     flex: 1;

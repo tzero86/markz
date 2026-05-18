@@ -2,6 +2,7 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/animations.css";
 import "./styles/editor-theme.css";
+import "./styles/preview-theme.css";
 import "./styles/components/button.css";
 import "./styles/components/input.css";
 import "./styles/components/tooltip.css";

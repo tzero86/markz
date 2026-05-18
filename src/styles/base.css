@@ -25,29 +25,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbars */
+/* Scrollbars — 8px overlay per spec */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
-  border-radius: var(--radius-full);
+  background: var(--text-tertiary);
   opacity: 0.3;
+  border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
-  opacity: 0.6;
-}
-
-/* Accessible focus styles */
-:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus);
-  border-radius: var(--radius-sm);
+  background: var(--text-secondary);
+  opacity: 0.5;
 }
 
 /* Smooth scrolling for preview */
