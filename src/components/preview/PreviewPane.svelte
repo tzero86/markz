@@ -335,10 +335,9 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-default);
     background: var(--bg-surface);
     flex-shrink: 0;
-    height: 42px;
     box-sizing: border-box;
     transition: background-color 300ms var(--ease-in-out),
                 border-color 300ms var(--ease-in-out);
