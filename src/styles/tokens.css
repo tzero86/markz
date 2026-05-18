@@ -36,6 +36,37 @@
 
   --sidebar-width: 220px;
 
+  /* Syntax highlighting - GitHub Primer palette (light) */
+  --syntax-keyword: #D73A49;
+  --syntax-string: #032F62;
+  --syntax-number: #005CC5;
+  --syntax-comment: #6A737D;
+  --syntax-function: #6F42C1;
+  --syntax-type: #E36209;
+  --syntax-variable: #24292E;
+  --syntax-operator: #D73A49;
+  --syntax-property: #005CC5;
+  --syntax-regexp: #032F62;
+  --syntax-deleted: #B31D28;
+  --syntax-inserted: #22863A;
+  --syntax-changed: #E36209;
+  --syntax-meta: #6A737D;
+  --syntax-tag: #22863A;
+  --syntax-attr-name: #6F42C1;
+  --syntax-attr-value: #032F62;
+  --syntax-builtin: #005CC5;
+  --syntax-heading: #24292E;
+  --syntax-bold: #24292E;
+  --syntax-italic: #24292E;
+  --syntax-quote: #6A737D;
+  --syntax-link: #032F62;
+  --syntax-code-bg: #F6F8FA;
+
+  /* Editor-specific tokens */
+  --editor-gutter-bg: #FAFBFC;
+  --editor-gutter-border: #EAECEF;
+  --editor-cursor: #0D8A5D;
+
   /* Easing curves */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
@@ -128,6 +159,29 @@
   --success: #3dd68d;
   --info: #60a5fa;
   --info-bg: #172554;
+
+  /* Syntax highlighting — GitHub Primer palette (dark) */
+  --syntax-keyword: #FF7B72;
+  --syntax-string: #A5D6FF;
+  --syntax-number: #79C0FF;
+  --syntax-comment: #8B949E;
+  --syntax-function: #D2A8FF;
+  --syntax-type: #FFA657;
+  --syntax-variable: #E6EDF3;
+  --syntax-operator: #FF7B72;
+  --syntax-property: #79C0FF;
+  --syntax-regexp: #A5D6FF;
+  --syntax-deleted: #FFA198;
+  --syntax-inserted: #56D364;
+  --syntax-changed: #E2B142;
+  --syntax-meta: #8B949E;
+  --syntax-tag: #7EE787;
+  --syntax-attr-name: #D2A8FF;
+  --syntax-attr-value: #A5D6FF;
+  --syntax-builtin: #79C0FF;
+  --syntax-link: #A5D6FF;
+  --syntax-code-bg: #161B22;
+  --editor-cursor: #3DD68D;
 
   /* Shadows - darker, more subtle in dark mode */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
