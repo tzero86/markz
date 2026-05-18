@@ -45,10 +45,15 @@
     return () => window.removeEventListener("resize", handleResize);
   });
 
+  /* Sidebar: auto-collapse below 1200px, but respect manual Ctrl+B toggle */
+  let userToggledSidebar = $state(false);
   let autoCollapseSidebar = $derived(windowWidth > 0 && windowWidth < 1200);
   $effect(() => {
-    if (autoCollapseSidebar && outlineVisible) {
+    if (autoCollapseSidebar && !userToggledSidebar && outlineVisible) {
       outlineVisible = false;
+    }
+    if (!autoCollapseSidebar) {
+      userToggledSidebar = false;
     }
   });
 
@@ -64,6 +69,7 @@
     const removeShortcuts = initKeyboardShortcuts();
 
     const handleToggleSidebar = () => {
+      userToggledSidebar = true;
       outlineVisible = !outlineVisible;
     };
     window.addEventListener("markz:toggle-sidebar", handleToggleSidebar);
