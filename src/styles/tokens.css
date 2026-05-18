@@ -63,9 +63,7 @@
   --syntax-code-bg: #F6F8FA;
 
   /* Editor-specific tokens */
-  --editor-gutter-bg: #FAFBFC;
-  --editor-gutter-border: #EAECEF;
-  --editor-cursor: #0D8A5D;
+  --editor-cursor: var(--accent-default);
 
   /* Easing curves */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
