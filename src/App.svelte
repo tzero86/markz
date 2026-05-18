@@ -34,6 +34,29 @@
     .then((s: any) => applySettings(s))
     .catch(() => {});
 
+  /* Adaptive layout — responsive breakpoints */
+  let windowWidth = $state(0);
+  $effect(() => {
+    function handleResize() {
+      windowWidth = window.innerWidth;
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  });
+
+  let autoCollapseSidebar = $derived(windowWidth > 0 && windowWidth < 1200);
+  $effect(() => {
+    if (autoCollapseSidebar && outlineVisible) {
+      outlineVisible = false;
+    }
+  });
+
+  let forceSinglePane = $derived(windowWidth > 0 && windowWidth < 900);
+  let effectiveViewMode = $derived(
+    forceSinglePane ? "editor" : viewMode
+  );
+
   onMount(() => {
     initDebugLogging();
     startupCheckpoint("App mounted");
@@ -81,7 +104,7 @@
   <TabBar onNewTab={newDocument} />
   <div class="workspace">
     <OutlineSidebar visible={outlineVisible} />
-    {#if viewMode === "split"}
+    {#if effectiveViewMode === "split"}
       <SplitPane>
         {#snippet left()}
           <EditorPane />
@@ -90,7 +113,7 @@
           <PreviewPane />
         {/snippet}
       </SplitPane>
-    {:else if viewMode === "editor"}
+    {:else if effectiveViewMode === "editor"}
       <div class="single-pane">
         <EditorPane />
       </div>
