@@ -9,7 +9,8 @@
   import { FilePlus, FolderOpen, Save, History, File, Copy, ChevronDown, LayoutGrid, BookmarkPlus, CircleHelp, Settings, Sun, Moon, ArrowUpRight } from "@lucide/svelte";
   import { Trash2 } from "@lucide/svelte";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import Toast from "../ui/Toast.svelte";
+  import logo from "../../assets/logo.png";
+import Toast from "../ui/Toast.svelte";
 
   interface Props {
     onOpenSettings: () => void;
@@ -192,7 +193,7 @@
 <div class="titlebar" data-tauri-drag-region>
   <div class="titlebar-left">
     <div class="brand">
-      <img src="../../assets/logo.png" alt="" class="brand-icon" width="18" height="18" />
+      <img src={logo} alt="" class="brand-icon" width="18" height="18" />
       <span class="app-name">MarkZ</span>
     </div>
     {#if $updateReady}
