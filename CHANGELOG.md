@@ -26,6 +26,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Dark theme gutter** — Line number gutter no longer white in dark mode
 
 
+## [0.2.0] - 2026-05-18
+
+### Added
+- **Lucide icon system** — 33 inline SVGs replaced with @lucide/svelte across 10 components
+- **Shared CSS primitives** — Button, input, tooltip, context-menu, badge modules
+- **Animation system** — Keyframe library, transition utilities, skeleton loading
+- **GitHub Primer syntax theme** — 51 syntax tokens with full CodeMirror 6 theme
+- **Preview typesetting** — Heading borders, table striping, code block badges, blockquotes
+- **Splash screen** — Centered card with logo, animated loading bar, dark/light adaptive
+- **Adaptive layout** — Auto-collapse sidebar below 1200px, single-pane below 900px
+- **JetBrains Mono** — Added to font stack as preferred editor font
+
+### Changed
+- **Scrollbars** — 6px to 8px, improved hover contrast
+- **SplitPane divider** — 1px with 4px hit area, accent on hover
+- **Focus ring** — Restored :focus-visible for keyboard navigation
+- **Toolbar alignment** — Preview toolbar border now aligns with editor
+
+### Fixed
+- **Dark theme gutter** — Line number gutter no longer white in dark mode
+
+
 ## [0.1.13] - 2026-05-15
 
 ### Added
