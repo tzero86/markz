@@ -34,13 +34,49 @@
     .then((s: any) => applySettings(s))
     .catch(() => {});
 
+  /* Adaptive layout — responsive breakpoints */
+  let windowWidth = $state(0);
+  $effect(() => {
+    function handleResize() {
+      windowWidth = window.innerWidth;
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  });
+
+  /* Sidebar: auto-collapse below 1200px, but respect manual Ctrl+B toggle */
+  let userToggledSidebar = $state(false);
+  let autoCollapseSidebar = $derived(windowWidth > 0 && windowWidth < 1200);
+  $effect(() => {
+    if (autoCollapseSidebar && !userToggledSidebar && outlineVisible) {
+      outlineVisible = false;
+    }
+    if (!autoCollapseSidebar) {
+      userToggledSidebar = false;
+    }
+  });
+
+  let forceSinglePane = $derived(windowWidth > 0 && windowWidth < 900);
+  let effectiveViewMode = $derived(
+    forceSinglePane ? "editor" : viewMode
+  );
+
   onMount(() => {
     initDebugLogging();
     startupCheckpoint("App mounted");
 
+    // Dismiss splash screen
+    const splash = document.getElementById("splash");
+    if (splash) {
+      splash.classList.add("fade-out");
+      setTimeout(() => splash.remove(), 350);
+    }
+
     const removeShortcuts = initKeyboardShortcuts();
 
     const handleToggleSidebar = () => {
+      userToggledSidebar = true;
       outlineVisible = !outlineVisible;
     };
     window.addEventListener("markz:toggle-sidebar", handleToggleSidebar);
@@ -81,7 +117,7 @@
   <TabBar onNewTab={newDocument} />
   <div class="workspace">
     <OutlineSidebar visible={outlineVisible} />
-    {#if viewMode === "split"}
+    {#if effectiveViewMode === "split"}
       <SplitPane>
         {#snippet left()}
           <EditorPane />
@@ -90,7 +126,7 @@
           <PreviewPane />
         {/snippet}
       </SplitPane>
-    {:else if viewMode === "editor"}
+    {:else if effectiveViewMode === "editor"}
       <div class="single-pane">
         <EditorPane />
       </div>

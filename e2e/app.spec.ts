@@ -171,8 +171,8 @@ test("theme toggle keeps icon, data-theme, and CSS in sync", async ({ page }) =>
       const html = document.documentElement;
       const btn = document.querySelector('button[aria-label="Toggle theme"]');
       const svg = btn?.querySelector("svg");
-      // Sun icon has many <line> + <circle>; moon has <path> only
-      const isSun = svg ? svg.querySelectorAll("line").length > 0 : false;
+      // Lucide Sun has circles + lines; Moon has a single path
+      const isSun = svg ? (svg.querySelectorAll("circle").length > 0 || svg.querySelectorAll("line").length > 0) : false;
       const computedBg = getComputedStyle(html).getPropertyValue("--bg-base").trim();
       return {
         dataTheme: html.getAttribute("data-theme"),

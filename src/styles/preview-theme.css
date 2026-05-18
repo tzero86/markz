@@ -1,0 +1,288 @@
+/* ==========================================================================
+   Preview Theme — MarkZ Design System
+   Based on docs/MarkZ_UI_UX_Design.md §9 "Preview Pane Design"
+   Target: .preview-content (rendered Markdown from Rust HTML renderer)
+   ========================================================================== */
+
+.preview-content {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-8);
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  line-height: 1.7;
+}
+
+/* --- Headings --- */
+.preview-content h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: var(--space-10) 0 var(--space-4) 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.preview-content h2 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: var(--space-8) 0 var(--space-3) 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.preview-content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: var(--space-6) 0 var(--space-3) 0;
+}
+
+.preview-content h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: var(--space-5) 0 var(--space-2) 0;
+}
+
+.preview-content h5,
+.preview-content h6 {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: var(--space-4) 0 var(--space-2) 0;
+}
+
+/* --- Paragraphs --- */
+.preview-content p {
+  margin: var(--space-4) 0;
+  line-height: 1.7;
+}
+
+/* --- Inline Code --- */
+.preview-content code:not(pre code) {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--syntax-code-bg, var(--bg-hover));
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  color: var(--syntax-keyword, var(--text-primary));
+}
+
+/* --- Code Blocks --- */
+.preview-content pre {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: var(--space-5) 0;
+  overflow-x: auto;
+  position: relative;
+}
+
+.preview-content pre code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: none;
+  padding: 0;
+  display: block;
+}
+
+/* Language badge (positioned top-right of code blocks) */
+.preview-content pre code[class^="language-"] {
+  padding-top: var(--space-5);
+}
+
+.preview-content pre code[class^="language-"]::before {
+  content: attr(class);
+  position: absolute;
+  top: 0;
+  right: var(--space-3);
+  padding: 2px 8px;
+  background: var(--bg-hover);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  text-transform: uppercase;
+}
+
+/* --- Blockquotes --- */
+.preview-content blockquote {
+  border-left: 3px solid var(--accent-muted);
+  padding: var(--space-2) 0 var(--space-2) var(--space-4);
+  margin: var(--space-5) 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.preview-content blockquote p {
+  margin: var(--space-2) 0;
+}
+
+/* --- Tables --- */
+.preview-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-5) 0;
+  font-size: var(--text-sm);
+}
+
+.preview-content thead {
+  background: var(--bg-hover);
+}
+
+.preview-content th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+}
+
+.preview-content td {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
+.preview-content tbody tr:nth-child(even) {
+  background: var(--bg-subtle);
+}
+
+.preview-content tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* --- Lists --- */
+.preview-content ul,
+.preview-content ol {
+  margin: var(--space-4) 0;
+  padding-left: var(--space-6);
+}
+
+.preview-content li {
+  margin: var(--space-1) 0;
+  line-height: 1.6;
+}
+
+/* Task lists */
+.preview-content .task-list-item {
+  list-style: none;
+  margin-left: calc(var(--space-6) * -1);
+}
+
+.preview-content .task-list-item input[type="checkbox"] {
+  margin-right: var(--space-2);
+  accent-color: var(--accent-default);
+  cursor: default;
+  transform: scale(1.1);
+  vertical-align: middle;
+}
+
+/* --- Horizontal Rules --- */
+.preview-content hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: var(--space-8) 0;
+}
+
+/* --- Images --- */
+.preview-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: var(--space-4) 0;
+}
+
+/* --- Links --- */
+.preview-content a {
+  color: var(--accent-default);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 150ms ease;
+}
+
+.preview-content a:hover {
+  color: var(--accent-hover);
+}
+
+/* --- Bold / Strong --- */
+.preview-content strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Emphasis --- */
+.preview-content em {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* --- Strikethrough --- */
+.preview-content del {
+  color: var(--text-tertiary);
+}
+
+/* --- Math --- */
+.preview-content .math-block {
+  display: block;
+  text-align: center;
+  margin: var(--space-6) 0;
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  overflow-x: auto;
+}
+
+.preview-content .math-inline {
+  font-size: 1.05em;
+  padding: 0 2px;
+}
+
+/* --- Mermaid Diagrams --- */
+.preview-content .mermaid {
+  margin: var(--space-5) 0;
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  text-align: center;
+}
+
+.preview-content .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* --- Plain-text format preview (non-HTML converters) --- */
+.preview-content.text-format pre {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.preview-content.text-format code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* --- Responsive preview --- */
+@media (max-width: 960px) {
+  .preview-content {
+    padding: var(--space-4) var(--space-5);
+  }
+}

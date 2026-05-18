@@ -1,0 +1,140 @@
+/* ==========================================================================
+   Shared Button Primitives — MarkZ Design System
+   Based on docs/MarkZ_UI_UX_Design.md §6 "Buttons"
+   ========================================================================== */
+
+/* --- Primary Button ---
+   Background: --accent-default, Text: --text-inverse
+   Hover: --accent-hover, Active: scale 0.98
+*/
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent-default);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 150ms ease, transform 100ms ease, box-shadow 150ms ease;
+  user-select: none;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--accent-default);
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- Secondary Button ---
+   Background: --bg-elevated, Border: 1px --border-default
+*/
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, transform 100ms ease;
+  user-select: none;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+}
+
+.btn-secondary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--accent-default);
+  outline-offset: 2px;
+}
+
+/* --- Ghost Button (toolbar) ---
+   Background: transparent, Size: 28×28px, Icon: 16px centered
+*/
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, transform 100ms ease;
+  user-select: none;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-ghost:active {
+  transform: scale(0.96);
+}
+
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--accent-default);
+  outline-offset: 1px;
+}
+
+/* --- Danger Button --- */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--error);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 150ms ease, transform 100ms ease;
+  user-select: none;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}

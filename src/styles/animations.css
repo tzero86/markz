@@ -1,0 +1,164 @@
+/* ==========================================================================
+   Animation System — MarkZ Design System
+   Based on docs/MarkZ_UI_UX_Design.md §7 "Animation & Motion"
+   ========================================================================== */
+
+/* --- Keyframe Library --- */
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Fade out */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Slide up + fade */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide down + fade */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scale in (for modals, popovers) */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scale out */
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Slide in from right (toasts, notifications) */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Pulse (update badge, unsaved indicator) */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+/* Subtle shimmer for skeleton loading */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* --- Transition Utility Classes --- */
+
+.transition-fast {
+  transition-duration: 100ms;
+  transition-timing-function: ease-out;
+}
+
+.transition-standard {
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+.transition-smooth {
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-in-out);
+}
+
+.transition-theme {
+  transition: background-color 300ms var(--ease-in-out),
+              color 300ms var(--ease-in-out),
+              border-color 300ms var(--ease-in-out);
+}
+
+/* --- Skeleton Loading --- */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-hover) 25%,
+    var(--bg-active) 50%,
+    var(--bg-hover) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: var(--space-2);
+}
+
+.skeleton-heading {
+  height: 20px;
+  width: 60%;
+  margin-bottom: var(--space-3);
+}
+
+/* --- Reduced Motion Overrides --- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

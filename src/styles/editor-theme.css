@@ -1,0 +1,252 @@
+/* ==========================================================================
+   CodeMirror 6 Editor Theme — MarkZ Design System
+   Based on docs/MarkZ_UI_UX_Design.md §8 "Editor-Specific UX"
+   Uses GitHub Primer palette for syntax highlighting
+   ========================================================================== */
+
+/* --- Editor Surface --- */
+.cm-editor {
+  font-family: var(--font-mono);
+  background: var(--bg-base) !important;
+  color: var(--text-primary);
+}
+
+.cm-editor .cm-content {
+  padding: var(--space-4) 0;
+  caret-color: var(--editor-cursor, var(--accent-default));
+}
+
+/* --- Cursor --- */
+.cm-editor .cm-cursor {
+  border-left-color: var(--editor-cursor, var(--accent-default)) !important;
+  border-left-width: 2px;
+}
+
+/* --- Selection --- */
+.cm-editor .cm-selectionBackground,
+.cm-editor .cm-selectionLayer .cm-selectionBackground {
+  background: var(--accent-subtle) !important;
+  border-radius: 2px;
+}
+
+/* --- Active Line --- */
+.cm-editor .cm-activeLine {
+  background: transparent !important;
+}
+
+.cm-editor .cm-activeLineGutter {
+  background: var(--bg-hover);
+}
+
+/* --- Gutter --- */
+.cm-editor .cm-gutters {
+  background: var(--editor-gutter-bg, var(--bg-surface));
+  border-right: 1px solid var(--editor-gutter-border, var(--border-default));
+  color: var(--text-tertiary);
+}
+
+.cm-editor .cm-lineNumbers .cm-gutterElement {
+  color: var(--text-tertiary);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  font-size: 12px;
+}
+
+/* --- Matching Brackets --- */
+.cm-editor .cm-matchingBracket {
+  border-bottom: 1px solid var(--accent-default);
+  color: var(--text-primary) !important;
+}
+
+.cm-editor .cm-nonmatchingBracket {
+  border-bottom: 1px solid var(--error);
+}
+
+/* --- Search Highlight --- */
+.cm-editor .cm-selectionMatch {
+  background: var(--accent-subtle) !important;
+}
+
+.cm-editor .cm-searchMatch {
+  background: var(--warning-bg);
+  outline: 1px solid var(--warning);
+}
+
+.cm-editor .cm-searchMatch-selected {
+  background: var(--accent-default) !important;
+  outline: 1px solid var(--accent-default);
+}
+
+/* ==========================================================================
+   Syntax Highlighting — GitHub Primer Palette
+   ========================================================================== */
+
+/* Keywords */
+.cm-editor .ͼb { color: var(--syntax-keyword); }
+.cm-editor .ͼd { color: var(--syntax-string); }
+.cm-editor .ͼe { color: var(--syntax-number); }
+.cm-editor .ͼc { color: var(--syntax-comment); font-style: italic; }
+.cm-editor .ͼf { color: var(--syntax-function); }
+.cm-editor .ͼg { color: var(--syntax-type); }
+.cm-editor .ͼh { color: var(--syntax-variable); }
+.cm-editor .ͼi { color: var(--syntax-operator); }
+.cm-editor .ͼj { color: var(--syntax-property); }
+.cm-editor .ͼk { color: var(--syntax-regexp); }
+.cm-editor .ͼl { color: var(--syntax-deleted); }
+.cm-editor .ͼm { color: var(--syntax-inserted); }
+.cm-editor .ͼn { color: var(--syntax-changed); }
+.cm-editor .ͼo { color: var(--syntax-meta); }
+.cm-editor .ͼp { color: var(--syntax-tag); }
+.cm-editor .ͼq { color: var(--syntax-attr-name); }
+.cm-editor .ͼr { color: var(--syntax-attr-value); }
+
+/* --- Markdown-specific Styles --- */
+
+/* Headings */
+.cm-editor .cm-header {
+  color: var(--syntax-heading, var(--text-primary));
+  font-weight: 700;
+}
+
+.cm-editor .cm-header-1 {
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.cm-editor .cm-header-2 {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.cm-editor .cm-header-3 {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* Bold / Strong */
+.cm-editor .cm-strong {
+  color: var(--syntax-bold, var(--text-primary));
+  font-weight: 700;
+}
+
+/* Italic / Emphasis */
+.cm-editor .cm-emphasis {
+  color: var(--syntax-italic, var(--text-secondary));
+  font-style: italic;
+}
+
+/* Inline Code */
+.cm-editor .cm-monospace {
+  font-family: var(--font-mono);
+  background: var(--syntax-code-bg, var(--bg-hover));
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  font-size: 0.95em;
+}
+
+/* Blockquote */
+.cm-editor .cm-quote {
+  color: var(--syntax-quote, var(--text-secondary));
+  font-style: italic;
+}
+
+/* Links */
+.cm-editor .cm-link {
+  color: var(--syntax-link, var(--accent-default));
+  text-decoration: underline;
+}
+
+.cm-editor .cm-url {
+  color: var(--syntax-link, var(--accent-default));
+}
+
+/* Horizontal Rule */
+.cm-editor .cm-hr {
+  color: var(--border-default);
+}
+
+/* Lists */
+.cm-editor .cm-list {
+  color: var(--text-primary);
+}
+
+/* Strikethrough */
+.cm-editor .cm-strikethrough {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+
+/* --- Scrollbar (CodeMirror native) --- */
+.cm-editor .cm-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) transparent;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: var(--radius-full);
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* --- Tooltips / Hover --- */
+.cm-editor .cm-tooltip {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* --- Search Panel --- */
+.cm-editor .cm-panels {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.cm-editor .cm-panels input {
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: var(--space-1) var(--space-2);
+  font-family: inherit;
+  font-size: var(--text-sm);
+}
+
+.cm-editor .cm-panels input:focus {
+  border-color: var(--accent-default);
+  outline: none;
+}
+
+.cm-editor .cm-panels button {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.cm-editor .cm-panels button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* --- Fold Markers --- */
+.cm-editor .cm-foldPlaceholder {
+  background: var(--bg-hover);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}

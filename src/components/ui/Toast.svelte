@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { toastIcon, toastColor } from "../../lib/formatIcons";
+  import { Check, XCircle, Info } from "@lucide/svelte";
+  import { toastColor } from "../../lib/formatIcons";
 
   interface Props {
     message: string;
@@ -51,7 +52,13 @@
   >
     {#if type !== "default"}
       <span class="toast-icon" style="color: {toastColor(type)}">
-        {@html toastIcon(type)}
+        {#if type === "success"}
+          <Check size={16} strokeWidth={2.5} />
+        {:else if type === "error"}
+          <XCircle size={16} strokeWidth={2.5} />
+        {:else if type === "info"}
+          <Info size={16} strokeWidth={2.5} />
+        {/if}
       </span>
     {/if}
     <span class="toast-message">{message}</span>

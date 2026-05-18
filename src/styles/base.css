@@ -25,25 +25,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbars */
+/* Scrollbars — 8px overlay per spec */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
-  border-radius: var(--radius-full);
+  background: var(--text-tertiary);
   opacity: 0.3;
+  border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
-  opacity: 0.6;
+  background: var(--text-secondary);
+  opacity: 0.5;
 }
 
-/* Accessible focus styles */
+/* Accessible keyboard focus ring */
 :focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);

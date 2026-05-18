@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { get } from "svelte/store";
+  import { X } from "@lucide/svelte";
   import { documentStore } from "../../lib/documentStore";
 
   let { open = $bindable(false) } = $props();
@@ -73,10 +74,7 @@
       <div class="modal-header">
         <h2>Save as Template</h2>
         <button class="close-btn" onclick={() => (open = false)} aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <X size={16} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -198,22 +196,15 @@
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-size: var(--text-sm);
-    outline: none;
-    transition: border-color 150ms ease;
     font-family: inherit;
+    transition: border-color 150ms ease;
   }
   .field input:focus,
   .field select:focus,
   .field textarea:focus {
+    outline: none;
     border-color: var(--accent-default);
-  }
-  .field input::placeholder,
-  .field textarea::placeholder {
-    color: var(--text-muted);
-  }
-  .field textarea {
-    resize: vertical;
-    min-height: 60px;
+    box-shadow: 0 0 0 3px var(--accent-subtle);
   }
   .modal-footer {
     display: flex;
@@ -222,45 +213,44 @@
     padding: var(--space-4) var(--space-5);
     border-top: 1px solid var(--border-default);
   }
-  .btn-primary {
+  .btn-primary,
+  .btn-secondary {
     padding: var(--space-2) var(--space-4);
-    background: var(--accent-default);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     font-size: var(--text-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: background 150ms ease, transform 100ms ease;
+  }
+  .btn-primary {
+    background: var(--accent-default);
+    color: var(--text-inverse);
+    border: none;
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--accent-hover);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
   }
   .btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
   .btn-secondary {
-    padding: var(--space-2) var(--space-4);
-    background: transparent;
-    color: var(--text-secondary);
+    background: var(--bg-surface);
+    color: var(--text-primary);
     border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
   }
   .btn-secondary:hover {
     background: var(--bg-hover);
-    color: var(--text-primary);
   }
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(12px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
 </style>

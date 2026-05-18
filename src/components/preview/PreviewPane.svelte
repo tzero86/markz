@@ -9,6 +9,7 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
+  import { Copy, Check } from "@lucide/svelte";
   import DOMPurify from "dompurify";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
@@ -264,14 +265,9 @@
         data-tooltip={copyFeedback ? "Copied!" : "Copy output"}
       >
         {#if copyFeedback}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+          <Check size={14} strokeWidth={2.5} />
         {:else}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
+          <Copy size={14} strokeWidth={2} />
         {/if}
         <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
       </button>
@@ -339,10 +335,9 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-default);
     background: var(--bg-surface);
     flex-shrink: 0;
-    height: 42px;
     box-sizing: border-box;
     transition: background-color 300ms var(--ease-in-out),
                 border-color 300ms var(--ease-in-out);

@@ -6,8 +6,11 @@
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
   import { updateReady, confirmAndRestart } from "../../lib/updater";
   import { invoke } from "@tauri-apps/api/core";
+  import { FilePlus, FolderOpen, Save, History, File, Copy, ChevronDown, LayoutGrid, BookmarkPlus, CircleHelp, Settings, Sun, Moon, ArrowUpRight } from "@lucide/svelte";
+  import { Trash2 } from "@lucide/svelte";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import Toast from "../ui/Toast.svelte";
+  import logo from "../../assets/logo.png";
+import Toast from "../ui/Toast.svelte";
 
   interface Props {
     onOpenSettings: () => void;
@@ -190,7 +193,7 @@
 <div class="titlebar" data-tauri-drag-region>
   <div class="titlebar-left">
     <div class="brand">
-      <img src="../../assets/logo.png" alt="" class="brand-icon" width="18" height="18" />
+      <img src={logo} alt="" class="brand-icon" width="18" height="18" />
       <span class="app-name">MarkZ</span>
     </div>
     {#if $updateReady}
@@ -200,11 +203,7 @@
         aria-label="Restart to update"
         data-tooltip="Update ready — click to restart"
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-          <polyline points="21 3 21 9 15 9"/>
-          <line x1="12" y1="14" x2="21" y2="5"/>
-        </svg>
+        <ArrowUpRight size={12} strokeWidth={2.5} />
       </button>
     {/if}
     <div class="doc-info">
@@ -219,10 +218,7 @@
     <!-- File Operations -->
     <div class="btn-group">
       <button class="tool-btn" onclick={newDocument} aria-label="New file" data-tooltip="New (Ctrl+T)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
+        <FilePlus size={15} strokeWidth={2} />
       </button>
       <button class="tool-btn" onclick={openDocument} aria-label="Open file" data-tooltip="Open (Ctrl+O)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -260,10 +256,7 @@
           <div class="dropdown-header">Recent Files</div>
           {#if recentFiles.length === 0}
             <div class="dropdown-empty">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.4;">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
+              <File size={24} strokeWidth={1.5} style="opacity: 0.4;" />
               <span>No recent files</span>
             </div>
           {:else}
@@ -280,9 +273,7 @@
             {/each}
             <div class="dropdown-divider"></div>
             <button class="dropdown-item dropdown-item-danger" role="menuitem" onclick={clearRecent}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
+              <Trash2 size={13} strokeWidth={2} />
               Clear history
             </button>
           {/if}
@@ -304,14 +295,9 @@
         aria-label="Copy as"
         data-tooltip="Copy / Export as"
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-        </svg>
+        <Copy size={15} strokeWidth={2} />
         <span class="btn-label">Export</span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-2px;">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
+        <ChevronDown size={10} strokeWidth={2.5} style="margin-left:-2px;" />
       </button>
       {#if dropdownOpen}
         <div class="dropdown-panel" role="menu">
@@ -339,20 +325,10 @@
     <!-- Templates -->
     <div class="btn-group">
       <button class="tool-btn" onclick={onOpenTemplateBrowser} aria-label="New from Template" data-tooltip="New from Template">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="7" rx="1"/>
-          <rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="14" y="14" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/>
-        </svg>
+        <LayoutGrid size={15} strokeWidth={2} />
       </button>
       <button class="tool-btn" onclick={onOpenSaveTemplate} aria-label="Save as Template" data-tooltip="Save as Template">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-          <polyline points="17 21 17 13 7 13 7 21"/>
-          <line x1="12" y1="8" x2="12" y2="16"/>
-          <line x1="8" y1="12" x2="16" y2="12"/>
-        </svg>
+        <BookmarkPlus size={15} strokeWidth={2} />
       </button>
     </div>
 
@@ -361,35 +337,16 @@
     <!-- Settings & Help -->
     <div class="btn-group">
       <button class="tool-btn" onclick={onOpenHelp} aria-label="Help" data-tooltip="Help (?)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-          <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
+        <CircleHelp size={15} strokeWidth={2} />
       </button>
       <button class="tool-btn" onclick={onOpenSettings} aria-label="Settings" data-tooltip="Settings">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.68 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
+        <Settings size={15} strokeWidth={2} />
       </button>
       <button class="tool-btn" onclick={() => themeStore.cycle()} aria-label="Toggle theme" data-tooltip="Theme: {themeLabel($themeStore)} (click to cycle)">
         {#if resolved === "dark"}
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="5"/>
-            <line x1="12" y1="1" x2="12" y2="3"/>
-            <line x1="12" y1="21" x2="12" y2="23"/>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-            <line x1="1" y1="12" x2="3" y2="12"/>
-            <line x1="21" y1="12" x2="23" y2="12"/>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-          </svg>
+          <Sun size={15} strokeWidth={2} />
         {:else}
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
+          <Moon size={15} strokeWidth={2} />
         {/if}
       </button>
     </div>

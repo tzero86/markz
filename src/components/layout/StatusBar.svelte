@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Columns2, AlignLeft, Eye, Type, ZoomIn, Text } from "@lucide/svelte";
   import { documentStore } from "../../lib/documentStore";
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
@@ -27,9 +28,7 @@
     </div>
     <div class="status-divider"></div>
     <span class="status-item cursor-info">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="4" y1="7" x2="20" y2="7"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><line x1="5" y1="4" x2="19" y2="4"/><line x1="5" y1="20" x2="19" y2="20"/>
-      </svg>
+      <Type size={12} strokeWidth={2} />
       Ln {$cursorPosition.line}, Col {$cursorPosition.column}
     </span>
   </div>
@@ -40,9 +39,7 @@
       onclick={() => contentZoomStore.reset()}
       title="Click to reset zoom (Ctrl+0)"
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
-      </svg>
+      <ZoomIn size={12} strokeWidth={2} />
       <span>{Math.round($contentZoomStore * 100)}%</span>
     </button>
     <div class="view-toggle" role="group" aria-label="View mode">
@@ -55,22 +52,11 @@
           title={label}
         >
           {#if mode === "split"}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="18" rx="1.5" />
-              <rect x="14" y="3" width="7" height="18" rx="1.5" />
-            </svg>
+            <Columns2 size={14} strokeWidth={2} />
           {:else if mode === "editor"}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="1.5" />
-              <line x1="8" y1="8" x2="16" y2="8" />
-              <line x1="8" y1="12" x2="14" y2="12" />
-              <line x1="8" y1="16" x2="12" y2="16" />
-            </svg>
+            <AlignLeft size={14} strokeWidth={2} />
           {:else}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="1.5" />
-              <path d="M8 9h8M8 13h6M8 17h4" />
-            </svg>
+            <Eye size={14} strokeWidth={2} />
           {/if}
           <span class="view-label">{label}</span>
         </button>
@@ -80,15 +66,11 @@
 
   <div class="status-right">
     <span class="stat-badge">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
-      </svg>
+      <Text size={11} strokeWidth={2} />
       {wordCount}
     </span>
     <span class="stat-badge">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
-      </svg>
+      <Text size={11} strokeWidth={2} />
       {charCount}
     </span>
     <div class="status-divider"></div>
@@ -199,99 +181,64 @@
   .stat-badge:hover {
     background: var(--bg-hover);
   }
-
   .format-badge {
+    font-size: 11px;
+    font-weight: 500;
     padding: 1px 6px;
     background: var(--bg-subtle);
     border-radius: var(--radius-full);
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-family: var(--font-mono);
+  }
+
+  /* View mode toggle */
+  .view-toggle {
+    display: flex;
+    gap: 1px;
+    background: var(--bg-subtle);
+    border-radius: var(--radius-md);
+    padding: 2px;
+  }
+  .view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .view-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+  .view-btn.active {
+    background: var(--bg-surface);
+    color: var(--accent-default);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   }
 
   /* Zoom badge */
   .zoom-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 1px 8px;
+    gap: 3px;
+    padding: 1px 6px;
     background: var(--bg-subtle);
-    border: 1px solid var(--border-subtle);
+    border: none;
     border-radius: var(--radius-full);
     color: var(--text-tertiary);
-    font-size: 11px;
+    font-size: var(--text-xs);
     font-family: var(--font-mono);
-    font-weight: 500;
     cursor: pointer;
-    transition: all 150ms var(--ease-out);
+    transition: background 150ms ease, color 150ms ease;
   }
   .zoom-badge:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
-    border-color: var(--border-focus);
-    transform: translateY(-0.5px);
-  }
-  .zoom-badge:active {
-    transform: scale(0.96);
-  }
-
-  /* View toggle */
-  .view-toggle {
-    display: flex;
-    align-items: center;
-    background: var(--bg-base);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    box-shadow: var(--shadow-xs);
-  }
-  .view-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 10px;
-    height: 22px;
-    background: transparent;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    transition: all 150ms var(--ease-out);
-    position: relative;
-    font-size: var(--text-xs);
-  }
-  .view-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
-  .view-btn.active {
-    background: var(--bg-active);
-    color: var(--text-primary);
-    font-weight: 500;
-  }
-  .view-btn.active::after {
-    content: "";
-    position: absolute;
-    bottom: 1px;
-    left: 20%;
-    right: 20%;
-    height: 2px;
-    background: var(--accent-default);
-    border-radius: var(--radius-full);
-  }
-  .view-btn:not(:last-child) {
-    border-right: 1px solid var(--border-default);
-  }
-  .view-label {
-    font-size: 11px;
-  }
-
-  @media (max-width: 700px) {
-    .view-label {
-      display: none;
-    }
-    .view-btn {
-      padding: 0 6px;
-    }
   }
 </style>
