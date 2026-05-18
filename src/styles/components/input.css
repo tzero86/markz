@@ -1,0 +1,91 @@
+/* ==========================================================================
+   Shared Input Primitives — MarkZ Design System
+   Based on docs/MarkZ_UI_UX_Design.md §6 "Inputs"
+   ========================================================================== */
+
+.input-field {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--accent-default);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.input-field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input-field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-subtle);
+}
+
+/* Textarea variant */
+.textarea-field {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  outline: none;
+}
+
+.textarea-field:focus {
+  border-color: var(--accent-default);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+/* Select variant */
+.select-field {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  outline: none;
+  appearance: none;
+}
+
+.select-field:focus {
+  border-color: var(--accent-default);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+/* Search input */
+.input-search {
+  padding: var(--space-2) var(--space-3);
+  padding-left: var(--space-8);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.input-search:focus {
+  border-color: var(--accent-default);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}

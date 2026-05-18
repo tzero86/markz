@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import { X, Trash2 } from "@lucide/svelte";
   import { tabStore } from "../../lib/tabStore";
 
   interface Template {
@@ -101,10 +102,7 @@
       <div class="modal-header">
         <h2>New from Template</h2>
         <button class="close-btn" onclick={() => (open = false)} aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <X size={16} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -146,10 +144,7 @@
                       aria-label="Delete template"
                       title="Delete"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg>
+                      <Trash2 size={14} strokeWidth={1.5} />
                     </button>
                   {/if}
                 </div>
@@ -199,6 +194,7 @@
     display: flex;
     flex-direction: column;
     animation: slideUp 200ms ease-out;
+    overflow: hidden;
   }
   .modal-header {
     display: flex;
@@ -206,7 +202,6 @@
     justify-content: space-between;
     padding: var(--space-4) var(--space-5);
     border-bottom: 1px solid var(--border-default);
-    flex-shrink: 0;
   }
   .modal-header h2 {
     font-size: var(--text-lg);
@@ -230,15 +225,13 @@
     color: var(--text-primary);
   }
   .modal-toolbar {
-    padding: var(--space-3) var(--space-5);
-    border-bottom: 1px solid var(--border-default);
-    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-default);
   }
   .search-input {
-    width: 100%;
     padding: var(--space-2) var(--space-3);
     background: var(--bg-surface);
     border: 1px solid var(--border-default);
@@ -250,9 +243,7 @@
   }
   .search-input:focus {
     border-color: var(--accent-default);
-  }
-  .search-input::placeholder {
-    color: var(--text-muted);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
   }
   .category-tabs {
     display: flex;
@@ -260,12 +251,12 @@
     flex-wrap: wrap;
   }
   .category-tab {
-    padding: var(--space-1) var(--space-3);
-    background: transparent;
-    border: 1px solid var(--border-default);
+    padding: 2px 10px;
     border-radius: var(--radius-full);
-    color: var(--text-secondary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
     font-size: var(--text-xs);
+    color: var(--text-secondary);
     cursor: pointer;
     transition: all 150ms ease;
   }
@@ -275,122 +266,128 @@
   }
   .category-tab.active {
     background: var(--accent-default);
+    color: var(--text-inverse);
     border-color: var(--accent-default);
-    color: white;
   }
   .modal-body {
-    padding: var(--space-4) var(--space-5);
-    overflow-y: auto;
     flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4) var(--space-5);
+  }
+  .loading,
+  .empty {
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
   }
   .template-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-4);
   }
   .template-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-4);
     background: var(--bg-surface);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
-    padding: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
     transition: border-color 150ms ease, box-shadow 150ms ease;
   }
   .template-card:hover {
-    border-color: var(--accent-default);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-color: var(--border-focus);
+    box-shadow: var(--shadow-sm);
   }
   .template-card-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-2);
+    margin-bottom: var(--space-2);
   }
   .template-card-header h3 {
     font-size: var(--text-sm);
     font-weight: 600;
-    margin: 0;
     color: var(--text-primary);
+    margin: 0;
+    flex: 1;
   }
   .delete-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 2px;
-    border-radius: var(--radius-sm);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
     opacity: 0;
-    transition: opacity 150ms ease, color 150ms ease;
+    transition: opacity 150ms ease, color 150ms ease, background 150ms ease;
   }
   .template-card:hover .delete-btn {
-    opacity: 1;
+    opacity: 0.6;
   }
   .delete-btn:hover {
-    color: var(--text-danger, #ef4444);
+    opacity: 1 !important;
+    color: var(--error);
+    background: var(--error-bg);
   }
   .template-desc {
     font-size: var(--text-xs);
     color: var(--text-secondary);
-    margin: 0;
-    line-height: 1.4;
+    line-height: 1.5;
+    margin: 0 0 var(--space-3) 0;
     flex: 1;
   }
   .template-meta {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    margin-bottom: var(--space-3);
   }
   .template-category {
     font-size: var(--text-xs);
-    color: var(--text-muted);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
   .template-badge {
     font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    font-weight: 500;
     background: var(--bg-hover);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
   .template-badge.user {
     background: var(--accent-subtle);
     color: var(--accent-default);
   }
   .use-template-btn {
-    margin-top: var(--space-1);
-    padding: var(--space-2) var(--space-3);
-    background: var(--accent-default);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent-default);
+    background: transparent;
+    color: var(--accent-default);
     font-size: var(--text-xs);
     font-weight: 500;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: all 150ms ease;
   }
   .use-template-btn:hover {
-    background: var(--accent-hover);
-  }
-  .loading,
-  .empty {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    text-align: center;
-    padding: var(--space-8) 0;
+    background: var(--accent-default);
+    color: var(--text-inverse);
   }
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(12px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
 </style>

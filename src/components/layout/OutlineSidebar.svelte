@@ -1,5 +1,6 @@
 <script lang="ts">
   import { documentStore } from "../../lib/documentStore";
+  import { ChevronLeft } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
 
   let { visible }: { visible: boolean } = $props();
@@ -32,20 +33,9 @@
     aria-label={visible ? "Collapse outline" : "Expand outline"}
     title={visible ? "Collapse outline" : "Expand outline"}
   >
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      class="toggle-icon"
-      class:rotated={!visible}
-    >
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
+    <span class="toggle-icon" class:rotated={!visible}>
+      <ChevronLeft size={16} strokeWidth={1.5} />
+    </span>
   </button>
 
   {#if visible}
@@ -118,6 +108,7 @@
     color: var(--text-primary);
   }
   .toggle-icon {
+    display: inline-flex;
     transition: transform 200ms ease;
   }
   .toggle-icon.rotated {

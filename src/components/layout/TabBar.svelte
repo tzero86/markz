@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { X, Plus } from "@lucide/svelte";
   import { tabStore, type Tab } from "../../lib/tabStore";
 
   let { onNewTab }: { onNewTab?: () => void } = $props();
@@ -55,10 +56,7 @@
               <circle cx="12" cy="12" r="10"/>
             </svg>
           {:else}
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+            <X size={10} strokeWidth={2.5} />
           {/if}
         </button>
       </div>
@@ -70,10 +68,7 @@
     aria-label="New tab"
     title="New tab (Ctrl+T)"
   >
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19"/>
-      <line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
+    <Plus size={14} strokeWidth={2.5} />
   </button>
 </div>
 
@@ -198,24 +193,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin: 0 6px;
-    padding: 0;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    margin-right: 4px;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
     color: var(--text-tertiary);
     cursor: pointer;
     transition: all 150ms var(--ease-out);
-    flex-shrink: 0;
   }
   .new-tab-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
-    transform: scale(1.05);
-  }
-  .new-tab-btn:active {
-    transform: scale(0.95);
   }
 </style>
