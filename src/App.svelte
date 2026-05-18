@@ -66,6 +66,13 @@
     initDebugLogging();
     startupCheckpoint("App mounted");
 
+    // Dismiss splash screen
+    const splash = document.getElementById("splash");
+    if (splash) {
+      splash.classList.add("fade-out");
+      setTimeout(() => splash.remove(), 350);
+    }
+
     const removeShortcuts = initKeyboardShortcuts();
 
     const handleToggleSidebar = () => {

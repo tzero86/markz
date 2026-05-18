@@ -5,8 +5,44 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MarkZ</title>
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: #0d0d0d;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #f0f0f0;
+        transition: opacity 300ms ease-out;
+      }
+      #splash.fade-out { opacity: 0; pointer-events: none; }
+      #splash .logo { width: 64px; height: 64px; }
+      #splash .app-name { font-size: 28px; font-weight: 700; color: #3dd68d; letter-spacing: -0.02em; }
+      #splash .tagline { font-size: 13px; color: #8b949e; margin-top: -6px; }
+      #splash .copyright { font-size: 11px; color: #484f58; margin-top: 28px; }
+      @media (prefers-color-scheme: light) {
+        #splash { background: #fafafa; color: #1a1a1a; }
+        #splash .app-name { color: #0d8a5d; }
+        #splash .tagline { color: #6b6b6b; }
+        #splash .copyright { color: #a0a0a0; }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash">
+      <svg class="logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="64" height="64" rx="14" fill="#0d8a5d" />
+        <path d="M18 20h28l-6 8H28l-6 6h20l-6 10" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span class="app-name">MarkZ</span>
+      <span class="tagline">A dual-pane Markdown editor for engineers</span>
+      <span class="copyright">Built with Tauri, Svelte 5 &amp; Rust</span>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
