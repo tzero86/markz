@@ -4,6 +4,26 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-19
+
+### Added
+- **CodeMirror minimap** — `@replit/codemirror-minimap` with `show_minimap` setting
+- **List indentation** — Tab/Shift+Tab adds/removes 2-space indentation on list/quote lines
+- **New toolbar buttons** — Math Block ($$), Mermaid Diagram, Expandable Section (<details>)
+- **Markdown keymap** — `insertNewlineContinueMarkup` and `deleteMarkupBackward` from `@codemirror/lang-markdown`
+- **E2E test hooks** — `window.__markz_editorView` and `window.__markz_editorCommands` for Playwright
+
+### Fixed
+- **Block-level HTML preview** — `Tag::HtmlBlock` / `TagEnd::HtmlBlock` now correctly routed to `Block::RawHtml`
+- **Emoji corruption** — `process_inline_math()` now iterates Unicode scalars instead of raw bytes
+- **Nested list parent text** — Tight list items containing nested lists no longer lose their text
+- **Nested task list markers** — Parent `[x]` checkboxes preserved when child `[ ]` items are present
+- **Task list CSS** — Removed `display: flex` breaking nested lists; checkbox now uses `vertical-align: middle`
+- **Bullet cursor positioning** — Cursor advances past added prefix in `toggleLinePrefix()`
+
+### Changed
+- **Task list HTML** — Checkbox placed inside first `<p>` so nested `<ul>` flows naturally below text
+
 ## [0.2.0] - 2026-05-18
 
 ### Added
