@@ -16,7 +16,7 @@ test.describe("Template browser", () => {
     await expect(modal.locator(".template-card")).toHaveCount(3);
     await expect(modal.locator('h3:has-text("RFC")')).toBeVisible();
     await expect(modal.locator('h3:has-text("ADR")')).toBeVisible();
-    await expect(modal.locator('h3:has-text("Formatting Test")')).toBeVisible();
+    await expect(modal.locator('h3:has-text("Getting Started")')).toBeVisible();
   });
 
   test("category tabs filter templates", async ({ page }) => {
@@ -31,7 +31,7 @@ test.describe("Template browser", () => {
     // Click Test category
     await modal.locator('button:has-text("Test")').click();
     await expect(modal.locator(".template-card")).toHaveCount(1);
-    await expect(modal.locator('h3:has-text("Formatting Test")')).toBeVisible();
+    await expect(modal.locator('h3:has-text("Getting Started")')).toBeVisible();
   });
 
   test("search filters templates by name", async ({ page }) => {

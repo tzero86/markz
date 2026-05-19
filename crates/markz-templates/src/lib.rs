@@ -203,9 +203,9 @@ fn builtin_templates() -> Vec<Template> {
         },
         Template {
             id: "formatting-test".to_string(),
-            name: "Formatting Test".to_string(),
+            name: "Getting Started".to_string(),
             category: "Test".to_string(),
-            description: "Comprehensive markdown formatting showcase with remote images".to_string(),
+            description: "Welcome showcase and comprehensive formatting reference for MarkZ".to_string(),
             builtin: true,
             content: FORMATTING_TEST.to_string(),
         },
@@ -486,12 +486,74 @@ const WEEKLY_STATUS: &str = r#"# Weekly Status — {{DATE}}
 -
 "#;
 
-const FORMATTING_TEST: &str = r#"# Markdown Formatting Test Suite
+const FORMATTING_TEST: &str = r#"# Welcome to MarkZ
 
-> This document exercises **every** formatting feature MarkZ supports. Use it to verify preview rendering, export quality, and the remote-image embed toggle.
+> **The engineer's Markdown editor.** Built for speed, designed for clarity, and optimized for the tools you already use.
+
+MarkZ is a dual-pane Markdown editor that helps you write, preview, and export engineering documents without friction. Whether you're drafting RFCs, documenting APIs, or preparing content for JIRA and Confluence, MarkZ keeps you in flow.
 
 ---
 
+## What Makes MarkZ Different
+
+| Feature | Description |
+|---------|-------------|
+| **Live Preview** | See your document render instantly as you type |
+| **Export Pipeline** | One-click export to JIRA, Confluence, Slack, GitHub, and DOCX |
+| **Image Handling** | Paste from clipboard or drag-and-drop — images are organized automatically |
+| **Syntax Highlighting** | 30+ languages with tree-sitter accuracy |
+| **Math & Diagrams** | KaTeX for equations, Mermaid for flowcharts |
+| **Templates** | Built-in RFC, ADR, Bug Report, and more |
+
+---
+
+## Quick Start
+
+### 1. Write Markdown
+MarkZ supports standard CommonMark plus extensions:
+
+**Formatting:** *italic*, **bold**, `inline code`, ~~strikethrough~~
+
+**Lists:**
+- Unordered items
+- [x] Completed tasks
+- [ ] Pending tasks
+
+**Code blocks** with syntax highlighting:
+```rust
+fn main() {
+    println!("Hello, MarkZ!");
+}
+```
+
+### 2. Preview Your Work
+The right pane renders your document in real time. Toggle between **HTML**, **JIRA**, **Confluence**, **Slack**, and **GitHub** preview modes to see exactly how your content will look in each platform.
+
+### 3. Export Cleanly
+MarkZ exports **only what you write** — no watermarks, no "created with" banners, no unwanted metadata. Your content stays yours.
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl + S` | Save document |
+| `Ctrl + O` | Open file |
+| `Ctrl + T` | New tab |
+| `Ctrl + W` | Close tab |
+| `Ctrl + B` | Toggle outline sidebar |
+| `Ctrl + =` | Zoom in |
+| `Ctrl + -` | Zoom out |
+| `Ctrl + 0` | Reset zoom |
+
+---
+
+## Formatting Reference
+
+This section exercises every formatting feature MarkZ supports.
+
+### Headings
 # Heading 1
 ## Heading 2
 ### Heading 3
@@ -499,27 +561,16 @@ const FORMATTING_TEST: &str = r#"# Markdown Formatting Test Suite
 ##### Heading 5
 ###### Heading 6
 
----
-
-## Inline Formatting
-
+### Inline Formatting
 Normal text, **bold text**, *italic text*, ~~strikethrough~~, and `inline code`.
 
 Combined: ***bold italic***, **`bold code`**, *`italic code`*.
 
-Superscripts & subscripts: H~2~O, E=mc^2^ (if supported).
-
 [External link to example.com](https://example.com)
 
-[Reference-style link][ref]
+### Code Blocks
 
-[ref]: https://example.com "Example Domain"
-
----
-
-## Code Blocks
-
-### Rust
+#### Rust
 ```rust
 fn main() {
     let message = "Hello, MarkZ!";
@@ -527,7 +578,7 @@ fn main() {
 }
 ```
 
-### Python
+#### Python
 ```python
 def fibonacci(n):
     a, b = 0, 1
@@ -538,7 +589,7 @@ def fibonacci(n):
 print(list(fibonacci(10)))
 ```
 
-### JSON
+#### JSON
 ```json
 {
   "name": "MarkZ",
@@ -547,18 +598,7 @@ print(list(fibonacci(10)))
 }
 ```
 
-### Bash
-```bash
-#!/bin/bash
-echo "Running tests..."
-cargo test --workspace
-npm run build
-```
-
----
-
-## Blockquotes
-
+### Blockquotes
 > Single-level blockquote with **bold** and `code`.
 
 > Multi-paragraph blockquote.
@@ -569,11 +609,9 @@ npm run build
 > >
 > > > Nested blockquote level 3
 
----
+### Lists
 
-## Lists
-
-### Unordered
+#### Unordered
 - First item
 - Second item
   - Nested item A
@@ -581,21 +619,21 @@ npm run build
     - Deep nested item
 - Third item
 
-### Ordered
+#### Ordered
 1. First step
 2. Second step
    1. Sub-step A
    2. Sub-step B
 3. Third step
 
-### Task List
+#### Task List
 - [x] Completed task
 - [ ] Pending task
 - [ ] Another pending task
   - [x] Sub-task done
   - [ ] Sub-task waiting
 
-### Mixed
+#### Mixed
 1. Ordered first
    - Unordered nested
    - Another nested
@@ -603,11 +641,9 @@ npm run build
    1. Ordered nested
    2. Another nested
 
----
+### Tables
 
-## Tables
-
-### Simple Table
+#### Simple Table
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Headings | ✅ | All 6 levels |
@@ -616,36 +652,31 @@ npm run build
 | Tables | ✅ | This one! |
 | Images | ✅ | Local & remote |
 
-### Alignment Table
+#### Alignment Table
 | Left | Center | Right |
 |:-----|:------:|------:|
 | L1   | C1     | R1    |
 | L2   | C2     | R2    |
 | L3   | C3     | R3    |
 
-### Complex Table
-| Component | Language | Lines | Coverage |
-|-----------|----------|-------|----------|
-| `markz-core` | Rust | 2,400 | 92% |
-| `markz-convert` | Rust | 1,800 | 88% |
-| `markz-templates` | Rust | 600 | 95% |
-| Editor | TypeScript | 3,200 | 78% |
-| Preview | TypeScript | 1,500 | 81% |
+### Horizontal Rules
+Above rule.
 
 ---
 
-## Images
+Below rule with **bold** text.
 
-### Remote Image (landscape)
-![Remote landscape photo](https://picsum.photos/seed/markz1/600/300)
+***
 
-### Remote Image (portrait)
-![Remote portrait photo](https://picsum.photos/seed/markz2/300/400)
+Another rule.
 
-### Remote Image (square)
-![Remote square photo](https://picsum.photos/seed/markz3/400/400)
-
-> 💡 **Tip:** Toggle *Settings → Embed remote images* to download these into exports.
+### Special Characters & Escapes
+- Asterisk: \*not italic\*
+- Hash: \# not heading
+- Backtick: \`not code\`
+- Ampersand: AT&T
+- Less/Greater: 5 < 10 > 2
+- Emoji: 🚀 ✅ ❌ 💡
 
 ---
 
@@ -690,30 +721,7 @@ graph TD
 
 ---
 
-## Horizontal Rules
-
-Above rule.
-
----
-
-Below rule with **bold** text.
-
-***
-
-Another rule.
-
----
-
-## Special Characters & Escapes
-
-- Asterisk: \*not italic\*
-- Hash: \# not heading
-- Backtick: \`not code\`
-- Ampersand: AT&T
-- Less/Greater: 5 < 10 > 2
-- Emoji: 🚀 ✅ ❌ 💡
-
-## HTML (if supported)
+## HTML Details (if supported)
 
 <details>
 <summary>Click to expand</summary>
@@ -724,7 +732,7 @@ Hidden content inside a details block.
 
 ---
 
-*Generated on {{DATETIME}} — MarkZ Formatting Test Suite*
+*Welcome to MarkZ — {{DATETIME}}*
 "#;
 
 #[cfg(test)]
