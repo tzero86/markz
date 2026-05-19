@@ -14,7 +14,7 @@ export const updateStatus = writable<string>("idle"); // idle | checking | avail
 
 let currentUpdate: Update | null = null;
 
-export async function checkForUpdate(silent = true): Promise<Update | null> {
+export async function checkForUpdate(): Promise<Update | null> {
   updateError.set(null);
   updateStatus.set("checking");
 
@@ -25,9 +25,6 @@ export async function checkForUpdate(silent = true): Promise<Update | null> {
       updateAvailable.set(true);
       updateVersion.set(update.version);
       updateStatus.set("available");
-      if (!silent) {
-        await downloadUpdate();
-      }
       return update;
     } else {
       updateAvailable.set(false);
@@ -98,8 +95,28 @@ export async function confirmAndRestart() {
   await installAndRestart();
 }
 
+export async function confirmAndDownload() {
+  if (!currentUpdate) return;
+
+  const confirmed = await confirm(
+    `Update v${currentUpdate.version} is available. Download and install it now?`,
+    { title: "Update Available", kind: "info" }
+  );
+  if (!confirmed) return;
+
+  if (tabStore.hasDirtyTabs()) {
+    const proceed = await confirm(
+      "You have unsaved changes in one or more tabs that will be lost if you update now.\n\nUpdate anyway?",
+      { title: "Unsaved Changes", kind: "warning" }
+    );
+    if (!proceed) return;
+  }
+
+  await downloadUpdate();
+}
+
 export async function silentUpdateCheck() {
-  const update = await checkForUpdate(true);
+  const update = await checkForUpdate();
   if (update) {
     await downloadUpdate();
   }

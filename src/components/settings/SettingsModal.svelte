@@ -5,7 +5,7 @@
   import { getVersion } from "@tauri-apps/api/app";
   import {
     checkForUpdate,
-    downloadUpdate,
+    confirmAndDownload,
     confirmAndRestart,
     updateStatus,
     updateVersion,
@@ -133,9 +133,9 @@
   });
 
   async function handleCheckUpdate() {
-    const update = await checkForUpdate(false);
+    const update = await checkForUpdate();
     if (update) {
-      await downloadUpdate();
+      await confirmAndDownload();
     }
   }
 
