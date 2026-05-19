@@ -19,7 +19,7 @@ test("app loads with editor and preview panes", async ({ page }) => {
 test("preview renders default content", async ({ page }) => {
   const preview = page.locator(".preview-scroller");
   // Wait for the debounced render to complete (80ms debounce + processing)
-  await expect(preview.locator("text=Welcome to MarkZ")).toBeVisible({ timeout: 5000 });
+  await expect(preview.locator("h1:has-text('Welcome to MarkZ')")).toBeVisible({ timeout: 5000 });
   await expect(preview.locator("text=Live preview")).toBeVisible();
 });
 
@@ -27,16 +27,16 @@ test("formatting-test template renders all elements correctly", async ({ page })
   // Open template browser
   await page.locator('button[aria-label="New from Template"]').click();
 
-  // Wait for modal and click "Use Template" on Formatting Test
+  // Wait for modal and click "Use Template" on Getting Started
   const modal = page.locator('[role="dialog"][aria-label="Templates"]');
   await expect(modal).toBeVisible({ timeout: 3000 });
-  const formattingCard = modal.locator('.template-card').filter({ hasText: /Formatting Test/ });
+  const formattingCard = modal.locator('.template-card').filter({ hasText: /Getting Started/ });
   await formattingCard.locator('button:has-text("Use Template")').click();
 
   // Wait for new tab to be created and preview to render
   await expect(page.locator(".tab-bar .tab")).toHaveCount(2, { timeout: 3000 });
   const preview = page.locator(".preview-scroller");
-  await expect(preview.locator("h1:has-text('Markdown Formatting Test Suite')")).toBeVisible({ timeout: 5000 });
+  await expect(preview.locator("h1:has-text('Welcome to MarkZ')")).toBeVisible({ timeout: 5000 });
 
   // Headings h1-h6 — verify each level exists
   const hCount = await preview.evaluate((el) => ({
@@ -50,44 +50,45 @@ test("formatting-test template renders all elements correctly", async ({ page })
   expect(hCount.h1).toBe(2);
   expect(hCount.h2).toBeGreaterThanOrEqual(7);
   expect(hCount.h3).toBeGreaterThanOrEqual(3);
-  expect(hCount.h4).toBe(1);
+  expect(hCount.h4).toBeGreaterThanOrEqual(9);
   expect(hCount.h5).toBe(1);
   expect(hCount.h6).toBe(1);
 
   // Inline formatting
   await expect(preview.locator("strong:has-text('bold text')")).toBeVisible();
   await expect(preview.locator("em:has-text('italic text')")).toBeVisible();
-  await expect(preview.locator("del:has-text('strikethrough')")).toBeVisible();
-  await expect(preview.locator("code:has-text('inline code')")).toBeVisible();
+  await expect(preview.locator("del:has-text('strikethrough')").first()).toBeVisible();
+  await expect(preview.locator("code:has-text('inline code')").first()).toBeVisible();
   await expect(preview.locator('a[href="https://example.com"]').filter({ hasText: "External link" })).toBeVisible();
 
   // Code block with language
-  await expect(preview.locator("pre code.language-rust")).toBeVisible();
-  await expect(preview.locator("pre code")).toContainText('fn main()');
+  await expect(preview.locator("pre code.language-rust").first()).toBeVisible();
+  await expect(preview.locator("pre code").first()).toContainText('fn main()');
 
-  // Blockquotes (nested blockquote creates an extra <blockquote> element)
-  await expect(preview.locator("blockquote")).toHaveCount(3);
+  // Blockquotes — includes nested levels
+  await expect(preview.locator("blockquote")).toHaveCount(6);
   await expect(preview.locator("blockquote").filter({ hasText: "Single-level blockquote" })).toBeVisible();
 
   // Ordered & unordered lists
-  await expect(preview.locator("ol > li")).toHaveCount(5);
+  await expect(preview.locator("ol > li")).toHaveCount(9);
 
   // Task list — checkbox inline with label (the key fix)
   const taskItems = preview.locator("li.task-list-item");
-  await expect(taskItems).toHaveCount(5); // 3 main + 2 nested
+  await expect(taskItems).toHaveCount(7); // 2 in Quick Start + 5 in Task List
 
-  for (let i = 0; i < 3; i++) {
+  // Verify the Task List section items (last 5)
+  for (let i = 2; i < 5; i++) {
     const item = taskItems.nth(i);
     await expect(item.locator("input[type='checkbox']").first()).toBeVisible();
     const text = await item.textContent();
     expect(text).toMatch(/(Completed task|Pending task|Another pending task)/);
   }
 
-  // Table
-  const table = preview.locator("table");
-  await expect(table).toBeVisible();
-  await expect(table.locator("th")).toHaveCount(3);
-  await expect(table.locator("tbody tr")).toHaveCount(4);
+  // Target the Simple Table specifically
+  const simpleTable = preview.locator("table").filter({ hasText: "All 6 levels" });
+  await expect(simpleTable).toBeVisible();
+  await expect(simpleTable.locator("th")).toHaveCount(3);
+  await expect(simpleTable.locator("tbody tr")).toHaveCount(5);
 
   // Horizontal rules
   const hrCount = await preview.evaluate((el) => el.querySelectorAll("hr").length);

@@ -55,21 +55,21 @@ pub fn preprocess_math(text: &str) -> String {
 
 fn process_inline_math(line: &str) -> String {
     let mut result = String::new();
-    let bytes = line.as_bytes();
+    let chars: Vec<(usize, char)> = line.char_indices().collect();
     let mut i = 0;
 
-    while i < bytes.len() {
-        if bytes[i] == b'$' {
+    while i < chars.len() {
+        let (_, ch) = chars[i];
+        if ch == '$' {
             // Skip double dollars - should be block math, but if not, treat as literal
-            if i + 1 < bytes.len() && bytes[i + 1] == b'$' {
-                result.push('$');
-                result.push('$');
+            if i + 1 < chars.len() && chars[i + 1].1 == '$' {
+                result.push_str("$$");
                 i += 2;
                 continue;
             }
 
             // Check no space after opening $
-            if i + 1 < bytes.len() && bytes[i + 1] == b' ' {
+            if i + 1 < chars.len() && chars[i + 1].1 == ' ' {
                 result.push('$');
                 i += 1;
                 continue;
@@ -79,10 +79,10 @@ fn process_inline_math(line: &str) -> String {
             let mut j = start;
             let mut found_close = false;
 
-            while j < bytes.len() {
-                if bytes[j] == b'$' {
+            while j < chars.len() {
+                if chars[j].1 == '$' {
                     // Check no space before closing $
-                    if j > start && bytes[j - 1] == b' ' {
+                    if j > start && chars[j - 1].1 == ' ' {
                         j += 1;
                         continue;
                     }
@@ -93,7 +93,9 @@ fn process_inline_math(line: &str) -> String {
             }
 
             if found_close {
-                let content = &line[start..j];
+                let content_start = chars[start].0;
+                let content_end = chars[j].0;
+                let content = &line[content_start..content_end];
                 if !content.is_empty() {
                     result.push_str(&format!(r#"<span class="math-inline">{}</span>"#, content));
                     i = j + 1;
@@ -104,7 +106,7 @@ fn process_inline_math(line: &str) -> String {
             result.push('$');
             i += 1;
         } else {
-            result.push(bytes[i] as char);
+            result.push(ch);
             i += 1;
         }
     }
@@ -126,6 +128,7 @@ pub fn parse(markdown: &str) -> Document {
     let mut inline_stack: Vec<Vec<Inline>> = vec![Vec::new()];
     let mut block_stack: Vec<Block> = Vec::new();
     let mut list_stack: Vec<(bool, Option<u64>, Vec<ListItem>)> = Vec::new();
+    let mut in_html_block = false;
     let mut table_alignments: Vec<Option<Alignment>> = Vec::new();
     let mut table_header: Vec<TableCell> = Vec::new();
     let mut table_rows: Vec<Vec<TableCell>> = Vec::new();
@@ -136,7 +139,7 @@ pub fn parse(markdown: &str) -> Document {
     let mut code_content = String::new();
     let mut link_stack: Vec<(String, Option<String>)> = Vec::new();
     let mut image_stack: Vec<(String, Option<String>)> = Vec::new();
-    let mut current_task: Option<bool> = None;
+    let mut task_stack: Vec<Option<bool>> = Vec::new();
 
     fn push_block(blocks_stack: &mut Vec<Vec<Block>>, block: Block) {
         if let Some(top) = blocks_stack.last_mut() {
@@ -174,7 +177,7 @@ pub fn parse(markdown: &str) -> Document {
                 Tag::Item => {
                     blocks_stack.push(Vec::new());
                     inline_stack.push(Vec::new());
-                    current_task = None;
+                    task_stack.push(None);
                 }
                 Tag::Emphasis => {
                     inline_stack.push(Vec::new());
@@ -198,6 +201,9 @@ pub fn parse(markdown: &str) -> Document {
                     inline_stack.push(Vec::new());
                     let title_opt = if title.is_empty() { None } else { Some(title.to_string()) };
                     image_stack.push((dest_url.to_string(), title_opt));
+                }
+                Tag::HtmlBlock => {
+                    in_html_block = true;
                 }
                 Tag::Table(alignments) => {
                     in_table_head = true;
@@ -260,19 +266,15 @@ pub fn parse(markdown: &str) -> Document {
                 }
                 TagEnd::Item => {
                     let mut item_blocks = blocks_stack.pop().unwrap_or_default();
-                    if item_blocks.is_empty() {
-                        let text = inline_stack.pop().unwrap_or_default();
-                        if !text.is_empty() {
-                            item_blocks.push(Block::Paragraph { text });
-                        }
-                    } else if inline_stack.last().map(|v| v.is_empty()).unwrap_or(false) {
-                        // Clean up empty inline vec left by End(Paragraph)
-                        inline_stack.pop();
+                    let text = inline_stack.pop().unwrap_or_default();
+                    if !text.is_empty() {
+                        item_blocks.insert(0, Block::Paragraph { text });
                     }
+                    let task = task_stack.pop().unwrap_or(None);
                     if let Some((_, _, ref mut items)) = list_stack.last_mut() {
                         items.push(ListItem {
                             blocks: item_blocks,
-                            task: current_task.take(),
+                            task,
                         });
                     }
                 }
@@ -352,6 +354,9 @@ pub fn parse(markdown: &str) -> Document {
                         .flatten();
                     current_table_row.push(TableCell { text, alignment });
                 }
+                TagEnd::HtmlBlock => {
+                    in_html_block = false;
+                }
                 _ => {}
             },
             Event::Text(text) => {
@@ -367,7 +372,9 @@ pub fn parse(markdown: &str) -> Document {
                 }
             }
             Event::Html(html) => {
-                if let Some(top) = inline_stack.last_mut() {
+                if in_html_block {
+                    push_block(&mut blocks_stack, Block::RawHtml(html.into_string()));
+                } else if let Some(top) = inline_stack.last_mut() {
                     top.push(Inline::Html(html.into_string()));
                 } else {
                     push_block(&mut blocks_stack, Block::RawHtml(html.into_string()));
@@ -392,7 +399,9 @@ pub fn parse(markdown: &str) -> Document {
                 push_block(&mut blocks_stack, Block::ThematicBreak);
             }
             Event::TaskListMarker(checked) => {
-                current_task = Some(checked);
+                if let Some(top) = task_stack.last_mut() {
+                    *top = Some(checked);
+                }
             }
             _ => {}
         }
@@ -599,5 +608,99 @@ y = 2</div>"#);
     fn test_preprocess_math_no_false_positive_price() {
         let result = preprocess_math("The price is $5.");
         assert_eq!(result, "The price is $5.");
+    }
+
+    #[test]
+    fn test_preprocess_math_preserves_emojis() {
+        let result = preprocess_math("Rocket 🚀 and math $x = 1$ together");
+        assert!(result.contains("🚀"), "emoji should be preserved: {}", result);
+        assert!(result.contains(r#"<span class="math-inline">x = 1</span>"#));
+    }
+
+    #[test]
+    fn test_preprocess_math_preserves_unicode() {
+        let result = preprocess_math("Café résumé naïve $α + β$");
+        assert!(result.contains("Café résumé naïve"), "unicode text should be preserved: {}", result);
+        assert!(result.contains(r#"<span class="math-inline">α + β</span>"#));
+    }
+
+    #[test]
+    fn test_parse_math_block_html_output() {
+        let input = "$$\nE = mc^2\n$$";
+        let doc = parse(input);
+        let html = crate::html::render(&doc);
+        assert!(html.contains(r#"<div class="math-block">E = mc^2</div>"#));
+        // Must be a block-level RawHtml, not wrapped in a paragraph
+        assert!(!html.contains("<p><div class=\"math-block\">"));
+    }
+
+    #[test]
+    fn test_parse_html_details_block() {
+        let input = "<details>\n<summary>Click</summary>\nHidden\n</details>";
+        let doc = parse(input);
+        let html = crate::html::render(&doc);
+        assert!(html.contains("<details>"));
+        assert!(html.contains("</details>"));
+        // Must be block-level, not wrapped in <p>
+        assert!(!html.contains("<p><details>"));
+    }
+
+    #[test]
+    fn test_parse_math_block_ast_is_raw_html() {
+        let input = "$$\nE = mc^2\n$$";
+        let doc = parse(input);
+        assert_eq!(doc.blocks.len(), 1);
+        assert!(matches!(&doc.blocks[0], Block::RawHtml(html) if html.contains("math-block")));
+    }
+
+    #[test]
+    fn test_parse_details_block_ast_is_raw_html() {
+        let input = "<details>\n<summary>Click</summary>\nHidden\n</details>";
+        let doc = parse(input);
+        // pulldown-cmark emits each line of an HTML block as a separate Event::Html,
+        // so we get one Block::RawHtml per line.
+        assert_eq!(doc.blocks.len(), 4);
+        for block in &doc.blocks {
+            assert!(matches!(block, Block::RawHtml(..)));
+        }
+        let combined: String = doc.blocks.iter().map(|b| match b {
+            Block::RawHtml(h) => h.as_str(),
+            _ => "",
+        }).collect();
+        assert!(combined.contains("<details>"));
+        assert!(combined.contains("</details>"));
+    }
+
+    #[test]
+    fn test_parse_nested_list_preserves_parent_text() {
+        let input = "- parent\n  - child\n  - another child";
+        let doc = parse(input);
+        let html = crate::html::render(&doc);
+        // Parent text must appear before the nested <ul>
+        assert!(html.contains("<li><p>parent</p><ul>"), "parent text missing: {}", html);
+        assert!(html.contains("<li><p>child</p></li>"));
+        assert!(html.contains("<li><p>another child</p></li>"));
+    }
+
+    #[test]
+    fn test_parse_nested_task_list_preserves_parent_checkbox() {
+        let input = "- [x] parent\n  - [ ] child\n  - normal nested";
+        let doc = parse(input);
+        let html = crate::html::render(&doc);
+        // Parent must keep its checked checkbox
+        assert!(
+            html.contains(r#"<li class="task-list-item"><p><input type="checkbox" disabled checked> parent</p>"#),
+            "parent task checkbox missing: {}", html
+        );
+        // Child must have its unchecked checkbox
+        assert!(
+            html.contains(r#"<li class="task-list-item"><p><input type="checkbox" disabled> child</p>"#),
+            "child task checkbox missing: {}", html
+        );
+        // Normal nested item must not have a checkbox
+        assert!(
+            html.contains("<li><p>normal nested</p></li>"),
+            "normal nested item broken: {}", html
+        );
     }
 }

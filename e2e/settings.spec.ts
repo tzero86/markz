@@ -84,6 +84,16 @@ test.describe("Settings modal", () => {
     await expect(modal.locator('select#theme-select')).toHaveValue("light");
   });
 
+  test("toggling minimap checkbox changes state", async ({ page }) => {
+    const modal = await openSettings(page);
+    const showMinimap = modal.locator('input[type="checkbox"]').nth(2);
+    await expect(showMinimap).not.toBeChecked();
+    await showMinimap.click();
+    await expect(showMinimap).toBeChecked();
+    await showMinimap.click();
+    await expect(showMinimap).not.toBeChecked();
+  });
+
   test("cancel button closes modal without saving", async ({ page }) => {
     const modal = await openSettings(page);
     await modal.locator('button:has-text("Cancel")').click();

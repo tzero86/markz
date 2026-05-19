@@ -70,14 +70,32 @@ fn render_block(output: &mut String, block: &Block) {
                 if let Some(checked) = item.task {
                     let checked_attr = if checked { " checked" } else { "" };
                     output.push_str("<li class=\"task-list-item\">");
-                    output.push_str("<input type=\"checkbox\" disabled");
-                    output.push_str(checked_attr);
-                    output.push_str("> ");
+                    // Place checkbox inside the first paragraph so text flows
+                    // naturally on the same line; nested lists remain block children.
+                    if let Some(Block::Paragraph { text }) = item.blocks.first() {
+                        output.push_str("<p><input type=\"checkbox\" disabled");
+                        output.push_str(checked_attr);
+                        output.push_str("> ");
+                        for inline in text {
+                            render_inline(output, inline);
+                        }
+                        output.push_str("</p>");
+                        for b in &item.blocks[1..] {
+                            render_block(output, b);
+                        }
+                    } else {
+                        output.push_str("<input type=\"checkbox\" disabled");
+                        output.push_str(checked_attr);
+                        output.push_str("> ");
+                        for b in &item.blocks {
+                            render_block(output, b);
+                        }
+                    }
                 } else {
                     output.push_str("<li>");
-                }
-                for b in &item.blocks {
-                    render_block(output, b);
+                    for b in &item.blocks {
+                        render_block(output, b);
+                    }
                 }
                 output.push_str("</li>\n");
             }
@@ -336,8 +354,8 @@ mod tests {
         };
         let rendered = render(&doc);
         let html = rendered.trim();
-        assert!(html.contains(r#"<li class="task-list-item"><input type="checkbox" disabled checked> <p>Done</p></li>"#));
-        assert!(html.contains(r#"<li class="task-list-item"><input type="checkbox" disabled> <p>Todo</p></li>"#));
+        assert!(html.contains(r#"<li class="task-list-item"><p><input type="checkbox" disabled checked> Done</p></li>"#));
+        assert!(html.contains(r#"<li class="task-list-item"><p><input type="checkbox" disabled> Todo</p></li>"#));
     }
 
     #[test]

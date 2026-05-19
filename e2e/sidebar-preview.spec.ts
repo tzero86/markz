@@ -13,8 +13,8 @@ test.describe("Outline sidebar", () => {
     await expect(sidebar).not.toHaveClass(/collapsed/);
     await expect(sidebar.locator('text=Outline')).toBeVisible();
 
-    // Default content has "Features" heading
-    await expect(sidebar.locator('.toc-link:has-text("Features")')).toBeVisible();
+    // Default content has "What Makes MarkZ Different" heading
+    await expect(sidebar.locator('.toc-link:has-text("What Makes MarkZ Different")')).toBeVisible();
   });
 
   test("shows empty state when no headings", async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe("Preview pane format tabs", () => {
     await expect(jiraTab).toHaveClass(/active/);
 
     const preview = page.locator(".preview-scroller");
-    await expect(preview.locator("code")).toContainText("h1. Welcome to MarkZ");
+    await expect(preview.locator(".text-format code").first()).toContainText("h1. Welcome to MarkZ");
   });
 
   test("switching to Confluence shows escaped output", async ({ page }) => {
@@ -60,7 +60,7 @@ test.describe("Preview pane format tabs", () => {
     await expect(tab).toHaveClass(/active/);
 
     const preview = page.locator(".preview-scroller");
-    await expect(preview.locator("code")).toContainText("Welcome to MarkZ");
+    await expect(preview.locator(".text-format code").first()).toContainText("Welcome to MarkZ");
   });
 
   test("switching to Slack shows escaped output", async ({ page }) => {
@@ -69,7 +69,7 @@ test.describe("Preview pane format tabs", () => {
     await expect(tab).toHaveClass(/active/);
 
     const preview = page.locator(".preview-scroller");
-    await expect(preview.locator("code")).toContainText("*Welcome to MarkZ*");
+    await expect(preview.locator(".text-format code").first()).toContainText("*Welcome to MarkZ*");
   });
 
   test("switching to GitHub shows markdown output", async ({ page }) => {
@@ -78,7 +78,7 @@ test.describe("Preview pane format tabs", () => {
     await expect(tab).toHaveClass(/active/);
 
     const preview = page.locator(".preview-scroller");
-    await expect(preview.locator("code")).toContainText("Welcome to MarkZ");
+    await expect(preview.locator(".text-format code").first()).toContainText("Welcome to MarkZ");
   });
 
   test("copy output button shows feedback", async ({ page }) => {

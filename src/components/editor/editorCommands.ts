@@ -23,8 +23,27 @@ export function wrapSelection(
   view.focus();
 }
 
+/** Map a document position through a set of non-overlapping sorted changes. */
+function mapPosition(
+  pos: number,
+  changes: { from: number; to: number; insert: string }[]
+): number {
+  let offset = 0;
+  for (const ch of changes) {
+    if (pos <= ch.from) {
+      return pos + offset;
+    } else if (pos >= ch.to) {
+      offset += ch.insert.length - (ch.to - ch.from);
+    } else {
+      return ch.from + offset;
+    }
+  }
+  return pos + offset;
+}
+
 /** Toggle a line prefix (e.g. "> ", "- ", "1. ") on each line in the selection.
  *  If all lines already have it, remove it.
+ *  Cursor positions are adjusted so the user can keep typing.
  */
 export function toggleLinePrefix(view: EditorView, prefix: string) {
   const { from, to } = view.state.selection.main;
@@ -36,29 +55,57 @@ export function toggleLinePrefix(view: EditorView, prefix: string) {
 
   for (let i = startLine.number; i <= endLine.number; i++) {
     const line = view.state.doc.line(i);
-    const trimmed = line.text;
-    const has = trimmed.startsWith(prefix);
+    const has = line.text.startsWith(prefix);
     lines.push({ num: i, text: line.text, has });
     if (!has) allHavePrefix = false;
   }
 
-  const changes = lines.map(({ num, text, has }) => {
+  const changes: { from: number; to: number; insert: string }[] = [];
+  const addedLines = new Set<number>();
+  const removedLines = new Set<number>();
+
+  for (const { num, has } of lines) {
     const line = view.state.doc.line(num);
     if (allHavePrefix && has) {
-      return {
+      changes.push({
         from: line.from,
         to: line.from + prefix.length,
         insert: "",
-      };
+      });
+      removedLines.add(num);
     } else if (!allHavePrefix && !has) {
-      return { from: line.from, to: line.from, insert: prefix };
+      changes.push({ from: line.from, to: line.from, insert: prefix });
+      addedLines.add(num);
     }
-    return null;
-  });
+  }
 
-  view.dispatch({
-    changes: changes.filter(Boolean) as { from: number; to: number; insert: string }[],
-  });
+  if (changes.length === 0) {
+    view.focus();
+    return;
+  }
+
+  // Adjust selection positions based on prefix additions/removals per line
+  const adjustPos = (pos: number): number => {
+    const line = view.state.doc.lineAt(pos);
+    if (addedLines.has(line.number)) {
+      return pos + prefix.length;
+    }
+    if (removedLines.has(line.number)) {
+      const afterPrefix = line.from + prefix.length;
+      if (pos >= afterPrefix) return pos - prefix.length;
+      return line.from;
+    }
+    return pos;
+  };
+
+  const newSelection = EditorSelection.create(
+    view.state.selection.ranges.map((r) =>
+      EditorSelection.range(adjustPos(r.from), adjustPos(r.to), r.goalColumn)
+    ),
+    view.state.selection.mainIndex
+  );
+
+  view.dispatch({ changes, selection: newSelection });
   view.focus();
 }
 
@@ -130,7 +177,9 @@ export function insertCodeBlock(view: EditorView, lang = "") {
   const insert = fence + "\n" + (selected || "code") + "\n```\n";
   view.dispatch({
     changes: { from, to, insert },
-    selection: EditorSelection.cursor(from + fence.length + 1 + (selected ? selected.length : 0)),
+    selection: EditorSelection.cursor(
+      from + fence.length + 1 + (selected ? selected.length : 0)
+    ),
   });
   view.focus();
 }
@@ -144,4 +193,131 @@ export function insertMarkdownImage(view: EditorView, alt: string, path: string)
     selection: { anchor: pos + text.length },
   });
   view.focus();
+}
+
+/** Insert a fenced math block ($$...$$). */
+export function insertMathBlock(view: EditorView) {
+  const { from, to } = view.state.selection.main;
+  const selected = view.state.doc.sliceString(from, to);
+  const inner = selected || "E = mc^2";
+  const prefix = "\n$$\n";
+  const suffix = "\n$$\n";
+  const insert = prefix + inner + suffix;
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: EditorSelection.cursor(from + prefix.length + inner.length),
+  });
+  view.focus();
+}
+
+/** Insert a Mermaid diagram block. */
+export function insertMermaidBlock(view: EditorView) {
+  const { from, to } = view.state.selection.main;
+  const selected = view.state.doc.sliceString(from, to);
+  const inner = selected || "graph TD\n    A[Start] --> B[End]";
+  const prefix = "\n```mermaid\n";
+  const suffix = "\n```\n";
+  const insert = prefix + inner + suffix;
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: EditorSelection.cursor(from + prefix.length + inner.length),
+  });
+  view.focus();
+}
+
+/** Insert an HTML details/summary expandable section. */
+export function insertDetailsBlock(view: EditorView) {
+  const { from, to } = view.state.selection.main;
+  const selected = view.state.doc.sliceString(from, to);
+  const summary = "Summary";
+  const content = selected || "Details content here";
+  const insert = `<details>\n<summary>${summary}</summary>\n\n${content}\n\n</details>\n`;
+  // Place cursor right after <summary> so user can edit the summary text
+  const cursorPos = from + 10 + 9; // after "<details>\n<summary>"
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: EditorSelection.cursor(cursorPos),
+  });
+  view.focus();
+}
+
+const LIST_OR_QUOTE_RE = /^\s*([-*+]\s+|\d+\.\s+|-\s*\[[ x]\]\s+|>\s+)/;
+
+// Expose commands on window for E2E testing
+if (typeof window !== "undefined") {
+  (window as any).__markz_editorCommands = {
+    toggleLinePrefix,
+    indentSelection,
+    insertMathBlock,
+    insertMermaidBlock,
+    insertDetailsBlock,
+  };
+}
+
+/** Indent or outdent the current selection.
+ *  On list/quote lines, adjusts line-start indentation.
+ *  Otherwise inserts/removes spaces at the cursor.
+ */
+export function indentSelection(view: EditorView, direction: "indent" | "outdent"): boolean {
+  const { from, to } = view.state.selection.main;
+  const startLine = view.state.doc.lineAt(from);
+  const isCollapsed = from === to;
+
+  // For a collapsed cursor on non-list/quote text (not at line start),
+  // insert/remove spaces at the cursor position
+  if (
+    isCollapsed &&
+    from !== startLine.from &&
+    !LIST_OR_QUOTE_RE.test(startLine.text)
+  ) {
+    if (direction === "indent") {
+      view.dispatch({
+        changes: { from, to, insert: "  " },
+        selection: EditorSelection.cursor(from + 2),
+      });
+      return true;
+    } else {
+      const before = view.state.doc.sliceString(Math.max(0, from - 2), from);
+      const spaces = before.match(/(\s+)$/)?.[1]?.length ?? 0;
+      if (spaces > 0) {
+        view.dispatch({
+          changes: { from: from - spaces, to, insert: "" },
+          selection: EditorSelection.cursor(from - spaces),
+        });
+        return true;
+      }
+      return false;
+    }
+  }
+
+  // Indent/outdent all lines in the selection
+  const endLine = view.state.doc.lineAt(to);
+  const changes: { from: number; to: number; insert: string }[] = [];
+
+  for (let i = startLine.number; i <= endLine.number; i++) {
+    const line = view.state.doc.line(i);
+    if (direction === "indent") {
+      changes.push({ from: line.from, to: line.from, insert: "  " });
+    } else {
+      const match = line.text.match(/^(\s{0,2})/);
+      const spaces = match ? match[1].length : 0;
+      if (spaces > 0) {
+        changes.push({ from: line.from, to: line.from + spaces, insert: "" });
+      }
+    }
+  }
+
+  if (changes.length === 0) return false;
+
+  view.dispatch({
+    changes,
+    selection: EditorSelection.create(
+      view.state.selection.ranges.map((r) =>
+        EditorSelection.range(mapPosition(r.from, changes), mapPosition(r.to, changes))
+      ),
+      view.state.selection.mainIndex
+    ),
+    userEvent: "input.indent",
+  });
+  return true;
 }

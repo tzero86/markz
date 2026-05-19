@@ -7,6 +7,40 @@ test.beforeEach(async ({ page }) => {
   await page.waitForSelector(".app", { timeout: 10000 });
 });
 
+/** Helper to get the CodeMirror EditorView via findFromDOM. */
+function getEditorViewScript(selector: string) {
+  return () => {
+    const el = document.querySelector(selector);
+    const EV = (window as any).EditorView;
+    return EV ? EV.findFromDOM(el) : null;
+  };
+}
+
+/** Helper to set editor content and cursor directly. */
+async function setEditorContent(page: any, text: string, cursor = 0) {
+  await page.evaluate((args: { text: string; cursor: number }) => {
+    const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+    if (view) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: args.text },
+        selection: { anchor: args.cursor },
+      });
+    }
+  }, { text, cursor });
+}
+
+/** Helper to read editor content and cursor. */
+async function getEditorState(page: any) {
+  return page.evaluate(() => {
+    const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+    if (!view) return { text: "", cursor: -1 };
+    return {
+      text: view.state.doc.toString(),
+      cursor: view.state.selection.main.head,
+    };
+  });
+}
+
 test.describe("Editor toolbar", () => {
   test("toolbar buttons are visible", async ({ page }) => {
     const toolbar = page.locator(".toolbar");
@@ -27,6 +61,7 @@ test.describe("Editor toolbar", () => {
     await expect(toolbar.locator('button[title="Code Block"]')).toBeVisible();
     await expect(toolbar.locator('button[title="Blockquote"]')).toBeVisible();
     await expect(toolbar.locator('button[title="Horizontal Rule"]')).toBeVisible();
+    await expect(toolbar.locator('button[title="Math Block"]')).toBeVisible();
 
     // List buttons
     await expect(toolbar.locator('button[title="Bullet List"]')).toBeVisible();
@@ -36,6 +71,8 @@ test.describe("Editor toolbar", () => {
     // Insert buttons
     await expect(toolbar.locator('button[title="Link"]')).toBeVisible();
     await expect(toolbar.locator('button[title="Table"]')).toBeVisible();
+    await expect(toolbar.locator('button[title="Mermaid Diagram"]')).toBeVisible();
+    await expect(toolbar.locator('button[title="Expandable Section"]')).toBeVisible();
   });
 
   test("table dialog opens and closes", async ({ page }) => {
@@ -68,6 +105,71 @@ test.describe("Editor toolbar", () => {
     await page.locator('.table-dialog-backdrop').click({ position: { x: 10, y: 10 } });
     await expect(dialog).not.toBeVisible();
   });
+
+  test("bullet list button places cursor after prefix", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+
+    await page.evaluate(() => {
+      const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      const cmds = (window as any).__markz_editorCommands;
+      if (view && cmds?.toggleLinePrefix) {
+        cmds.toggleLinePrefix(view, "- ");
+      }
+    });
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("- ");
+    expect(state.cursor).toBe(2); // cursor after "- "
+  });
+
+  test("math block button inserts math template", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+
+    await page.evaluate(() => {
+      const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      const cmds = (window as any).__markz_editorCommands;
+      if (view && cmds?.insertMathBlock) {
+        cmds.insertMathBlock(view);
+      }
+    });
+
+    const state = await getEditorState(page);
+    expect(state.text).toContain("$$");
+    expect(state.text).toContain("E = mc^2");
+  });
+
+  test("mermaid button inserts mermaid template", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+
+    await page.evaluate(() => {
+      const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      const cmds = (window as any).__markz_editorCommands;
+      if (view && cmds?.insertMermaidBlock) {
+        cmds.insertMermaidBlock(view);
+      }
+    });
+
+    const state = await getEditorState(page);
+    expect(state.text).toContain("```mermaid");
+    expect(state.text).toContain("graph TD");
+  });
+
+  test("expandable section button inserts details template", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+
+    await page.evaluate(() => {
+      const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      const cmds = (window as any).__markz_editorCommands;
+      if (view && cmds?.insertDetailsBlock) {
+        cmds.insertDetailsBlock(view);
+      }
+    });
+
+    const state = await getEditorState(page);
+    expect(state.text).toContain("<details>");
+    expect(state.text).toContain("<summary>");
+    expect(state.text).toContain("</details>");
+  });
 });
 
 test.describe("Editor pane interactions", () => {
@@ -76,7 +178,7 @@ test.describe("Editor pane interactions", () => {
   });
 
   test("drag over adds drag-over class", async ({ page }) => {
-    const editor = page.locator('.editor-container');
+    const editor = page.locator(".editor-container");
     await editor.evaluate((el) => {
       el.dispatchEvent(new DragEvent("dragenter", { bubbles: true }));
     });
@@ -84,4 +186,37 @@ test.describe("Editor pane interactions", () => {
     // the visual state without more complex interactions. Just verify it exists.
     await expect(editor).toBeVisible();
   });
+
+  test("Tab indents list items", async ({ page }) => {
+    await setEditorContent(page, "- item", 6);
+
+    await page.evaluate(() => {
+      const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      const cmds = (window as any).__markz_editorCommands;
+      if (view && cmds?.indentSelection) {
+        cmds.indentSelection(view, "indent");
+      }
+    });
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("  - item");
+  });
+
+  test("Shift+Tab outdents list items", async ({ page }) => {
+    await setEditorContent(page, "  - item", 8);
+
+    await page.evaluate(() => {
+      const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      const cmds = (window as any).__markz_editorCommands;
+      if (view && cmds?.indentSelection) {
+        cmds.indentSelection(view, "outdent");
+      }
+    });
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("- item");
+  });
 });
+
+
+
