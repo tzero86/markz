@@ -7,6 +7,9 @@
     insertText,
     insertTable,
     insertCodeBlock,
+    insertMathBlock,
+    insertMermaidBlock,
+    insertDetailsBlock,
   } from "./editorCommands";
 
   interface Props {
@@ -47,6 +50,7 @@
         { label: "{}", title: "Code Block", action: () => doAction((v) => insertCodeBlock(v, "")) },
         { label: "\"", title: "Blockquote", action: () => doAction((v) => toggleLinePrefix(v, "> ")) },
         { label: "—", title: "Horizontal Rule", action: () => doAction((v) => insertText(v, "\n---\n")) },
+        { label: "$$", title: "Math Block", action: () => doAction((v) => insertMathBlock(v)) },
       ],
     },
     {
@@ -62,6 +66,8 @@
       items: [
         { label: "[]", title: "Link", action: () => doAction((v) => wrapSelection(v, "[", "](url)", "text")) },
         { label: "⊞", title: "Table", action: () => { showTableDialog = true; } },
+        { label: "Mmd", title: "Mermaid Diagram", action: () => doAction((v) => insertMermaidBlock(v)) },
+        { label: "▼", title: "Expandable Section", action: () => doAction((v) => insertDetailsBlock(v)) },
       ],
     },
   ];

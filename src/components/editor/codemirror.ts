@@ -6,18 +6,25 @@ import {
   highlightActiveLine,
   drawSelection,
 } from "@codemirror/view";
+import { showMinimap } from "@replit/codemirror-minimap";
+
+if (typeof window !== "undefined") {
+  (window as any).EditorView = EditorView;
+}
 import { type Extension } from "@codemirror/state";
 import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownKeymap } from "@codemirror/lang-markdown";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import type { CursorPosition } from "../../lib/editorStore";
+import { indentSelection } from "./editorCommands";
 
 const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
 const wrapCompartment = new Compartment();
+const minimapCompartment = new Compartment();
 
 function createEditorTheme(isDark: boolean) {
   return EditorView.theme(
@@ -51,6 +58,9 @@ function createEditorTheme(isDark: boolean) {
       },
       ".cm-activeLine": {
         backgroundColor: "transparent",
+      },
+      ".cm-minimap-overlay-container .cm-minimap-overlay": {
+        background: isDark ? "rgb(200, 200, 200)" : "rgb(121, 121, 121)",
       },
     },
     { dark: isDark }
@@ -110,6 +120,7 @@ export interface EditorConfig {
   fontFamily?: string;
   fontSize?: number;
   lineHeight?: number;
+  showMinimap?: boolean;
   onChange: (content: string) => void;
   onCursorChange?: (pos: CursorPosition) => void;
   onScroll?: () => void;
@@ -138,12 +149,26 @@ export function initEditor(
     themeCompartment.of(createEditorTheme(isDark)),
     fontCompartment.of(createFontExtension(fontFamily, fontSize, lineHeight)),
     wrapCompartment.of([]),
+    minimapCompartment.of(createMinimapExtension(config.showMinimap ?? false)),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightActiveLine(),
     drawSelection(),
     history(),
-    keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
+    keymap.of([
+      ...markdownKeymap,
+      {
+        key: "Tab",
+        run: (view) => indentSelection(view, "indent"),
+      },
+      {
+        key: "Shift-Tab",
+        run: (view) => indentSelection(view, "outdent"),
+      },
+      ...defaultKeymap,
+      ...historyKeymap,
+      ...searchKeymap,
+    ]),
     highlightSelectionMatches(),
     markdown(),
     syntaxHighlighting(markdownHighlightStyle),
@@ -211,5 +236,23 @@ export function setWordWrap(view: EditorView, enabled: boolean) {
   const ext: Extension = enabled ? EditorView.lineWrapping : [];
   view.dispatch({
     effects: wrapCompartment.reconfigure(ext),
+  });
+}
+
+function createMinimapExtension(enabled: boolean): Extension {
+  if (!enabled) return [];
+  return showMinimap.of({
+    create: () => {
+      const dom = document.createElement("div");
+      return { dom };
+    },
+    displayText: "blocks",
+    showOverlay: "always",
+  });
+}
+
+export function setMinimap(view: EditorView, enabled: boolean) {
+  view.dispatch({
+    effects: minimapCompartment.reconfigure(createMinimapExtension(enabled)),
   });
 }

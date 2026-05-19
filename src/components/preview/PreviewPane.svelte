@@ -555,19 +555,16 @@
   }
   .preview-content :global(li.task-list-item) {
     list-style-type: none;
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
     padding-left: 0;
     margin-left: 0;
   }
-  .preview-content :global(li.task-list-item) > :global(input[type="checkbox"]) {
-    flex-shrink: 0;
-    margin-top: 4px;
+  .preview-content :global(li.task-list-item) :global(input[type="checkbox"]) {
+    margin-right: var(--space-2);
     accent-color: var(--accent-default);
     cursor: default;
+    vertical-align: middle;
+    transform: translateY(-1px);
   }
-  .preview-content :global(li.task-list-item) > :global(p) { margin: 0; }
   .preview-content :global(hr) {
     border: none;
     border-top: 1px solid var(--border-subtle);

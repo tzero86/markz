@@ -43,8 +43,8 @@ export const MOCK_HTML = `<h1>Welcome to MarkZ</h1>
 <p><strong>Formatting:</strong> <em>italic</em>, <strong>bold</strong>, <code>inline code</code>, <del>strikethrough</del></p>
 <ul>
 <li>Unordered items</li>
-<li class="task-list-item"><input type="checkbox" checked="" disabled=""> Completed tasks</li>
-<li class="task-list-item"><input type="checkbox" disabled=""> Pending tasks</li>
+<li class="task-list-item"><p><input type="checkbox" checked="" disabled=""> Completed tasks</p></li>
+<li class="task-list-item"><p><input type="checkbox" disabled=""> Pending tasks</p></li>
 </ul>
 <pre><code class="language-rust">fn main() {
     println!("Hello, MarkZ!");
@@ -139,12 +139,12 @@ print(list(fibonacci(10)))
 </ol>
 <h4>Task List</h4>
 <ul>
-<li class="task-list-item"><input type="checkbox" checked="" disabled=""> Completed task</li>
-<li class="task-list-item"><input type="checkbox" disabled=""> Pending task</li>
-<li class="task-list-item"><input type="checkbox" disabled=""> Another pending task
+<li class="task-list-item"><p><input type="checkbox" checked="" disabled=""> Completed task</p></li>
+<li class="task-list-item"><p><input type="checkbox" disabled=""> Pending task</p></li>
+<li class="task-list-item"><p><input type="checkbox" disabled=""> Another pending task</p>
 <ul>
-<li class="task-list-item"><input type="checkbox" checked="" disabled=""> Sub-task done</li>
-<li class="task-list-item"><input type="checkbox" disabled=""> Sub-task waiting</li>
+<li class="task-list-item"><p><input type="checkbox" checked="" disabled=""> Sub-task done</p></li>
+<li class="task-list-item"><p><input type="checkbox" disabled=""> Sub-task waiting</p></li>
 </ul>
 </li>
 </ul>

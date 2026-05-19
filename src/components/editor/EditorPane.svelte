@@ -4,7 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { documentStore } from "../../lib/documentStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme, setEditorFont, setWordWrap } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
@@ -20,6 +20,7 @@
   let baseFontSize = $state(14);
   let baseLineHeight = $state(1.7);
   let wordWrap = $state(true);
+  let showMinimap = $state(false);
 
   function triggerPasteFlash() {
     isPasteFlash = true;
@@ -143,6 +144,12 @@
     }
   }
 
+  function applyMinimap() {
+    if (editorView) {
+      setMinimap(editorView, showMinimap);
+    }
+  }
+
   async function loadFontSettings() {
     try {
       const s = await invoke<any>("get_settings");
@@ -151,8 +158,10 @@
         baseFontSize = s.editor_font_size ?? 14;
         baseLineHeight = s.line_height ?? 1.7;
         wordWrap = s.word_wrap ?? true;
+        showMinimap = s.show_minimap ?? false;
         applyEditorFont();
         applyWordWrap();
+        applyMinimap();
       }
     } catch (e) {
       console.error("Failed to load font settings:", e);
@@ -171,6 +180,10 @@
       wordWrap = detail.wordWrap;
       applyWordWrap();
     }
+    if (detail.showMinimap !== undefined) {
+      showMinimap = detail.showMinimap;
+      applyMinimap();
+    }
   }
 
   onMount(() => {
@@ -179,6 +192,7 @@
       fontFamily: baseFontFamily,
       fontSize: Math.round(baseFontSize * $contentZoomStore),
       lineHeight: baseLineHeight,
+      showMinimap,
       onChange: (newContent) => {
         documentStore.setContent(newContent);
       },

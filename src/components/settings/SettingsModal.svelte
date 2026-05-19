@@ -106,6 +106,7 @@
             reducedMotion: settings.reduced_motion,
             uiFontSize: settings.ui_font_size,
             wordWrap: settings.word_wrap,
+            showMinimap: settings.show_minimap,
           },
         })
       );
