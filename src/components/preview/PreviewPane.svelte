@@ -4,7 +4,7 @@
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
   import { highlightCodeBlocks, setHljsTheme } from "./syntaxHighlighter";
-  import { renderMermaidBlocks, setMermaidTheme } from "./mermaidRenderer";
+  import { renderMermaidBlocks, rerenderMermaidBlocks, setMermaidTheme } from "./mermaidRenderer";
   import { renderMathBlocks } from "./mathRenderer";
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
@@ -235,6 +235,21 @@
     if (contentDiv) {
       setMermaidTheme(theme, contentDiv).catch(console.error);
     }
+  });
+
+  // Re-render mermaid diagrams when zoom changes so they scale with the text.
+  let zoomTimeout: ReturnType<typeof setTimeout>;
+  $effect(() => {
+    const zoom = $contentZoomStore;
+    if (!contentDiv) return;
+    // Debounce: wait for zoom to settle before re-rendering (expensive)
+    clearTimeout(zoomTimeout);
+    zoomTimeout = setTimeout(() => {
+      if (activeFormat === "html" && contentDiv) {
+        rerenderMermaidBlocks(contentDiv).catch(console.error);
+      }
+    }, 250);
+    return () => clearTimeout(zoomTimeout);
   });
 </script>
 
@@ -599,7 +614,10 @@
     justify-content: center;
     margin: var(--space-4) 0;
   }
-  .preview-content :global(.mermaid-diagram svg) { max-width: 100%; }
+  .preview-content :global(.mermaid-diagram svg) {
+    max-width: 100%;
+    height: auto;
+  }
 
   /* Tooltips */
   [data-tooltip] {

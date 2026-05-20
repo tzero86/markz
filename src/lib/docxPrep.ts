@@ -57,8 +57,6 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
   }
 
   // Show a white overlay to hide the rendering flash.
-  // Each render function creates elements at z-index 2147483646;
-  // the overlay sits above them at z-index 2147483647.
   const overlay = document.createElement("div");
   overlay.style.cssText =
     "position:fixed;top:0;left:0;width:100vw;height:100vh;" +
@@ -66,16 +64,24 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
   document.body.appendChild(overlay);
 
   try {
-    // 4. Render all extracted items in parallel
+    // Save the global mermaid config so we can restore it after export.
+    // mermaid.initialize() resets *everything* to defaults; we must use
+    // getConfig()/setConfig() to avoid polluting the preview panel's state.
+    const originalConfig = mermaid.mermaidAPI.getConfig();
+
+    // 4a. Render mermaid sequentially — mermaid uses mutable global config,
+    //    so parallel renders would race and corrupt each other's output.
+    for (const item of mermaidItems) {
+      try {
+        item.dataUrl = await renderMermaidToPng(item.original, originalConfig);
+        item.success = true;
+      } catch (e) {
+        console.error("Mermaid render failed:", e);
+      }
+    }
+
+    // 4b. Render math in parallel — KaTeX is stateless per-call.
     await Promise.all([
-      ...mermaidItems.map(async (item) => {
-        try {
-          item.dataUrl = await renderMermaidToPng(item.original);
-          item.success = true;
-        } catch (e) {
-          console.error("Mermaid render failed:", e);
-        }
-      }),
       ...blockMathItems.map(async (item) => {
         try {
           item.dataUrl = await renderMathToPng(item.original, true);
@@ -156,17 +162,23 @@ function sanitizeMermaidSvg(svgString: string): string {
   return new XMLSerializer().serializeToString(svgEl);
 }
 
-async function renderMermaidToPng(content: string): Promise<string> {
-  mermaid.initialize({ startOnLoad: false, theme: "default" });
+async function renderMermaidToPng(content: string, originalConfig: any): Promise<string> {
+  // Temporarily switch to "default" (light) theme for the export image.
+  // Use setConfig so we don't wipe flowchart.useMaxWidth or other sizing
+  // options that mermaidRenderer.ts may have configured.
+  mermaid.mermaidAPI.setConfig({ ...originalConfig, theme: "default" });
+
   const id = "mermaid-export-" + Math.random().toString(36).substring(2, 11);
   const { svg } = await mermaid.render(id, content);
+
+  // Restore the original config immediately after render so the preview
+  // panel never sees the light-theme export settings.
+  mermaid.mermaidAPI.setConfig(originalConfig);
 
   // Sanitize the SVG to remove external font/URL references
   const cleanedSvg = sanitizeMermaidSvg(svg);
 
   // Parse intrinsic dimensions from the sanitised SVG.
-  // Mermaid typically sets width/height to "100%" (percentage);
-  // viewBox gives the actual content coordinate space in pixels.
   const svgDoc = new DOMParser().parseFromString(cleanedSvg, "image/svg+xml");
   const svgEl = svgDoc.documentElement;
 
@@ -189,8 +201,6 @@ async function renderMermaidToPng(content: string): Promise<string> {
   height = height || 400;
 
   // Embed the SVG as a base64 data URL inside an <img> tag.
-  // This uses the browser's native SVG renderer (correct text/labels)
-  // and avoids namespace issues with innerHTML + html-to-image cloning.
   const base64 = btoa(unescape(encodeURIComponent(cleanedSvg)));
   const dataUrl = `data:image/svg+xml;base64,${base64}`;
 
@@ -226,10 +236,6 @@ async function renderMermaidToPng(content: string): Promise<string> {
 }
 
 async function renderMathToPng(latex: string, isBlock: boolean): Promise<string> {
-  // Render visibly in the viewport — html-to-image needs the element to be
-  // paint‑ready so clientWidth/clientHeight reflect the actual rendered content.
-  // The element flashes at (0,0) for ~50ms during the export; the export is
-  // already async so this is imperceptible.
   const container = document.createElement("div");
   container.style.cssText =
     "position:fixed;top:0;left:0;z-index:2147483646;" +

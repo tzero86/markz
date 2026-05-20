@@ -32,6 +32,27 @@ export async function renderMermaidBlocks(container: HTMLElement) {
   }
 }
 
+/**
+ * Re-render all existing mermaid diagrams in the container.
+ * Used when zoom changes so diagrams scale with the preview font-size.
+ */
+export async function rerenderMermaidBlocks(container: HTMLElement) {
+  const diagrams = container.querySelectorAll(".mermaid-diagram");
+  if (diagrams.length === 0) return;
+
+  for (const div of diagrams) {
+    const code = div.getAttribute("data-source") || "";
+    if (!code) continue;
+    const id = "mermaid-" + Math.random().toString(36).substring(2, 11);
+    try {
+      const { svg } = await mermaid.render(id, code);
+      div.innerHTML = svg;
+    } catch (e) {
+      console.error("Mermaid re-render failed:", e);
+    }
+  }
+}
+
 export async function setMermaidTheme(
   theme: "light" | "dark",
   container: HTMLElement
