@@ -4,6 +4,18 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-05-20
+
+### Added
+- **DOCX export with mermaid diagrams and math formulas** — Frontend pre-renders mermaid SVGs and KaTeX math to PNG data URLs; backend embeds them via the existing image pipeline. Production styling includes custom headings, page margins, paragraph spacing, code blocks, blockquotes, and clean horizontal rules.
+
+### Fixed
+- **Mermaid preview zoom scaling** — Diagrams now scale proportionally with the preview zoom level via CSS `transform: scale()` combined with viewBox tightening (`getBBox()`). Previously diagrams stayed fixed-size while all surrounding text resized.
+- **Mermaid export sizing** — Exported DOCX diagrams no longer appear tiny on a massive white canvas. `html-to-image` wrapper sizing replaced with direct canvas `drawImage()` for exact output dimensions.
+- **Mermaid export theme** — Diagrams now render with the light theme in DOCX exports. `setConfig()` was not re-initializing theme CSS; switched to `mermaid.initialize()` for a proper theme switch.
+- **Mermaid config isolation** — `docxPrep.ts` no longer pollutes global mermaid config with `initialize()`. Uses `getConfig()`/`setConfig()` save/restore and renders sequentially to avoid race corruption.
+- **Startup zoom reset** — App now always launches at 100% zoom instead of restoring stale localStorage values (e.g., 160% left over from a previous session).
+
 ## [0.3.1] - 2026-05-19
 
 ### Fixed
