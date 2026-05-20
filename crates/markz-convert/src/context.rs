@@ -70,6 +70,18 @@ pub fn resolve_image_url(url: &str, ctx: &ConvertContext) -> String {
 /// - Remote URLs are downloaded when `ctx.embed_remote_images` is true.
 /// - Returns `None` if the image cannot be resolved.
 pub fn resolve_image_bytes(url: &str, ctx: &ConvertContext) -> Option<Vec<u8>> {
+    // Data URL (base64 embedded image)
+    if url.starts_with("data:image/") {
+        if let Some(comma_idx) = url.find(',') {
+            let base64_data = &url[comma_idx + 1..];
+            return base64::Engine::decode(
+                &base64::engine::general_purpose::STANDARD,
+                base64_data,
+            )
+            .ok();
+        }
+    }
+
     // Local file
     if let Some(path) = resolve_image_path(url, ctx) {
         return std::fs::read(&path).ok();

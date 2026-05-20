@@ -670,6 +670,19 @@ Below rule with **bold** text.
 
 Another rule.
 
+### Images
+
+#### Remote Images
+MarkZ renders remote images directly in the preview. These samples use free placeholder photos:
+
+![Remote landscape photo](https://picsum.photos/seed/markz1/600/300)
+
+![Remote portrait photo](https://picsum.photos/seed/markz2/300/400)
+
+![Remote square photo](https://picsum.photos/seed/markz3/400/400)
+
+> 💡 **Tip:** Toggle *Settings → Embed remote images* to download these into exports.
+
 ### Special Characters & Escapes
 - Asterisk: \*not italic\*
 - Hash: \# not heading
