@@ -217,6 +217,29 @@
     });
   }
 
+  /** Scale mermaid SVGs so they grow/shrink with the preview zoom level.
+   *  Mermaid outputs fixed-pixel SVGs; we read the intrinsic viewBox
+   *  dimensions and apply explicit width/height scaled by zoom. */
+  function scaleMermaidDiagrams() {
+    if (!contentDiv || activeFormat !== "html") return;
+    const zoom = $contentZoomStore;
+    contentDiv.querySelectorAll(".mermaid-diagram svg").forEach((svgEl) => {
+      const svg = svgEl as SVGSVGElement;
+      const vb = svg.viewBox.baseVal;
+      if (vb && vb.width > 0 && vb.height > 0) {
+        svg.style.width = `${vb.width * zoom}px`;
+        svg.style.height = `${vb.height * zoom}px`;
+      } else {
+        const w = parseFloat(svg.getAttribute("width") || "0");
+        const h = parseFloat(svg.getAttribute("height") || "0");
+        if (w > 0 && h > 0) {
+          svg.style.width = `${w * zoom}px`;
+          svg.style.height = `${h * zoom}px`;
+        }
+      }
+    });
+  }
+
   $effect(() => {
     const _content = htmlContent;
     if (!contentDiv) return;
@@ -224,9 +247,18 @@
     if (activeFormat === "html") {
       addHeadingAnchors(contentDiv);
       renderMathBlocks(contentDiv);
-      renderMermaidBlocks(contentDiv).catch(console.error);
+      renderMermaidBlocks(contentDiv)
+        .then(() => scaleMermaidDiagrams())
+        .catch(console.error);
       highlightCodeBlocks(contentDiv);
     }
+  });
+
+  // Re-scale mermaid when zoom changes (content already rendered)
+  $effect(() => {
+    const zoom = $contentZoomStore;
+    if (!contentDiv) return;
+    scaleMermaidDiagrams();
   });
 
   $effect(() => {
@@ -277,11 +309,11 @@
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     {#key htmlContent}
       {#if activeFormat === "html"}
-        <div class="preview-content" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px" style:--content-zoom="{$contentZoomStore}">
+        <div class="preview-content" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
           {@html htmlContent}
         </div>
       {:else}
-        <div class="preview-content text-format" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px" style:--content-zoom="{$contentZoomStore}">
+        <div class="preview-content text-format" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
           <pre><code>{@html htmlContent}</code></pre>
         </div>
       {/if}
@@ -599,10 +631,6 @@
     display: flex;
     justify-content: center;
     margin: var(--space-4) 0;
-    /* Scale the diagram proportionally with the preview zoom level.
-       zoom affects layout box (unlike transform:scale), so vertical
-       space and centering adjust automatically. */
-    zoom: var(--content-zoom, 1);
   }
   .preview-content :global(.mermaid-diagram svg) {
     max-width: 100%;
