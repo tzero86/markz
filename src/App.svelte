@@ -15,6 +15,10 @@
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
 
+  // Always start at 100% zoom — prevents stale localStorage values
+  // (e.g., 160% left over from a previous session) from persisting.
+  contentZoomStore.reset();
+
   let settingsOpen = $state(false);
   let settingsInitialTab = $state<"settings" | "help" | "about">("settings");
   let templateBrowserOpen = $state(false);
