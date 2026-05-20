@@ -4,7 +4,7 @@
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
   import { highlightCodeBlocks, setHljsTheme } from "./syntaxHighlighter";
-  import { renderMermaidBlocks, rerenderMermaidBlocks, setMermaidTheme } from "./mermaidRenderer";
+  import { renderMermaidBlocks, setMermaidTheme } from "./mermaidRenderer";
   import { renderMathBlocks } from "./mathRenderer";
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
@@ -237,20 +237,6 @@
     }
   });
 
-  // Re-render mermaid diagrams when zoom changes so they scale with the text.
-  let zoomTimeout: ReturnType<typeof setTimeout>;
-  $effect(() => {
-    const zoom = $contentZoomStore;
-    if (!contentDiv) return;
-    // Debounce: wait for zoom to settle before re-rendering (expensive)
-    clearTimeout(zoomTimeout);
-    zoomTimeout = setTimeout(() => {
-      if (activeFormat === "html" && contentDiv) {
-        rerenderMermaidBlocks(contentDiv).catch(console.error);
-      }
-    }, 250);
-    return () => clearTimeout(zoomTimeout);
-  });
 </script>
 
 <div class="preview-pane">
@@ -291,11 +277,11 @@
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     {#key htmlContent}
       {#if activeFormat === "html"}
-        <div class="preview-content" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
+        <div class="preview-content" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px" style:--content-zoom="{$contentZoomStore}">
           {@html htmlContent}
         </div>
       {:else}
-        <div class="preview-content text-format" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
+        <div class="preview-content text-format" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px" style:--content-zoom="{$contentZoomStore}">
           <pre><code>{@html htmlContent}</code></pre>
         </div>
       {/if}
@@ -613,6 +599,10 @@
     display: flex;
     justify-content: center;
     margin: var(--space-4) 0;
+    /* Scale the diagram proportionally with the preview zoom level.
+       zoom affects layout box (unlike transform:scale), so vertical
+       space and centering adjust automatically. */
+    zoom: var(--content-zoom, 1);
   }
   .preview-content :global(.mermaid-diagram svg) {
     max-width: 100%;
