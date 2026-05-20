@@ -23,10 +23,122 @@ const MAX_IMAGE_WIDTH_EMU: u64 = 6 * 914400;
 /// EMUs per pixel at 96 DPI
 const EMU_PER_PX: u64 = 9525;
 
+// --- Style builders --------------------------------------------------------
+
+fn normal_style() -> Style {
+    Style::new("Normal", StyleType::Paragraph)
+        .name("Normal")
+        .size(22)
+        .fonts(
+            RunFonts::new()
+                .ascii("Calibri")
+                .hi_ansi("Calibri")
+                .east_asia("Calibri")
+                .cs("Times New Roman"),
+        )
+        .line_spacing(
+            LineSpacing::new()
+                .after(120)
+                .line(276)
+                .line_rule(LineSpacingType::Auto),
+        )
+}
+
+fn heading_style(level: usize, size: usize, before: u32, after: u32) -> Style {
+    let id = format!("Heading{}", level);
+    let color = if level <= 3 { "2B579A" } else { "1F1F1F" };
+    let mut s = Style::new(&id, StyleType::Paragraph)
+        .name(&id)
+        .size(size)
+        .bold()
+        .color(color)
+        .outline_lvl(level - 1)
+        .line_spacing(
+            LineSpacing::new()
+                .before(before)
+                .after(after)
+                .line(276)
+                .line_rule(LineSpacingType::Auto),
+        );
+    if level == 6 {
+        s = s.italic();
+    }
+    s
+}
+
+fn code_block_style() -> Style {
+    let mut s = Style::new("CodeBlock", StyleType::Paragraph)
+        .name("Code Block")
+        .fonts(RunFonts::new().ascii("Courier New").hi_ansi("Courier New"))
+        .line_spacing(
+            LineSpacing::new()
+                .before(120)
+                .after(120)
+                .line(240)
+                .line_rule(LineSpacingType::Auto),
+        );
+    s.paragraph_property = s.paragraph_property.shading(
+        Shading::new().shd_type(ShdType::Clear).fill("F5F5F5"),
+    );
+    s
+}
+
+fn blockquote_style() -> Style {
+    let mut s = Style::new("BlockQuote", StyleType::Paragraph)
+        .name("Block Quote")
+        .indent(Some(720), None, None, None)
+        .line_spacing(
+            LineSpacing::new()
+                .before(60)
+                .after(60)
+                .line(276)
+                .line_rule(LineSpacingType::Auto),
+        );
+    s.paragraph_property = s.paragraph_property.shading(
+        Shading::new().shd_type(ShdType::Clear).fill("FAFAFA"),
+    );
+    s.paragraph_property = s.paragraph_property.set_borders(
+        ParagraphBorders::new().set(
+            ParagraphBorder::new(ParagraphBorderPosition::Left)
+                .size(12)
+                .space(4)
+                .color("E0E0E0"),
+        ),
+    );
+    s
+}
+
+fn table_header_style() -> Style {
+    Style::new("TableHeader", StyleType::Paragraph)
+        .name("Table Header")
+        .bold()
+}
+
+// --- Main converter --------------------------------------------------------
+
 /// Convert a MarkZ AST Document into a DOCX file as a byte vector.
 /// Local images are embedded; remote images become hyperlink text.
 pub fn convert(document: &Document, ctx: &ConvertContext) -> Result<Vec<u8>, ConvertDocxError> {
     let mut docx = Docx::new()
+        .page_margin(
+            PageMargin::new()
+                .top(1440)
+                .right(1440)
+                .bottom(1440)
+                .left(1440)
+                .header(720)
+                .footer(720),
+        )
+        .add_style(normal_style())
+        .add_style(heading_style(1, 48, 240, 120))
+        .add_style(heading_style(2, 40, 200, 100))
+        .add_style(heading_style(3, 32, 160, 80))
+        .add_style(heading_style(4, 28, 120, 60))
+        .add_style(heading_style(5, 24, 100, 60))
+        .add_style(heading_style(6, 22, 80, 40))
+        .add_style(code_block_style())
+        .add_style(blockquote_style())
+        .add_style(table_header_style())
         .add_abstract_numbering(
             AbstractNumbering::new(BULLET_ABSTRACT_NUM_ID)
                 .add_level(
@@ -101,9 +213,13 @@ pub fn convert(document: &Document, ctx: &ConvertContext) -> Result<Vec<u8>, Con
     }
 
     let mut buf = Cursor::new(Vec::new());
-    docx.build().pack(&mut buf).map_err(|e| ConvertDocxError::Other(e.to_string()))?;
+    docx.build()
+        .pack(&mut buf)
+        .map_err(|e| ConvertDocxError::Other(e.to_string()))?;
     Ok(buf.into_inner())
 }
+
+// --- Image helpers ---------------------------------------------------------
 
 /// Compute scaled image dimensions in EMUs, fitting within the page width.
 fn scaled_image_size(bytes: &[u8]) -> Option<(u32, u32)> {
@@ -136,6 +252,8 @@ fn create_pic(bytes: &[u8]) -> Pic {
     }
 }
 
+// --- Block appenders -------------------------------------------------------
+
 fn append_block(
     docx: Docx,
     block: &Block,
@@ -156,26 +274,28 @@ fn append_block(
             Ok(docx.add_paragraph(para))
         }
         Block::Paragraph { text } => {
-            let para = inlines_to_paragraph(Paragraph::new(), text, ctx);
+            let para = inlines_to_paragraph(
+                Paragraph::new()
+                    .style("Normal")
+                    .line_spacing(LineSpacing::new().after(120)),
+                text,
+                ctx,
+            );
             Ok(docx.add_paragraph(para))
         }
         Block::CodeBlock { language: _, content } => {
             let run = Run::new()
                 .fonts(RunFonts::new().ascii("Courier New").hi_ansi("Courier New"))
-                .shading(Shading::new().shd_type(ShdType::Clear).fill("F2F2F2"))
                 .add_text(content);
-            Ok(docx.add_paragraph(Paragraph::new().add_run(run)))
+            Ok(docx.add_paragraph(Paragraph::new().style("CodeBlock").add_run(run)))
         }
         Block::BlockQuote { blocks } => {
             let mut d = docx;
             for b in blocks {
                 match b {
                     Block::Paragraph { text } => {
-                        let para = inlines_to_paragraph(
-                            Paragraph::new().indent(Some(720), None, None, None),
-                            text,
-                            ctx,
-                        );
+                        let para =
+                            inlines_to_paragraph(Paragraph::new().style("BlockQuote"), text, ctx);
                         d = d.add_paragraph(para);
                     }
                     _ => {
@@ -196,11 +316,17 @@ fn append_block(
                             if let Some(checked) = item.task {
                                 let prefix = if checked { "[x] " } else { "[ ] " };
                                 para = Paragraph::new()
-                                    .numbering(NumberingId::new(num_id), IndentLevel::new(list_depth.min(2)))
+                                    .numbering(
+                                        NumberingId::new(num_id),
+                                        IndentLevel::new(list_depth.min(2)),
+                                    )
                                     .add_run(Run::new().add_text(prefix))
                                     .add_run(extract_first_run(&para).unwrap_or(Run::new()));
                             } else {
-                                para = para.numbering(NumberingId::new(num_id), IndentLevel::new(list_depth.min(2)));
+                                para = para.numbering(
+                                    NumberingId::new(num_id),
+                                    IndentLevel::new(list_depth.min(2)),
+                                );
                             }
                             d = d.add_paragraph(para);
                         }
@@ -221,11 +347,15 @@ fn append_block(
             let header_cells: Vec<docx_rs::TableCell> = header
                 .iter()
                 .map(|cell| {
-                    inlines_to_paragraph(Paragraph::new(), &cell.text, ctx)
-                        .add_run(Run::new().add_text("").bold())
+                    inlines_to_paragraph(
+                        Paragraph::new().style("TableHeader"),
+                        &cell.text,
+                        ctx,
+                    )
                 })
                 .map(|para| {
                     docx_rs::TableCell::new()
+                        .vertical_align(VAlignType::Center)
                         .add_paragraph(para)
                         .shading(Shading::new().shd_type(ShdType::Clear).fill("E8E8E8"))
                 })
@@ -237,27 +367,40 @@ fn append_block(
                     .iter()
                     .map(|cell| {
                         let para = inlines_to_paragraph(Paragraph::new(), &cell.text, ctx);
-                        docx_rs::TableCell::new().add_paragraph(para)
+                        docx_rs::TableCell::new()
+                            .vertical_align(VAlignType::Center)
+                            .add_paragraph(para)
                     })
                     .collect();
                 table_rows.push(TableRow::new(cells));
             }
 
             let borders = TableBorders::new()
-                .set(TableBorder::new(TableBorderPosition::Top).size(4).color("CCCCCC"))
-                .set(TableBorder::new(TableBorderPosition::Bottom).size(4).color("CCCCCC"))
-                .set(TableBorder::new(TableBorderPosition::Left).size(4).color("CCCCCC"))
-                .set(TableBorder::new(TableBorderPosition::Right).size(4).color("CCCCCC"))
+                .set(TableBorder::new(TableBorderPosition::Top).size(6).color("AAAAAA"))
+                .set(TableBorder::new(TableBorderPosition::Bottom).size(6).color("AAAAAA"))
+                .set(TableBorder::new(TableBorderPosition::Left).size(6).color("AAAAAA"))
+                .set(TableBorder::new(TableBorderPosition::Right).size(6).color("AAAAAA"))
                 .set(TableBorder::new(TableBorderPosition::InsideH).size(4).color("CCCCCC"))
                 .set(TableBorder::new(TableBorderPosition::InsideV).size(4).color("CCCCCC"));
 
             Ok(docx.add_table(Table::new(table_rows).set_borders(borders)))
         }
         Block::ThematicBreak => {
-            Ok(docx.add_paragraph(Paragraph::new().add_run(Run::new().add_break(BreakType::Page))))
+            let mut hr = Paragraph::new();
+            hr.property = hr.property.set_borders(
+                ParagraphBorders::with_empty().set(
+                    ParagraphBorder::new(ParagraphBorderPosition::Bottom)
+                        .size(12)
+                        .space(1)
+                        .color("999999"),
+                ),
+            );
+            hr = hr.add_run(Run::new().add_text("\u{00A0}"));
+            Ok(docx.add_paragraph(hr))
         }
         Block::RawHtml(html) => {
-            Ok(docx.add_paragraph(Paragraph::new().add_run(Run::new().add_text(html))))
+            let text = strip_html_tags(html);
+            Ok(docx.add_paragraph(Paragraph::new().add_run(Run::new().add_text(text))))
         }
     }
 }
@@ -284,9 +427,15 @@ fn inlines_to_paragraph(para: Paragraph, inlines: &[Inline], ctx: &ConvertContex
 
 fn apply_style(run: Run, bold: bool, italic: bool, strike: bool) -> Run {
     let mut r = run;
-    if bold { r = r.bold(); }
-    if italic { r = r.italic(); }
-    if strike { r = r.strike(); }
+    if bold {
+        r = r.bold();
+    }
+    if italic {
+        r = r.italic();
+    }
+    if strike {
+        r = r.strike();
+    }
     r
 }
 
@@ -333,26 +482,61 @@ fn append_inline_to_paragraph(
         }
         Inline::Link { text, url, .. } => {
             let link_text = extract_plain_text(text);
-            let hyperlink = Hyperlink::new(url, HyperlinkType::External)
-                .add_run(apply_style(Run::new().add_text(link_text).color("0563C1").underline("single"), bold, italic, strike));
+            let hyperlink = Hyperlink::new(url, HyperlinkType::External).add_run(
+                apply_style(
+                    Run::new()
+                        .add_text(link_text)
+                        .color("0563C1")
+                        .underline("single"),
+                    bold,
+                    italic,
+                    strike,
+                ),
+            );
             para.add_hyperlink(hyperlink)
         }
         Inline::Image { alt, url, .. } => {
             if let Some(bytes) = resolve_image_bytes(url, ctx) {
                 if !bytes.is_empty() {
                     let pic = create_pic(&bytes);
-                    return para.add_run(apply_style(Run::new().add_image(pic), bold, italic, strike));
+                    return para
+                        .add_run(apply_style(Run::new().add_image(pic), bold, italic, strike));
                 }
             }
-            para.add_run(apply_style(Run::new().add_text(format!("[{}]", alt)), bold, italic, strike))
+            para.add_run(apply_style(
+                Run::new().add_text(format!("[{}]", alt)),
+                bold,
+                italic,
+                strike,
+            ))
         }
         Inline::HardBreak | Inline::SoftBreak => {
-            para.add_run(apply_style(Run::new().add_break(BreakType::TextWrapping), bold, italic, strike))
+            para.add_run(apply_style(
+                Run::new().add_break(BreakType::TextWrapping),
+                bold,
+                italic,
+                strike,
+            ))
         }
         Inline::Html(html) => {
             para.add_run(apply_style(Run::new().add_text(html), bold, italic, strike))
         }
     }
+}
+
+fn strip_html_tags(html: &str) -> String {
+    let mut result = String::new();
+    let mut in_tag = false;
+    for ch in html.chars() {
+        if ch == '<' {
+            in_tag = true;
+        } else if ch == '>' {
+            in_tag = false;
+        } else if !in_tag {
+            result.push(ch);
+        }
+    }
+    result
 }
 
 fn extract_plain_text(inlines: &[Inline]) -> String {
@@ -361,7 +545,9 @@ fn extract_plain_text(inlines: &[Inline]) -> String {
         match inline {
             Inline::Text(text) => result.push_str(text),
             Inline::Code(code) => result.push_str(code),
-            Inline::Emphasis(inner) | Inline::Strong(inner) | Inline::Strikethrough(inner) => {
+            Inline::Emphasis(inner)
+            | Inline::Strong(inner)
+            | Inline::Strikethrough(inner) => {
                 result.push_str(&extract_plain_text(inner));
             }
             Inline::Link { text, .. } => result.push_str(&extract_plain_text(text)),
@@ -389,8 +575,13 @@ mod tests {
     #[test]
     fn test_heading_and_paragraph() {
         let doc = doc_with_blocks(vec![
-            Block::Heading { level: 1, text: vec![Inline::Text("Title".to_string())] },
-            Block::Paragraph { text: vec![Inline::Text("Hello world".to_string())] },
+            Block::Heading {
+                level: 1,
+                text: vec![Inline::Text("Title".to_string())],
+            },
+            Block::Paragraph {
+                text: vec![Inline::Text("Hello world".to_string())],
+            },
         ]);
         let ctx = ConvertContext::default();
         let result = convert(&doc, &ctx);
@@ -417,9 +608,9 @@ mod tests {
     #[test]
     fn test_strikethrough() {
         let doc = doc_with_blocks(vec![Block::Paragraph {
-            text: vec![
-                Inline::Strikethrough(vec![Inline::Text("deleted".to_string())]),
-            ],
+            text: vec![Inline::Strikethrough(vec![Inline::Text(
+                "deleted".to_string(),
+            )])],
         }]);
         let ctx = ConvertContext::default();
         assert!(convert(&doc, &ctx).is_ok());
@@ -429,12 +620,24 @@ mod tests {
     fn test_list_and_table() {
         let doc = doc_with_blocks(vec![
             Block::List {
-                ordered: false, start: None,
-                items: vec![ListItem { blocks: vec![Block::Paragraph { text: vec![Inline::Text("item".to_string())] }], task: None }],
+                ordered: false,
+                start: None,
+                items: vec![ListItem {
+                    blocks: vec![Block::Paragraph {
+                        text: vec![Inline::Text("item".to_string())],
+                    }],
+                    task: None,
+                }],
             },
             Block::Table {
-                header: vec![AstTableCell { text: vec![Inline::Text("A".to_string())], alignment: None }],
-                rows: vec![vec![AstTableCell { text: vec![Inline::Text("b".to_string())], alignment: None }]],
+                header: vec![AstTableCell {
+                    text: vec![Inline::Text("A".to_string())],
+                    alignment: None,
+                }],
+                rows: vec![vec![AstTableCell {
+                    text: vec![Inline::Text("b".to_string())],
+                    alignment: None,
+                }]],
             },
         ]);
         let ctx = ConvertContext::default();
@@ -443,8 +646,29 @@ mod tests {
 
     #[test]
     fn test_code_block() {
-        let doc = doc_with_blocks(vec![Block::CodeBlock { language: Some("rust".to_string()), content: "fn main() {}".to_string() }]);
+        let doc = doc_with_blocks(vec![Block::CodeBlock {
+            language: Some("rust".to_string()),
+            content: "fn main() {}".to_string(),
+        }]);
         let ctx = ConvertContext::default();
         assert!(convert(&doc, &ctx).is_ok());
+    }
+
+    #[test]
+    fn test_thematic_break_not_page_break() {
+        let doc = doc_with_blocks(vec![
+            Block::Paragraph {
+                text: vec![Inline::Text("Before".to_string())],
+            },
+            Block::ThematicBreak,
+            Block::Paragraph {
+                text: vec![Inline::Text("After".to_string())],
+            },
+        ]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(!bytes.is_empty());
     }
 }

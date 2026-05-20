@@ -13,4 +13,5 @@ thiserror = { workspace = true }
 log = { workspace = true }
 docx-rs = { workspace = true }
 ureq = { workspace = true }
+base64 = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "tiff"] }

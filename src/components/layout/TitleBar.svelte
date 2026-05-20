@@ -5,6 +5,7 @@
   import { openDocument, saveDocument, openDocumentByPath, newDocument } from "../../lib/keyboard";
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
   import { updateReady, confirmAndRestart } from "../../lib/updater";
+  import { prepareMarkdownForDocx } from "../../lib/docxPrep";
   import { invoke } from "@tauri-apps/api/core";
   import { FilePlus, FolderOpen, Save, History, File, Copy, ChevronDown, LayoutGrid, BookmarkPlus, CircleHelp, Settings, Sun, Moon, ArrowUpRight } from "@lucide/svelte";
   import { Trash2 } from "@lucide/svelte";
@@ -95,8 +96,10 @@ import Toast from "../ui/Toast.svelte";
           activeIndex = -1;
           return;
         }
+        showToast("Preparing images for export...", "info");
+        const preparedMarkdown = await prepareMarkdownForDocx(doc.content);
         await invoke(command, {
-          markdown: doc.content,
+          markdown: preparedMarkdown,
           docPath: doc.path,
           outputPath,
         });
