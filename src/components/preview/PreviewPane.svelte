@@ -218,24 +218,63 @@
   }
 
   /** Scale mermaid SVGs so they grow/shrink with the preview zoom level.
-   *  Mermaid outputs fixed-pixel SVGs; we read the intrinsic viewBox
-   *  dimensions and apply explicit width/height scaled by zoom. */
+   *  On first call we tighten the viewBox to the actual content bounds
+   *  (removes excess empty canvas space) and strip width="100%" so the
+   *  SVG has a predictable natural size. Zoom is applied via CSS
+   *  transform:scale() — this scales the entire rendering tree uniformly
+   *  without fighting viewBox / width / height interactions. */
   function scaleMermaidDiagrams() {
     if (!contentDiv || activeFormat !== "html") return;
     const zoom = $contentZoomStore;
-    contentDiv.querySelectorAll(".mermaid-diagram svg").forEach((svgEl) => {
-      const svg = svgEl as SVGSVGElement;
-      const vb = svg.viewBox.baseVal;
-      if (vb && vb.width > 0 && vb.height > 0) {
-        svg.style.width = `${vb.width * zoom}px`;
-        svg.style.height = `${vb.height * zoom}px`;
-      } else {
-        const w = parseFloat(svg.getAttribute("width") || "0");
-        const h = parseFloat(svg.getAttribute("height") || "0");
-        if (w > 0 && h > 0) {
-          svg.style.width = `${w * zoom}px`;
-          svg.style.height = `${h * zoom}px`;
+
+    contentDiv.querySelectorAll(".mermaid-diagram").forEach((divEl) => {
+      const div = divEl as HTMLElement;
+      const svg = div.querySelector("svg") as SVGSVGElement | null;
+      if (!svg) return;
+
+      // ── First call: tighten viewBox, remove responsive width="100%" ──
+      if (!svg.getAttribute("data-tightened")) {
+        try {
+          const bbox = svg.getBBox();
+          if (bbox.width > 0 && bbox.height > 0) {
+            const pad = 16; // small padding so text isn't cramped
+            const vx = Math.max(0, bbox.x - pad);
+            const vy = Math.max(0, bbox.y - pad);
+            const vw = bbox.width + pad * 2;
+            const vh = bbox.height + pad * 2;
+            svg.setAttribute("viewBox", `${vx} ${vy} ${vw} ${vh}`);
+            svg.removeAttribute("width");
+            svg.removeAttribute("height");
+            svg.style.width = "";
+            svg.style.height = "";
+            svg.setAttribute("data-tightened", "true");
+          }
+        } catch (e) {
+          // getBBox can fail on unrendered SVGs; retry next call
         }
+      }
+
+      // ── Measure natural (unscaled) rendered size ──
+      let naturalWidth = parseFloat(svg.getAttribute("data-nat-w") || "0");
+      let naturalHeight = parseFloat(svg.getAttribute("data-nat-h") || "0");
+      if (!naturalWidth || !naturalHeight) {
+        const rect = svg.getBoundingClientRect();
+        naturalWidth = rect.width;
+        naturalHeight = rect.height;
+        if (naturalWidth > 0 && naturalHeight > 0) {
+          svg.setAttribute("data-nat-w", String(naturalWidth));
+          svg.setAttribute("data-nat-h", String(naturalHeight));
+        }
+      }
+
+      // ── Apply zoom via transform ──
+      if (naturalWidth > 0 && naturalHeight > 0) {
+        svg.style.transform = `scale(${zoom})`;
+        svg.style.transformOrigin = "center top";
+        // Resize parent so the scaled SVG doesn't get clipped
+        // and doesn't overlap following content.
+        div.style.width = `${naturalWidth * zoom}px`;
+        div.style.height = `${naturalHeight * zoom}px`;
       }
     });
   }
@@ -631,10 +670,7 @@
     display: flex;
     justify-content: center;
     margin: var(--space-4) 0;
-  }
-  .preview-content :global(.mermaid-diagram svg) {
-    max-width: 100%;
-    height: auto;
+    overflow: visible; /* allow scaled SVG to extend beyond its box */
   }
 
   /* Tooltips */
