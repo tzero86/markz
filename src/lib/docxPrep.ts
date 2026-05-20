@@ -64,16 +64,11 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
   document.body.appendChild(overlay);
 
   try {
-    // Save the global mermaid config so we can restore it after export.
-    // mermaid.initialize() resets *everything* to defaults; we must use
-    // getConfig()/setConfig() to avoid polluting the preview panel's state.
-    const originalConfig = mermaid.mermaidAPI.getConfig();
-
     // 4a. Render mermaid sequentially — mermaid uses mutable global config,
     //    so parallel renders would race and corrupt each other's output.
     for (const item of mermaidItems) {
       try {
-        item.dataUrl = await renderMermaidToPng(item.original, originalConfig);
+        item.dataUrl = await renderMermaidToPng(item.original);
         item.success = true;
       } catch (e) {
         console.error("Mermaid render failed:", e);
@@ -162,46 +157,71 @@ function sanitizeMermaidSvg(svgString: string): string {
   return new XMLSerializer().serializeToString(svgEl);
 }
 
-async function renderMermaidToPng(content: string, originalConfig: any): Promise<string> {
-  // Temporarily switch to "default" (light) theme for the export image.
-  // Use setConfig so we don't wipe flowchart.useMaxWidth or other sizing
-  // options that mermaidRenderer.ts may have configured.
-  mermaid.mermaidAPI.setConfig({ ...originalConfig, theme: "default" });
+async function renderMermaidToPng(content: string): Promise<string> {
+  // Save current theme and force light theme for the DOCX export.
+  // setConfig() does NOT re-initialize theme CSS; initialize() does.
+  const currentTheme = mermaid.mermaidAPI.getConfig().theme;
+  mermaid.initialize({ startOnLoad: false, theme: "default" });
 
   const id = "mermaid-export-" + Math.random().toString(36).substring(2, 11);
   const { svg } = await mermaid.render(id, content);
 
-  // Restore the original config immediately after render so the preview
-  // panel never sees the light-theme export settings.
-  mermaid.mermaidAPI.setConfig(originalConfig);
+  // Restore the original theme immediately after render.
+  mermaid.initialize({ startOnLoad: false, theme: currentTheme });
 
   // Sanitize the SVG to remove external font/URL references
   const cleanedSvg = sanitizeMermaidSvg(svg);
 
-  // Parse intrinsic dimensions from the sanitised SVG.
-  const svgDoc = new DOMParser().parseFromString(cleanedSvg, "image/svg+xml");
-  const svgEl = svgDoc.documentElement;
+  // Parse the SVG and temporarily mount it so we can call getBBox()
+  // to tighten the viewBox (removes excess empty canvas space).
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(cleanedSvg, "image/svg+xml");
+  const svgEl = doc.documentElement as unknown as SVGSVGElement;
+
+  const tempDiv = document.createElement("div");
+  tempDiv.style.cssText = "position:absolute;left:-9999px;top:-9999px;";
+  document.body.appendChild(tempDiv);
+  tempDiv.appendChild(svgEl);
 
   let width = 0;
   let height = 0;
-  const viewBox = svgEl.getAttribute("viewBox");
-  if (viewBox) {
-    const parts = viewBox.split(/\s+/).map(Number);
-    if (parts.length === 4) {
-      width = parts[2];
-      height = parts[3];
+  try {
+    const bbox = svgEl.getBBox();
+    if (bbox.width > 0 && bbox.height > 0) {
+      const pad = 16;
+      const vx = Math.max(0, bbox.x - pad);
+      const vy = Math.max(0, bbox.y - pad);
+      const vw = bbox.width + pad * 2;
+      const vh = bbox.height + pad * 2;
+      svgEl.setAttribute("viewBox", `${vx} ${vy} ${vw} ${vh}`);
+      width = vw;
+      height = vh;
     }
+  } catch (e) {
+    console.warn("getBBox failed for export SVG", e);
   }
-  // Fall back to width/height attributes only when viewBox is absent
-  if (!width || !height) {
-    width = parseFloat(svgEl.getAttribute("width") || "0");
-    height = parseFloat(svgEl.getAttribute("height") || "0");
-  }
-  width = width || 600;
-  height = height || 400;
+  document.body.removeChild(tempDiv);
 
-  // Embed the SVG as a base64 data URL inside an <img> tag.
-  const base64 = btoa(unescape(encodeURIComponent(cleanedSvg)));
+  if (!width || !height) {
+    const viewBox = svgEl.getAttribute("viewBox");
+    if (viewBox) {
+      const parts = viewBox.split(/\s+/).map(Number);
+      if (parts.length === 4) {
+        width = parts[2];
+        height = parts[3];
+      }
+    }
+    if (!width || !height) {
+      width = parseFloat(svgEl.getAttribute("width") || "0");
+      height = parseFloat(svgEl.getAttribute("height") || "0");
+    }
+    width = width || 600;
+    height = height || 400;
+  }
+
+  // Serialize the tightened SVG and load it as an image
+  const tightenedSvg = new XMLSerializer().serializeToString(svgEl);
+  const base64 = btoa(unescape(encodeURIComponent(tightenedSvg)));
   const dataUrl = `data:image/svg+xml;base64,${base64}`;
 
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -211,28 +231,17 @@ async function renderMermaidToPng(content: string, originalConfig: any): Promise
     image.src = dataUrl;
   });
 
-  const wrapper = document.createElement("div");
-  wrapper.style.cssText =
-    "position:fixed;top:0;left:0;z-index:2147483646;" +
-    "background:#ffffff;";
-  img.style.width = width + "px";
-  img.style.height = height + "px";
-  wrapper.appendChild(img);
-  document.body.appendChild(wrapper);
+  // Draw directly to canvas — no html-to-image wrapper sizing issues.
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  try {
-    await new Promise((r) => requestAnimationFrame(r));
-    await new Promise((r) => setTimeout(r, 50));
-
-    return await toPng(wrapper, {
-      pixelRatio: 2,
-      backgroundColor: "#ffffff",
-    });
-  } finally {
-    if (wrapper.parentNode) {
-      document.body.removeChild(wrapper);
-    }
-  }
+  return canvas.toDataURL("image/png");
 }
 
 async function renderMathToPng(latex: string, isBlock: boolean): Promise<string> {
