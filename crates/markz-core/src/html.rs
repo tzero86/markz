@@ -106,9 +106,19 @@ fn render_block(output: &mut String, block: &Block) {
             }
         }
         Block::Table { header, rows } => {
-            output.push_str("<table>\n<thead>\n<tr>\n");
+            output.push_str(r#"<table style="border-collapse:collapse;width:100%;border:1px solid #d1d5db;">"#);
+            output.push_str("\n<thead>\n<tr>\n");
             for cell in header {
-                output.push_str("<th>");
+                output.push_str(r#"<th style="border:1px solid #d1d5db;padding:8px 12px;background-color:#f3f4f6;font-weight:600;"#);
+                if let Some(align) = &cell.alignment {
+                    let align_val = match align {
+                        crate::ast::Alignment::Left => "left",
+                        crate::ast::Alignment::Center => "center",
+                        crate::ast::Alignment::Right => "right",
+                    };
+                    output.push_str(&format!(r#";text-align:{}"#, align_val));
+                }
+                output.push_str("\">");
                 render_inlines(output, &cell.text);
                 output.push_str("</th>\n");
             }
@@ -116,7 +126,16 @@ fn render_block(output: &mut String, block: &Block) {
             for row in rows {
                 output.push_str("<tr>\n");
                 for cell in row {
-                    output.push_str("<td>");
+                    output.push_str(r#"<td style="border:1px solid #d1d5db;padding:8px 12px;"#);
+                    if let Some(align) = &cell.alignment {
+                        let align_val = match align {
+                            crate::ast::Alignment::Left => "left",
+                            crate::ast::Alignment::Center => "center",
+                            crate::ast::Alignment::Right => "right",
+                        };
+                        output.push_str(&format!(r#";text-align:{}"#, align_val));
+                    }
+                    output.push_str("\">");
                     render_inlines(output, &cell.text);
                     output.push_str("</td>\n");
                 }
@@ -423,8 +442,9 @@ mod tests {
         };
         let rendered = render(&doc);
         let html = rendered.trim();
-        assert!(html.contains("<th>a</th>"));
-        assert!(html.contains("<td>c</td>"));
+        assert!(html.contains("<th") && html.contains(">a</th>"));
+        assert!(html.contains("<td") && html.contains(">c</td>"));
+        assert!(html.contains("border-collapse:collapse"));
     }
 
     #[test]
