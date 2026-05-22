@@ -5,16 +5,6 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message;
 use base64::Engine;
 
-fn generate_websocket_key() -> String {
-    let mut nonce = [0u8; 16];
-    uuid::Uuid::new_v4()
-        .as_bytes()
-        .iter()
-        .enumerate()
-        .for_each(|(i, b)| nonce[i] = *b);
-    base64::engine::general_purpose::STANDARD.encode(&nonce)
-}
-
 pub const TRUSTED_CLIENT_TOKEN: &str = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 const WIN_EPOCH: i64 = 11644473600;
 const CHROMIUM_FULL_VERSION: &str = "130.0.2849.68";
@@ -27,7 +17,6 @@ fn generate_sec_ms_gec() -> String {
         .as_secs() as i64;
     let mut ticks = now + WIN_EPOCH;
     ticks -= ticks % 300;
-    // Use floating-point multiplication to match Python's 1e7 exactly
     ticks = (ticks as f64 * 1e7) as i64;
 
     let str_to_hash = format!("{}{}", ticks, TRUSTED_CLIENT_TOKEN);
@@ -56,17 +45,15 @@ fn build_websocket_url() -> String {
 }
 
 fn generate_command(output_format: &str) -> String {
-    // Match edge-tts Python: datetime.now().isoformat() (no timezone)
     let timestamp = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     format!(
-        "X-Timestamp:{}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{{\"context\":{{\"synthesis\":{{\"audio\":{{\"metadataoptions\":{{\"sentenceBoundaryEnabled\":false,\"wordBoundaryEnabled\":true}},\"outputFormat\":\"{}\"}}}}}}}}\r\n",
+        "X-Timestamp:{}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{{{{\"context\":{{{{\"synthesis\":{{{{\"audio\":{{{{\"metadataoptions\":{{{{\"sentenceBoundaryEnabled\":false,\"wordBoundaryEnabled\":true}}}},\"outputFormat\":\"{}\"}}}}}}}}}}}}\r\n",
         timestamp, output_format
     )
 }
 
 fn generate_ssml(text: &str, voice: &str, rate: &str, pitch: &str, volume: &str) -> String {
     let request_id = uuid_no_dashes();
-    // Match edge-tts Python: datetime.utcnow().isoformat() + "Z"
     let timestamp = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     format!(
         "X-RequestId:{}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:{}Z\r\nPath:ssml\r\n\r\n<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>\r\n\t<voice name='{}'>\r\n\t\t<prosody pitch='{}' rate='{}' volume='{}'>\r\n\t\t\t{}\r\n\t\t</prosody>\r\n\t</voice>\r\n</speak>",
@@ -79,7 +66,7 @@ fn parse_message_header(data: &[u8]) -> Option<(String, Vec<u8>)> {
         return None;
     }
     let header_length = ((data[0] as usize) << 8) | (data[1] as usize);
-    let total_header_len = header_length + 2; // +2 for \r\n after header
+    let total_header_len = header_length + 2;
     if data.len() < total_header_len {
         return None;
     }
@@ -104,10 +91,29 @@ pub async fn synthesize(
     let url = build_websocket_url();
     log::debug!("Edge TTS WebSocket URL: {}", url);
 
-    // Build request with headers that match Edge browser extension.
-    // We explicitly set all WebSocket upgrade headers so tungstenite
-    // doesn't need to mutate the request (avoiding http crate v1 quirks).
-    let ws_key = generate_websocket_key();
+    // Debug: first make a plain HTTP GET to see what the server says
+    let debug_url = url.replace("wss://", "https://");
+    match reqwest::get(&debug_url).await {
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            log::debug!("Debug HTTP GET to WS URL -> {}: {}", status, body.chars().take(500).collect::<String>());
+        }
+        Err(e) => {
+            log::debug!("Debug HTTP GET failed: {}", e);
+        }
+    }
+
+    let ws_key = {
+        let mut nonce = [0u8; 16];
+        uuid::Uuid::new_v4()
+            .as_bytes()
+            .iter()
+            .enumerate()
+            .for_each(|(i, b)| nonce[i] = *b);
+        base64::engine::general_purpose::STANDARD.encode(&nonce)
+    };
+
     let request = http::Request::builder()
         .method("GET")
         .uri(&url)
@@ -128,12 +134,11 @@ pub async fn synthesize(
     let (ws_stream, response) = match connect_async(request).await {
         Ok((ws, resp)) => (ws, resp),
         Err(e) => {
-            // Try to extract the HTTP response body when handshake fails
             let err_msg = match &e {
                 tokio_tungstenite::tungstenite::Error::Http(resp) => {
                     let status = resp.status();
                     let body = resp.body().as_ref().map(|b| String::from_utf8_lossy(b).to_string()).unwrap_or_default();
-                    format!("HTTP {}: {}", status, body)
+                    format!("HTTP {}: {}", status, body.chars().take(500).collect::<String>())
                 }
                 _ => format!("{}", e),
             };
@@ -146,21 +151,18 @@ pub async fn synthesize(
 
     let (mut write, mut read) = ws_stream.split();
 
-    // Send config
     let config = generate_command("audio-24khz-48kbitrate-mono-mp3");
     write
         .send(Message::Text(config.into()))
         .await
         .map_err(|e| format!("Failed to send config: {}", e))?;
 
-    // Send SSML
     let ssml = generate_ssml(text, voice, rate, pitch, volume);
     write
         .send(Message::Text(ssml.into()))
         .await
         .map_err(|e| format!("Failed to send SSML: {}", e))?;
 
-    // Collect audio
     let mut audio_buffer: Vec<u8> = Vec::new();
     let mut turn_ended = false;
 
