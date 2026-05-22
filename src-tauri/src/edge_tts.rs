@@ -105,9 +105,22 @@ pub async fn synthesize(
         .body(())
         .map_err(|e| format!("Failed to build WebSocket request: {}", e))?;
 
-    let (ws_stream, response) = connect_async(request)
-        .await
-        .map_err(|e| format!("WebSocket connect failed: {}", e))?;
+    let (ws_stream, response) = match connect_async(request).await {
+        Ok((ws, resp)) => (ws, resp),
+        Err(e) => {
+            // Try to extract the HTTP response body when handshake fails
+            let err_msg = match &e {
+                tokio_tungstenite::tungstenite::Error::Http(resp) => {
+                    let status = resp.status();
+                    let body = resp.body().as_ref().map(|b| String::from_utf8_lossy(b).to_string()).unwrap_or_default();
+                    format!("HTTP {}: {}", status, body)
+                }
+                _ => format!("{}", e),
+            };
+            log::error!("Edge TTS WebSocket handshake failed: {}", err_msg);
+            return Err(format!("WebSocket connect failed: {}", err_msg));
+        }
+    };
 
     log::debug!("WebSocket handshake response: {:?}", response.status());
 
