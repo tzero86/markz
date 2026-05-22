@@ -310,26 +310,16 @@ impl Payload {
 }
 
 pub fn synthesize(text: &str, voice_name: &str) -> Result<Vec<u8>, String> {
-    log::debug!("[edge_tts] Fetching voice list to find '{}'...", voice_name);
-    let voices = list_voices()?;
-
-    let voice = voices
-        .into_iter()
-        .find(|v| v.short_name == voice_name || v.name == voice_name)
-        .ok_or_else(|| format!("Voice '{}' not found", voice_name))?;
-
-    let voice_obj = Voice {
-        name: voice.name,
-        short_name: Some(voice.short_name),
-        gender: Some(voice.gender),
-        locale: Some(voice.locale),
-        suggested_codec: Some(voice.suggested_codec),
-        friendly_name: Some(voice.friendly_name),
-        status: Some(voice.status),
+    log::debug!("[edge_tts] Synthesizing with voice '{}'...", voice_name);
+    let config = SpeechConfig {
+        voice_name: voice_name.to_string(),
+        audio_format: "audio-24khz-48kbitrate-mono-mp3".to_string(),
+        pitch: 0,
+        rate: 0,
+        volume: 0,
     };
 
     log::debug!("[edge_tts] Connecting to TTS service...");
-    let config = SpeechConfig::from(&voice_obj);
     let request = build_websocket_request()?;
     let (mut socket, _) =
         connect(request).map_err(|e| format!("WebSocket connect failed: {}", e))?;
