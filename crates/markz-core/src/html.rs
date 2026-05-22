@@ -109,7 +109,7 @@ fn render_block(output: &mut String, block: &Block) {
             output.push_str(r#"<table style="border-collapse:collapse;width:100%;border:1px solid #d1d5db;">"#);
             output.push_str("\n<thead>\n<tr>\n");
             for cell in header {
-                output.push_str(r#"<th style="border:1px solid #d1d5db;padding:8px 12px;background-color:#f3f4f6;font-weight:600;"#);
+                output.push_str(r#"<th style="border:1px solid #d1d5db;padding:8px 12px;font-weight:600;"#);
                 if let Some(align) = &cell.alignment {
                     let align_val = match align {
                         crate::ast::Alignment::Left => "left",
