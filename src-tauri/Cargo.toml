@@ -32,6 +32,7 @@ uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
 futures-util = "0.3"
 reqwest = { version = "0.12", features = ["json"] }
+http = "1"
 
 markz-core = { path = "../crates/markz-core" }
 markz-convert = { path = "../crates/markz-convert" }

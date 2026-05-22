@@ -6,19 +6,18 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 
 pub const TRUSTED_CLIENT_TOKEN: &str = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 const WIN_EPOCH: i64 = 11644473600;
-const CHROMIUM_FULL_VERSION: &str = "134.0.3124.66";
+const CHROMIUM_FULL_VERSION: &str = "130.0.2849.68";
 pub const BASE_URL: &str = "speech.platform.bing.com/consumer/speech/synthesize/readaloud";
-pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0";
 
 fn generate_sec_ms_gec() -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as i64;
-    let s_to_ns: i64 = 1_000_000_000;
     let mut ticks = now + WIN_EPOCH;
     ticks -= ticks % 300;
-    ticks *= s_to_ns / 100;
+    // Use floating-point multiplication to match Python's 1e7 exactly
+    ticks = (ticks as f64 * 1e7) as i64;
 
     let str_to_hash = format!("{}{}", ticks, TRUSTED_CLIENT_TOKEN);
     let mut hasher = Sha256::new();
@@ -46,7 +45,8 @@ fn build_websocket_url() -> String {
 }
 
 fn generate_command(output_format: &str) -> String {
-    let timestamp = chrono::Local::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+    // Match edge-tts Python: datetime.now().isoformat() (no timezone)
+    let timestamp = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     format!(
         "X-Timestamp:{}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{{\"context\":{{\"synthesis\":{{\"audio\":{{\"metadataoptions\":{{\"sentenceBoundaryEnabled\":false,\"wordBoundaryEnabled\":true}},\"outputFormat\":\"{}\"}}}}}}}}\r\n",
         timestamp, output_format
@@ -55,7 +55,8 @@ fn generate_command(output_format: &str) -> String {
 
 fn generate_ssml(text: &str, voice: &str, rate: &str, pitch: &str, volume: &str) -> String {
     let request_id = uuid_no_dashes();
-    let timestamp = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+    // Match edge-tts Python: datetime.utcnow().isoformat() + "Z"
+    let timestamp = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
     format!(
         "X-RequestId:{}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:{}Z\r\nPath:ssml\r\n\r\n<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>\r\n\t<voice name='{}'>\r\n\t\t<prosody pitch='{}' rate='{}' volume='{}'>\r\n\t\t\t{}\r\n\t\t</prosody>\r\n\t</voice>\r\n</speak>",
         request_id, timestamp, voice, pitch, rate, volume, text
@@ -75,7 +76,6 @@ fn parse_message_header(data: &[u8]) -> Option<(String, Vec<u8>)> {
     let header_bytes = &data[2..total_header_len];
     let header_text = String::from_utf8_lossy(header_bytes);
 
-    // Check Path in header
     let path_line = header_text.lines().find(|line| line.starts_with("Path:"))?;
     let path = path_line.trim_start_matches("Path:").trim().to_string();
 
@@ -91,10 +91,25 @@ pub async fn synthesize(
     volume: &str,
 ) -> Result<Vec<u8>, String> {
     let url = build_websocket_url();
+    log::debug!("Edge TTS WebSocket URL: {}", url);
 
-    let (ws_stream, _) = connect_async(&url)
+    // Build request with headers that match Edge browser extension
+    let request = http::Request::builder()
+        .uri(&url)
+        .header("Pragma", "no-cache")
+        .header("Cache-Control", "no-cache")
+        .header("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0")
+        .header("Accept-Encoding", "gzip, deflate, br")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .body(())
+        .map_err(|e| format!("Failed to build WebSocket request: {}", e))?;
+
+    let (ws_stream, response) = connect_async(request)
         .await
         .map_err(|e| format!("WebSocket connect failed: {}", e))?;
+
+    log::debug!("WebSocket handshake response: {:?}", response.status());
 
     let (mut write, mut read) = ws_stream.split();
 
@@ -123,7 +138,6 @@ pub async fn synthesize(
                     if path == "audio" {
                         audio_buffer.extend_from_slice(&payload);
                     }
-                    // Ignore other paths like "turn.start"
                 }
             }
             Ok(Message::Text(text)) => {
@@ -131,7 +145,6 @@ pub async fn synthesize(
                     turn_ended = true;
                     break;
                 }
-                // Check for errors
                 if text.contains("X-StatusCode:") || text.contains("error") {
                     return Err(format!("TTS server error: {}", text));
                 }
@@ -142,7 +155,6 @@ pub async fn synthesize(
         }
     }
 
-    // Close our end gracefully
     let _ = write.send(Message::Close(None)).await;
 
     if audio_buffer.is_empty() && !turn_ended {

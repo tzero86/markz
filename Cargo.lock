@@ -2184,6 +2184,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "hex",
+ "http",
  "log",
  "markz-config",
  "markz-convert",

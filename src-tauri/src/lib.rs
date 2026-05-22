@@ -295,7 +295,7 @@ async fn edge_tts_get_voices() -> Result<serde_json::Value, String> {
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
-        .header("User-Agent", edge_tts::USER_AGENT)
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0")
         .send()
         .await
         .map_err(|e| format!("Failed to fetch voices: {}", e))?;
