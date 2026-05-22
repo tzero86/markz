@@ -19,9 +19,6 @@ log = "0.4"
 # Markdown / Parsing
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 
-# Frontmatter
-yaml-rust2 = "0.10"
-
 # Directories
 dirs = "6.0"
 

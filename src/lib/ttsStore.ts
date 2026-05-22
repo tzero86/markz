@@ -2,65 +2,121 @@ import { writable, get } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
 
 export type TtsState = "idle" | "loading" | "playing" | "paused";
+export type TtsEngine = "local" | "online";
 
-export interface EdgeVoice {
-  Name: string;
-  ShortName: string;
-  FriendlyName: string;
-  Gender: string;
-  Locale: string;
-  SuggestedCodec: string;
-  Status: string;
-  VoiceTag: {
-    ContentCategories: string[];
-    VoicePersonalities: string[];
-  };
+export interface TtsVoice {
+  id: string;
+  name: string;
+  language: string;
+  gender: string;
+  description: string;
+  engine: TtsEngine;
 }
 
 interface TtsStore {
   state: TtsState;
-  voice: EdgeVoice | null;
+  engine: TtsEngine;
+  voice: TtsVoice | null;
   rate: number;
-  voices: EdgeVoice[];
+  voices: TtsVoice[];
   audio: HTMLAudioElement | null;
   error: string | null;
+  loadingVoices: boolean;
 }
 
 function createTtsStore() {
   const { subscribe, set, update } = writable<TtsStore>({
     state: "idle",
+    engine: "online",
     voice: null,
     rate: 1.0,
     voices: [],
     audio: null,
     error: null,
+    loadingVoices: false,
   });
 
-  async function loadVoices() {
+  async function loadVoices(engine: TtsEngine) {
+    const current = get({ subscribe });
+    console.log("[ttsStore] loadVoices called for", engine, "current loadingVoices:", current.loadingVoices, "current voices:", current.voices.length);
+    if (current.loadingVoices) {
+      console.log("[ttsStore] already loading, skipping");
+      return;
+    }
+
+    update((s) => ({ ...s, loadingVoices: true, error: null }));
+    console.log("[ttsStore] set loadingVoices=true");
+
     try {
-      const voices = (await invoke("edge_tts_get_voices")) as EdgeVoice[];
-      if (!Array.isArray(voices)) {
-        update((s) => ({ ...s, error: "Failed to load voices" }));
+      console.log("[ttsStore] invoking tts_get_voices with engine:", engine);
+      const raw = (await invoke("tts_get_voices", { engine })) as any[];
+      console.log("[ttsStore] invoke returned, raw type:", typeof raw, "isArray:", Array.isArray(raw), "length:", raw?.length);
+
+      if (!Array.isArray(raw)) {
+        console.error("[ttsStore] raw is not array:", raw);
+        update((s) => ({ ...s, error: "Failed to load voices", loadingVoices: false }));
         return;
       }
-      const sorted = voices.sort((a, b) => {
-        const aEn = a.Locale.startsWith("en") ? 0 : 1;
-        const bEn = b.Locale.startsWith("en") ? 0 : 1;
-        if (aEn !== bEn) return aEn - bEn;
-        return a.FriendlyName.localeCompare(b.FriendlyName);
-      });
+
+      if (raw.length === 0) {
+        console.warn("[ttsStore] raw array is empty");
+        update((s) => ({ ...s, error: "No voices available", loadingVoices: false }));
+        return;
+      }
+
+      console.log("[ttsStore] first raw item:", raw[0]);
+
+      const voices: TtsVoice[] = [];
+      for (let i = 0; i < raw.length; i++) {
+        const v = raw[i];
+        try {
+          if (engine === "local") {
+            voices.push({
+              id: v.id ?? "",
+              name: v.name ?? "",
+              language: v.language ?? "",
+              gender: v.gender ?? "",
+              description: v.description ?? "",
+              engine,
+            });
+          } else {
+            voices.push({
+              id: v.short_name ?? v.name ?? "",
+              name: v.friendly_name ?? v.name ?? "",
+              language: v.locale ?? "",
+              gender: v.gender ?? "",
+              description: `${v.locale ?? ""} — ${v.status ?? ""}`,
+              engine,
+            });
+          }
+        } catch (mapErr) {
+          console.error("[ttsStore] Error mapping voice at index", i, ":", mapErr, "voice:", v);
+        }
+      }
+
+      console.log("[ttsStore] mapped voices count:", voices.length);
+
+      if (voices.length === 0) {
+        console.warn("[ttsStore] all voices failed to map");
+        update((s) => ({ ...s, error: "No voices available", loadingVoices: false }));
+        return;
+      }
+
       update((s) => {
         const preferred =
-          s.voice && sorted.find((v) => v.ShortName === s.voice!.ShortName)
+          s.voice &&
+          s.voice.engine === engine &&
+          voices.find((v) => v.id === s.voice!.id)
             ? s.voice
-            : sorted.find((v) => v.ShortName.includes("AriaNeural")) ||
-              sorted.find((v) => v.Locale.startsWith("en")) ||
-              sorted[0] ||
+            : voices.find((v) => v.language.startsWith("en")) ||
+              voices[0] ||
               null;
-        return { ...s, voices: sorted, voice: preferred, error: null };
+        console.log("[ttsStore] updating store with", voices.length, "voices, preferred:", preferred?.name);
+        return { ...s, engine, voices, voice: preferred, error: null, loadingVoices: false };
       });
     } catch (e) {
-      update((s) => ({ ...s, error: String(e) }));
+      console.error("[ttsStore] loadVoices error:", e);
+      update((s) => ({ ...s, error: String(e), loadingVoices: false }));
     }
   }
 
@@ -90,7 +146,7 @@ function createTtsStore() {
 
     const state = get({ subscribe });
     if (!state.voice) {
-      update((s) => ({ ...s, error: "No voice selected" }));
+      console.warn("TTS: No voice selected");
       return;
     }
     if (!text.trim()) return;
@@ -98,13 +154,10 @@ function createTtsStore() {
     update((s) => ({ ...s, state: "loading", error: null }));
 
     try {
-      const ratePercent = `${state.rate >= 1 ? "+" : ""}${Math.round((state.rate - 1) * 100)}%`;
-      const b64 = await invoke<string>("edge_tts_speak", {
+      const b64 = await invoke<string>("tts_speak", {
+        engine: state.engine,
         text,
-        voice: state.voice.ShortName,
-        rate: ratePercent,
-        pitch: "+0Hz",
-        volume: "+0%",
+        voiceId: state.voice.id,
       });
 
       const byteCharacters = atob(b64);
@@ -113,10 +166,11 @@ function createTtsStore() {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "audio/mp3" });
+      const blob = new Blob([byteArray], { type: "audio/wav" });
       const url = URL.createObjectURL(blob);
 
       const audio = new Audio(url);
+      audio.playbackRate = state.rate;
       audio.onended = () => {
         URL.revokeObjectURL(url);
         update((s) => ({ ...s, state: "idle", audio: null }));
@@ -175,10 +229,19 @@ function createTtsStore() {
 
   function setRate(rate: number) {
     update((s) => ({ ...s, rate: Math.max(0.5, Math.min(2.0, rate)) }));
+    const state = get({ subscribe });
+    if (state.audio) {
+      state.audio.playbackRate = state.rate;
+    }
   }
 
-  function setVoice(voice: EdgeVoice | null) {
+  function setVoice(voice: TtsVoice | null) {
     update((s) => ({ ...s, voice }));
+  }
+
+  function setEngine(engine: TtsEngine) {
+    update((s) => ({ ...s, engine, voices: [], voice: null, error: null }));
+    loadVoices(engine);
   }
 
   return {
@@ -190,6 +253,7 @@ function createTtsStore() {
     stop,
     setRate,
     setVoice,
+    setEngine,
     extractReadableText,
   };
 }

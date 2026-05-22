@@ -12,6 +12,7 @@
   import { Copy, Check, Play, Pause, Square, Volume2, Pencil, RefreshCw } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
   import DOMPurify from "dompurify";
+  import { onMount } from "svelte";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
 
@@ -29,10 +30,13 @@
   let previewEditing = $state(false);
   let syncFeedback = $state(false);
 
-  // Load TTS voices when HTML preview is active
-  $effect(() => {
-    if (activeFormat === "html" && $ttsStore.voices.length === 0) {
-      ttsStore.loadVoices();
+  // Load TTS voices once on mount when HTML preview is active
+  let ttsLoaded = $state(false);
+  onMount(() => {
+    if (activeFormat === "html" && !ttsLoaded) {
+      ttsLoaded = true;
+      console.log("[PreviewPane] onMount: loading voices for", $ttsStore.engine);
+      ttsStore.loadVoices($ttsStore.engine);
     }
   });
 
@@ -444,17 +448,28 @@
           {/if}
           {#if $ttsStore.voices.length > 0}
             <select
-              class="tts-voice-select"
-              value={$ttsStore.voice?.ShortName ?? ""}
+              class="tts-engine-select"
+              value={$ttsStore.engine}
               onchange={(e) => {
-                const shortName = e.currentTarget.value;
-                const voice = $ttsStore.voices.find((v) => v.ShortName === shortName) || null;
+                ttsStore.setEngine(e.currentTarget.value as "local" | "online");
+              }}
+              title="TTS Engine"
+            >
+              <option value="online">Online (Edge)</option>
+              <option value="local">Local (Windows)</option>
+            </select>
+            <select
+              class="tts-voice-select"
+              value={$ttsStore.voice?.id ?? ""}
+              onchange={(e) => {
+                const id = e.currentTarget.value;
+                const voice = $ttsStore.voices.find((v) => v.id === id) || null;
                 ttsStore.setVoice(voice);
               }}
               title="Voice"
             >
               {#each $ttsStore.voices as voice}
-                <option value={voice.ShortName}>{voice.FriendlyName}</option>
+                <option value={voice.id}>{voice.name} ({voice.language})</option>
               {/each}
             </select>
             <input
@@ -675,6 +690,20 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-xs);
+  }
+  .tts-engine-select {
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 2px 4px;
+    max-width: 90px;
+    cursor: pointer;
+    outline: none;
+  }
+  .tts-engine-select:focus {
+    border-color: var(--accent-default);
   }
   .tts-voice-select {
     background: var(--bg-base);

@@ -8,7 +8,8 @@ use base64::Engine;
 use log::LevelFilter;
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
-mod edge_tts;
+mod windows_tts;
+mod edge_tts_crate;
 
 pub struct AppState {
     pub current_path: Mutex<Option<String>>,
@@ -286,41 +287,77 @@ async fn convert_html_to_markdown(html: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn edge_tts_get_voices() -> Result<serde_json::Value, String> {
-    let url = format!(
-        "https://{}/voices/list?trustedclienttoken={}",
-        edge_tts::BASE_URL,
-        edge_tts::TRUSTED_CLIENT_TOKEN
-    );
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0")
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch voices: {}", e))?;
-
-    let voices: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse voices: {}", e))?;
-
-    Ok(voices)
+async fn tts_get_voices(engine: String) -> Result<Vec<edge_tts_crate::EdgeVoice>, String> {
+    match engine.as_str() {
+        "local" => {
+            let voices = windows_tts::list_voices()?;
+            Ok(voices.into_iter().map(|v| edge_tts_crate::EdgeVoice {
+                name: v.name.clone(),
+                short_name: v.id,
+                gender: v.gender,
+                locale: v.language,
+                suggested_codec: "audio-24khz-48kbitrate-mono-mp3".to_string(),
+                friendly_name: v.name,
+                status: "local".to_string(),
+            }).collect())
+        }
+        "online" => {
+            let voices = tauri::async_runtime::spawn_blocking(|| edge_tts_crate::list_voices())
+                .await
+                .map_err(|e| {
+                    if let tauri::Error::JoinError(join_err) = e {
+                        if join_err.is_panic() {
+                            let payload = join_err.into_panic();
+                            if let Some(s) = payload.downcast_ref::<&str>() {
+                                format!("TTS panicked: {}", s)
+                            } else if let Some(s) = payload.downcast_ref::<String>() {
+                                format!("TTS panicked: {}", s)
+                            } else {
+                                "TTS panicked with unknown payload".to_string()
+                            }
+                        } else {
+                            format!("Task cancelled: {}", join_err)
+                        }
+                    } else {
+                        format!("TTS task failed: {}", e)
+                    }
+                })??;
+            Ok(voices.into_iter().take(50).collect())
+        }
+        _ => Err(format!("Unknown TTS engine: {}", engine)),
+    }
 }
 
 #[tauri::command]
-async fn edge_tts_speak(
-    text: String,
-    voice: String,
-    rate: String,
-    pitch: String,
-    volume: String,
-) -> Result<String, String> {
-    let audio = edge_tts::synthesize(&text, &voice, &rate, &pitch, &volume)
-        .await
-        .map_err(|e| format!("TTS synthesis failed: {}", e))?;
+async fn tts_speak(engine: String, text: String, voice_id: String) -> Result<String, String> {
+    let audio = match engine.as_str() {
+        "local" => windows_tts::synthesize(&text, Some(&voice_id)),
+        "online" => {
+            tauri::async_runtime::spawn_blocking(move || edge_tts_crate::synthesize(&text, &voice_id))
+                .await
+                .map_err(|e| {
+                    if let tauri::Error::JoinError(join_err) = e {
+                        if join_err.is_panic() {
+                            let payload = join_err.into_panic();
+                            if let Some(s) = payload.downcast_ref::<&str>() {
+                                format!("TTS panicked: {}", s)
+                            } else if let Some(s) = payload.downcast_ref::<String>() {
+                                format!("TTS panicked: {}", s)
+                            } else {
+                                "TTS panicked with unknown payload".to_string()
+                            }
+                        } else {
+                            format!("Task cancelled: {}", join_err)
+                        }
+                    } else {
+                        format!("TTS task failed: {}", e)
+                    }
+                })?
+        }
+        _ => Err(format!("Unknown TTS engine: {}", engine)),
+    }
+    .map_err(|e| format!("TTS synthesis failed: {}", e))?;
 
-    // Encode audio as base64 for easy transfer to frontend
     let b64 = base64::engine::general_purpose::STANDARD.encode(&audio);
     Ok(b64)
 }
@@ -440,8 +477,8 @@ pub fn run() {
             convert_to_slack,
             convert_to_github,
             convert_html_to_markdown,
-            edge_tts_get_voices,
-            edge_tts_speak,
+            tts_get_voices,
+            tts_speak,
             export_to_docx,
             list_templates,
             get_template,
