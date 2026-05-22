@@ -4,10 +4,15 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2026-05-22
+
+### Fixed
+- **Table preview header styling** — Removed hardcoded `background-color:#f3f4f6` from inline table header styles that caused white-on-white header text in dark mode preview. Borders and padding are preserved for rich clipboard paste; background styling is left to the app's CSS/theme.
+
 ## [0.3.4] - 2026-05-22
 
 ### Fixed
-- **Table borders in rich paste** — Tables now include inline `style` attributes (`border-collapse`, `border`, `padding`, `background-color`, `text-align`) on `<table>`, `<th>`, and `<td>` elements. This ensures visible borders and proper alignment when pasting into JIRA, Confluence, and other rich editors that don't inherit external CSS.
+- **Table borders in rich paste** — Tables now include inline `style` attributes (`border-collapse`, `border`, `padding`, `text-align`) on `<table>`, `<th>`, and `<td>` elements. This ensures visible borders and proper alignment when pasting into JIRA, Confluence, and other rich editors that don't inherit external CSS.
 
 ## [0.3.3] - 2026-05-22
 
