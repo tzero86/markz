@@ -37,3 +37,6 @@ ureq = "3"
 
 # Base64 encoding (local image embedding in preview)
 base64 = "0.22"
+
+# HTML to Markdown (bidirectional preview editing)
+htmd = "0.5"

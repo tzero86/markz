@@ -9,7 +9,8 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import { Copy, Check } from "@lucide/svelte";
+  import { Copy, Check, Play, Pause, Square, Volume2, Pencil, RefreshCw } from "@lucide/svelte";
+  import { ttsStore } from "../../lib/ttsStore";
   import DOMPurify from "dompurify";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
@@ -25,6 +26,8 @@
   let settings = $state<{ embed_remote_images: boolean; preview_font_size: number } | null>(null);
   let copyFeedback = $state(false);
   let renderProgress = $state(0);
+  let previewEditing = $state(false);
+  let syncFeedback = $state(false);
 
   const formats: { id: PreviewFormat; label: string; icon: string }[] = [
     { id: "html", label: "HTML", icon: FORMAT_ICONS.html_sm },
@@ -347,6 +350,113 @@
       {/each}
     </div>
     <div class="toolbar-actions">
+      {#if activeFormat === "html"}
+        <button
+          class="action-btn"
+          class:active={previewEditing}
+          onclick={() => (previewEditing = !previewEditing)}
+          aria-label={previewEditing ? "Stop editing preview" : "Edit preview"}
+          data-tooltip={previewEditing ? "Stop editing preview" : "Edit preview"}
+        >
+          <Pencil size={14} strokeWidth={2} />
+        </button>
+        {#if previewEditing}
+          <button
+            class="action-btn"
+            class:success={syncFeedback}
+            onclick={async () => {
+              if (!contentDiv) return;
+              const html = contentDiv.innerHTML;
+              try {
+                const markdown = await invoke<string>("convert_html_to_markdown", { html });
+                if (markdown) {
+                  documentStore.setContent(markdown);
+                  previewEditing = false;
+                  syncFeedback = true;
+                  setTimeout(() => (syncFeedback = false), 1500);
+                }
+              } catch (e) {
+                console.error("Sync failed:", e);
+              }
+            }}
+            aria-label="Sync to editor"
+            data-tooltip="Sync to editor"
+          >
+            <RefreshCw size={14} strokeWidth={2} />
+          </button>
+        {/if}
+      {/if}
+      {#if activeFormat === "html" && $ttsStore.voices.length > 0}
+        <div class="tts-controls">
+          {#if $ttsStore.state === "idle"}
+            <button
+              class="action-btn"
+              onclick={() => {
+                if (contentDiv) {
+                  const text = ttsStore.extractReadableText(contentDiv);
+                  if (text) ttsStore.speak(text);
+                }
+              }}
+              aria-label="Read aloud"
+              data-tooltip="Read aloud"
+            >
+              <Play size={14} strokeWidth={2} />
+            </button>
+          {:else if $ttsStore.state === "playing"}
+            <button
+              class="action-btn"
+              onclick={() => ttsStore.pause()}
+              aria-label="Pause"
+              data-tooltip="Pause"
+            >
+              <Pause size={14} strokeWidth={2} />
+            </button>
+          {:else}
+            <button
+              class="action-btn"
+              onclick={() => ttsStore.resume()}
+              aria-label="Resume"
+              data-tooltip="Resume"
+            >
+              <Play size={14} strokeWidth={2} />
+            </button>
+          {/if}
+          {#if $ttsStore.state !== "idle"}
+            <button
+              class="action-btn"
+              onclick={() => ttsStore.stop()}
+              aria-label="Stop"
+              data-tooltip="Stop"
+            >
+              <Square size={14} strokeWidth={2} />
+            </button>
+          {/if}
+          <select
+            class="tts-voice-select"
+            value={$ttsStore.voice?.voiceURI ?? ""}
+            onchange={(e) => {
+              const uri = e.currentTarget.value;
+              const voice = $ttsStore.voices.find((v) => v.voiceURI === uri) || null;
+              ttsStore.setVoice(voice);
+            }}
+            title="Voice"
+          >
+            {#each $ttsStore.voices as voice}
+              <option value={voice.voiceURI}>{voice.name} ({voice.lang})</option>
+            {/each}
+          </select>
+          <input
+            type="range"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+            value={$ttsStore.rate}
+            oninput={(e) => ttsStore.setRate(parseFloat(e.currentTarget.value))}
+            class="tts-rate"
+            title="Speed: {$ttsStore.rate}x"
+          />
+        </div>
+      {/if}
       <button
         class="action-btn"
         class:success={copyFeedback}
@@ -366,7 +476,13 @@
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     {#key htmlContent}
       {#if activeFormat === "html"}
-        <div class="preview-content" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
+        <div
+          class="preview-content"
+          class:editing={previewEditing}
+          bind:this={contentDiv}
+          contenteditable={previewEditing}
+          style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
+        >
           {@html htmlContent}
         </div>
       {:else}
@@ -520,6 +636,11 @@
   .action-btn.success:hover {
     background: var(--accent-hover);
   }
+  .action-btn.active {
+    background: var(--accent-default);
+    color: white;
+    border-color: var(--accent-default);
+  }
   .action-label {
     font-size: 11px;
   }
@@ -527,6 +648,37 @@
     0% { transform: scale(1); }
     50% { transform: scale(1.08); }
     100% { transform: scale(1); }
+  }
+
+  /* TTS controls */
+  .tts-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+  }
+  .tts-voice-select {
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 2px 4px;
+    max-width: 140px;
+    cursor: pointer;
+    outline: none;
+  }
+  .tts-voice-select:focus {
+    border-color: var(--accent-default);
+  }
+  .tts-rate {
+    width: 60px;
+    accent-color: var(--accent-default);
+    cursor: pointer;
   }
 
   .preview-scroller {
@@ -559,6 +711,12 @@
     font-size: 0.8125em;
     line-height: 1.6;
     white-space: pre;
+  }
+  .preview-content.editing {
+    outline: 2px dashed var(--accent-default);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+    cursor: text;
   }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }

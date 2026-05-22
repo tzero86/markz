@@ -279,6 +279,11 @@ async fn convert_to_github(
 }
 
 #[tauri::command]
+async fn convert_html_to_markdown(html: String) -> Result<String, String> {
+    Ok(markz_core::html_to_markdown::convert(&html))
+}
+
+#[tauri::command]
 async fn export_to_docx(
     markdown: String,
     doc_path: Option<String>,
@@ -392,6 +397,7 @@ pub fn run() {
             convert_to_confluence,
             convert_to_slack,
             convert_to_github,
+            convert_html_to_markdown,
             export_to_docx,
             list_templates,
             get_template,
