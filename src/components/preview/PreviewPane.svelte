@@ -197,10 +197,28 @@
 
   async function copyOutput() {
     try {
-      const text = activeFormat === "html"
+      const plainText = activeFormat === "html"
         ? htmlContent.replace(/<[^>]+>/g, "")
         : htmlContent.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-      await navigator.clipboard.writeText(text);
+
+      if (activeFormat === "html") {
+        await navigator.clipboard.writeText(plainText);
+      } else {
+        // For non-HTML formats, also fetch the rendered HTML so rich editors
+        // (JIRA, Confluence, etc.) can paste formatted content properly.
+        const renderedHtml = await invoke<string>("render_preview", {
+          markdown: $documentStore.content,
+          docPath: $documentStore.path,
+        });
+        const blobHtml = new Blob([renderedHtml], { type: "text/html" });
+        const blobText = new Blob([plainText], { type: "text/plain" });
+        const item = new ClipboardItem({
+          "text/html": blobHtml,
+          "text/plain": blobText,
+        });
+        await navigator.clipboard.write([item]);
+      }
+
       copyFeedback = true;
       setTimeout(() => copyFeedback = false, 1500);
     } catch (e) {

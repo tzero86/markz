@@ -93,7 +93,7 @@
 {#if showTableDialog}
   <div class="table-dialog-backdrop" onclick={() => showTableDialog = false} onkeydown={(e) => e.key === "Escape" && (showTableDialog = false)} role="presentation" tabindex="-1">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="table-dialog" role="dialog" aria-label="Insert table" tabindex="0">
+    <div class="table-dialog" role="dialog" aria-label="Insert table" tabindex="0" onclick={(e) => e.stopPropagation()}>
       <h4>Insert Table</h4>
       <div class="table-fields">
         <label>
