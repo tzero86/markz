@@ -33,7 +33,6 @@
     "canvg": "^4.0.3",
     "codemirror": "^6.0.1",
     "dompurify": "^3.4.4",
-    "edge-tts-browser": "^1.0.1",
     "highlight.js": "^11.11.0",
     "html-to-image": "^1.11.13",
     "katex": "^0.16.21",

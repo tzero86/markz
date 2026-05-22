@@ -1,5 +1,5 @@
 import { writable, get } from "svelte/store";
-import EdgeTTSBrowser from "edge-tts-browser";
+import { invoke } from "@tauri-apps/api/core";
 
 export type TtsState = "idle" | "loading" | "playing" | "paused";
 
@@ -36,16 +36,13 @@ function createTtsStore() {
     error: null,
   });
 
-  let currentTts: EdgeTTSBrowser | null = null;
-
   async function loadVoices() {
     try {
-      const voices = (await EdgeTTSBrowser.getVoices()) as EdgeVoice[];
+      const voices = (await invoke("edge_tts_get_voices")) as EdgeVoice[];
       if (!Array.isArray(voices)) {
         update((s) => ({ ...s, error: "Failed to load voices" }));
         return;
       }
-      // Sort: English first, then alphabetically by locale
       const sorted = voices.sort((a, b) => {
         const aEn = a.Locale.startsWith("en") ? 0 : 1;
         const bEn = b.Locale.startsWith("en") ? 0 : 1;
@@ -101,14 +98,22 @@ function createTtsStore() {
     update((s) => ({ ...s, state: "loading", error: null }));
 
     try {
-      currentTts = new EdgeTTSBrowser();
-      currentTts.tts.setVoiceParams({
+      const ratePercent = `${state.rate >= 1 ? "+" : ""}${Math.round((state.rate - 1) * 100)}%`;
+      const b64 = await invoke<string>("edge_tts_speak", {
         text,
         voice: state.voice.ShortName,
-        rate: `${state.rate >= 1 ? "+" : ""}${Math.round((state.rate - 1) * 100)}%`,
+        rate: ratePercent,
+        pitch: "+0Hz",
+        volume: "+0%",
       });
 
-      const blob = await currentTts.ttsToFile();
+      const byteCharacters = atob(b64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "audio/mp3" });
       const url = URL.createObjectURL(blob);
 
       const audio = new Audio(url);
@@ -127,7 +132,12 @@ function createTtsStore() {
       audio.onerror = (e) => {
         console.error("Audio playback error:", e);
         URL.revokeObjectURL(url);
-        update((s) => ({ ...s, state: "idle", audio: null, error: "Playback failed" }));
+        update((s) => ({
+          ...s,
+          state: "idle",
+          audio: null,
+          error: "Playback failed",
+        }));
       };
 
       update((s) => ({ ...s, audio }));
@@ -159,8 +169,6 @@ function createTtsStore() {
     if (state.audio) {
       state.audio.pause();
       state.audio.currentTime = 0;
-      // revoke object URL if we stored it; we don't track URLs individually,
-      // but the blob URL will be cleaned up when the audio element is GC'd
     }
     update((s) => ({ ...s, state: "idle", audio: null }));
   }

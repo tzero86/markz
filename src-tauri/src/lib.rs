@@ -8,6 +8,8 @@ use base64::Engine;
 use log::LevelFilter;
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
+mod edge_tts;
+
 pub struct AppState {
     pub current_path: Mutex<Option<String>>,
 }
@@ -284,6 +286,46 @@ async fn convert_html_to_markdown(html: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn edge_tts_get_voices() -> Result<serde_json::Value, String> {
+    let url = format!(
+        "https://{}/voices/list?trustedclienttoken={}",
+        edge_tts::BASE_URL,
+        edge_tts::TRUSTED_CLIENT_TOKEN
+    );
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .header("User-Agent", edge_tts::USER_AGENT)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch voices: {}", e))?;
+
+    let voices: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse voices: {}", e))?;
+
+    Ok(voices)
+}
+
+#[tauri::command]
+async fn edge_tts_speak(
+    text: String,
+    voice: String,
+    rate: String,
+    pitch: String,
+    volume: String,
+) -> Result<String, String> {
+    let audio = edge_tts::synthesize(&text, &voice, &rate, &pitch, &volume)
+        .await
+        .map_err(|e| format!("TTS synthesis failed: {}", e))?;
+
+    // Encode audio as base64 for easy transfer to frontend
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&audio);
+    Ok(b64)
+}
+
+#[tauri::command]
 async fn export_to_docx(
     markdown: String,
     doc_path: Option<String>,
@@ -398,6 +440,8 @@ pub fn run() {
             convert_to_slack,
             convert_to_github,
             convert_html_to_markdown,
+            edge_tts_get_voices,
+            edge_tts_speak,
             export_to_docx,
             list_templates,
             get_template,
