@@ -9,7 +9,7 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import { Copy, Check, Play, Pause, Square, Pencil, RefreshCw } from "@lucide/svelte";
+  import { Copy, Check, Play, Pause, Square } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
   import DOMPurify from "dompurify";
 
@@ -351,42 +351,13 @@
       {/each}
     </div>
     <div class="toolbar-actions">
-      {#if activeFormat === "html"}
-        <button
-          class="action-btn"
-          class:active={previewEditing}
-          onclick={() => (previewEditing = !previewEditing)}
-          aria-label={previewEditing ? "Stop editing preview" : "Edit preview"}
-          data-tooltip={previewEditing ? "Stop editing preview" : "Edit preview"}
-        >
-          <Pencil size={14} strokeWidth={2} />
-        </button>
-        {#if previewEditing}
-          <button
-            class="action-btn"
-            class:success={syncFeedback}
-            onclick={async () => {
-              if (!contentDiv) return;
-              const html = contentDiv.innerHTML;
-              try {
-                const markdown = await invoke<string>("convert_html_to_markdown", { html });
-                if (markdown) {
-                  documentStore.setContent(markdown);
-                  previewEditing = false;
-                  syncFeedback = true;
-                  setTimeout(() => (syncFeedback = false), 1500);
-                }
-              } catch (e) {
-                console.error("Sync failed:", e);
-              }
-            }}
-            aria-label="Sync to editor"
-            data-tooltip="Sync to editor"
-          >
-            <RefreshCw size={14} strokeWidth={2} />
-          </button>
-        {/if}
-      {/if}
+      <!-- Bi-directional editing hidden for now — needs more testing -->
+      <!-- {#if activeFormat === "html"} -->
+      <!--   <button class="action-btn" class:active={previewEditing} onclick={() => (previewEditing = !previewEditing)}> -->
+      <!--     <Pencil size={14} strokeWidth={2} /> -->
+      <!--   </button> -->
+      <!--   {#if previewEditing} ... sync button ... {/if} -->
+      <!-- {/if} -->
       {#if activeFormat === "html"}
         <div class="tts-controls">
           {#if $ttsStore.state === "loading"}
