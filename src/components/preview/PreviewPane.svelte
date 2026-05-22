@@ -29,6 +29,13 @@
   let previewEditing = $state(false);
   let syncFeedback = $state(false);
 
+  // Load TTS voices when HTML preview is active
+  $effect(() => {
+    if (activeFormat === "html" && $ttsStore.voices.length === 0) {
+      ttsStore.loadVoices();
+    }
+  });
+
   const formats: { id: PreviewFormat; label: string; icon: string }[] = [
     { id: "html", label: "HTML", icon: FORMAT_ICONS.html_sm },
     { id: "jira", label: "JIRA", icon: FORMAT_ICONS.jira_sm },
@@ -386,9 +393,13 @@
           </button>
         {/if}
       {/if}
-      {#if activeFormat === "html" && $ttsStore.voices.length > 0}
+      {#if activeFormat === "html"}
         <div class="tts-controls">
-          {#if $ttsStore.state === "idle"}
+          {#if $ttsStore.state === "loading"}
+            <button class="action-btn" disabled aria-label="Loading">
+              <span class="tts-spinner"></span>
+            </button>
+          {:else if $ttsStore.state === "idle"}
             <button
               class="action-btn"
               onclick={() => {
@@ -421,7 +432,7 @@
               <Play size={14} strokeWidth={2} />
             </button>
           {/if}
-          {#if $ttsStore.state !== "idle"}
+          {#if $ttsStore.state !== "idle" && $ttsStore.state !== "loading"}
             <button
               class="action-btn"
               onclick={() => ttsStore.stop()}
@@ -431,30 +442,34 @@
               <Square size={14} strokeWidth={2} />
             </button>
           {/if}
-          <select
-            class="tts-voice-select"
-            value={$ttsStore.voice?.voiceURI ?? ""}
-            onchange={(e) => {
-              const uri = e.currentTarget.value;
-              const voice = $ttsStore.voices.find((v) => v.voiceURI === uri) || null;
-              ttsStore.setVoice(voice);
-            }}
-            title="Voice"
-          >
-            {#each $ttsStore.voices as voice}
-              <option value={voice.voiceURI}>{voice.name} ({voice.lang})</option>
-            {/each}
-          </select>
-          <input
-            type="range"
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            value={$ttsStore.rate}
-            oninput={(e) => ttsStore.setRate(parseFloat(e.currentTarget.value))}
-            class="tts-rate"
-            title="Speed: {$ttsStore.rate}x"
-          />
+          {#if $ttsStore.voices.length > 0}
+            <select
+              class="tts-voice-select"
+              value={$ttsStore.voice?.ShortName ?? ""}
+              onchange={(e) => {
+                const shortName = e.currentTarget.value;
+                const voice = $ttsStore.voices.find((v) => v.ShortName === shortName) || null;
+                ttsStore.setVoice(voice);
+              }}
+              title="Voice"
+            >
+              {#each $ttsStore.voices as voice}
+                <option value={voice.ShortName}>{voice.FriendlyName}</option>
+              {/each}
+            </select>
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={$ttsStore.rate}
+              oninput={(e) => ttsStore.setRate(parseFloat(e.currentTarget.value))}
+              class="tts-rate"
+              title="Speed: {$ttsStore.rate}x"
+            />
+          {:else if $ttsStore.error}
+            <span class="tts-error" title={$ttsStore.error}>!</span>
+          {/if}
         </div>
       {/if}
       <button
@@ -679,6 +694,24 @@
     width: 60px;
     accent-color: var(--accent-default);
     cursor: pointer;
+  }
+  .tts-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--border-subtle);
+    border-top-color: var(--accent-default);
+    border-radius: 50%;
+    animation: spin 600ms linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .tts-error {
+    color: var(--error, #ef4444);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: help;
   }
 
   .preview-scroller {

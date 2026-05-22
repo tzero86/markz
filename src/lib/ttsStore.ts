@@ -1,14 +1,29 @@
 import { writable, get } from "svelte/store";
+import EdgeTTSBrowser from "edge-tts-browser";
 
-export type TtsState = "idle" | "playing" | "paused";
+export type TtsState = "idle" | "loading" | "playing" | "paused";
+
+export interface EdgeVoice {
+  Name: string;
+  ShortName: string;
+  FriendlyName: string;
+  Gender: string;
+  Locale: string;
+  SuggestedCodec: string;
+  Status: string;
+  VoiceTag: {
+    ContentCategories: string[];
+    VoicePersonalities: string[];
+  };
+}
 
 interface TtsStore {
   state: TtsState;
-  voice: SpeechSynthesisVoice | null;
+  voice: EdgeVoice | null;
   rate: number;
-  pitch: number;
-  voices: SpeechSynthesisVoice[];
-  currentUtterance: SpeechSynthesisUtterance | null;
+  voices: EdgeVoice[];
+  audio: HTMLAudioElement | null;
+  error: string | null;
 }
 
 function createTtsStore() {
@@ -16,111 +31,145 @@ function createTtsStore() {
     state: "idle",
     voice: null,
     rate: 1.0,
-    pitch: 1.0,
     voices: [],
-    currentUtterance: null,
+    audio: null,
+    error: null,
   });
 
-  function loadVoices() {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
+  let currentTts: EdgeTTSBrowser | null = null;
 
-    const allVoices = synth.getVoices();
-    // Prefer Edge/Natural voices, then local, then fallback
-    const edgeVoices = allVoices.filter(
-      (v) =>
-        v.name.includes("Microsoft") ||
-        v.name.includes("Natural") ||
-        v.name.includes("Online") ||
-        v.name.includes("Premium")
-    );
-    const otherVoices = allVoices.filter(
-      (v) => !edgeVoices.includes(v)
-    );
-    const sorted = [...edgeVoices, ...otherVoices];
-
-    update((s) => {
-      const preferred =
-        s.voice && sorted.find((v) => v.voiceURI === s.voice!.voiceURI)
-          ? s.voice
-          : sorted.find((v) => v.lang.startsWith("en")) ||
-            sorted[0] ||
-            null;
-      return { ...s, voices: sorted, voice: preferred };
-    });
-  }
-
-  // Voices may load asynchronously
-  if (typeof window !== "undefined" && window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices();
+  async function loadVoices() {
+    try {
+      const voices = (await EdgeTTSBrowser.getVoices()) as EdgeVoice[];
+      if (!Array.isArray(voices)) {
+        update((s) => ({ ...s, error: "Failed to load voices" }));
+        return;
+      }
+      // Sort: English first, then alphabetically by locale
+      const sorted = voices.sort((a, b) => {
+        const aEn = a.Locale.startsWith("en") ? 0 : 1;
+        const bEn = b.Locale.startsWith("en") ? 0 : 1;
+        if (aEn !== bEn) return aEn - bEn;
+        return a.FriendlyName.localeCompare(b.FriendlyName);
+      });
+      update((s) => {
+        const preferred =
+          s.voice && sorted.find((v) => v.ShortName === s.voice!.ShortName)
+            ? s.voice
+            : sorted.find((v) => v.ShortName.includes("AriaNeural")) ||
+              sorted.find((v) => v.Locale.startsWith("en")) ||
+              sorted[0] ||
+              null;
+        return { ...s, voices: sorted, voice: preferred, error: null };
+      });
+    } catch (e) {
+      update((s) => ({ ...s, error: String(e) }));
+    }
   }
 
   function extractReadableText(container: HTMLElement): string {
     const clone = container.cloneNode(true) as HTMLElement;
-    // Remove elements that shouldn't be read aloud
     const selectors = [
-      "pre", "code", ".mermaid-diagram", "svg", "img",
-      "table", "hr", "script", "style"
+      "pre",
+      "code",
+      ".mermaid-diagram",
+      "svg",
+      "img",
+      "table",
+      "hr",
+      "script",
+      "style",
     ];
     selectors.forEach((sel) => {
       clone.querySelectorAll(sel).forEach((el) => el.remove());
     });
-    // Get text and clean up whitespace
-    return clone.textContent
-      ?.replace(/\n+/g, "\n")
-      .replace(/\s+/g, " ")
-      .trim() || "";
+    return (
+      clone.textContent?.replace(/\n+/g, "\n").replace(/\s+/g, " ").trim() || ""
+    );
   }
 
-  function speak(text: string) {
-    const synth = window.speechSynthesis;
-    if (!synth) {
-      console.warn("Speech synthesis not supported");
-      return;
-    }
-
+  async function speak(text: string) {
     stop();
 
     const state = get({ subscribe });
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.voice = state.voice;
-    utter.rate = state.rate;
-    utter.pitch = state.pitch;
+    if (!state.voice) {
+      update((s) => ({ ...s, error: "No voice selected" }));
+      return;
+    }
+    if (!text.trim()) return;
 
-    utter.onstart = () => update((s) => ({ ...s, state: "playing" }));
-    utter.onend = () => update((s) => ({ ...s, state: "idle", currentUtterance: null }));
-    utter.onerror = (e) => {
-      console.error("TTS error:", e);
-      update((s) => ({ ...s, state: "idle", currentUtterance: null }));
-    };
-    utter.onpause = () => update((s) => ({ ...s, state: "paused" }));
-    utter.onresume = () => update((s) => ({ ...s, state: "playing" }));
+    update((s) => ({ ...s, state: "loading", error: null }));
 
-    update((s) => ({ ...s, currentUtterance: utter }));
-    synth.speak(utter);
+    try {
+      currentTts = new EdgeTTSBrowser();
+      currentTts.tts.setVoiceParams({
+        text,
+        voice: state.voice.ShortName,
+        rate: `${state.rate >= 1 ? "+" : ""}${Math.round((state.rate - 1) * 100)}%`,
+      });
+
+      const blob = await currentTts.ttsToFile();
+      const url = URL.createObjectURL(blob);
+
+      const audio = new Audio(url);
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        update((s) => ({ ...s, state: "idle", audio: null }));
+      };
+      audio.onpause = () => {
+        if (audio.currentTime > 0 && audio.currentTime < audio.duration) {
+          update((s) => ({ ...s, state: "paused" }));
+        }
+      };
+      audio.onplay = () => {
+        update((s) => ({ ...s, state: "playing" }));
+      };
+      audio.onerror = (e) => {
+        console.error("Audio playback error:", e);
+        URL.revokeObjectURL(url);
+        update((s) => ({ ...s, state: "idle", audio: null, error: "Playback failed" }));
+      };
+
+      update((s) => ({ ...s, audio }));
+      await audio.play();
+    } catch (e) {
+      console.error("TTS generation failed:", e);
+      update((s) => ({
+        ...s,
+        state: "idle",
+        error: `TTS failed: ${String(e)}`,
+      }));
+    }
   }
 
   function pause() {
-    window.speechSynthesis?.pause();
+    const state = get({ subscribe });
+    state.audio?.pause();
     update((s) => ({ ...s, state: "paused" }));
   }
 
   function resume() {
-    window.speechSynthesis?.resume();
+    const state = get({ subscribe });
+    state.audio?.play().catch(console.error);
     update((s) => ({ ...s, state: "playing" }));
   }
 
   function stop() {
-    window.speechSynthesis?.cancel();
-    update((s) => ({ ...s, state: "idle", currentUtterance: null }));
+    const state = get({ subscribe });
+    if (state.audio) {
+      state.audio.pause();
+      state.audio.currentTime = 0;
+      // revoke object URL if we stored it; we don't track URLs individually,
+      // but the blob URL will be cleaned up when the audio element is GC'd
+    }
+    update((s) => ({ ...s, state: "idle", audio: null }));
   }
 
   function setRate(rate: number) {
     update((s) => ({ ...s, rate: Math.max(0.5, Math.min(2.0, rate)) }));
   }
 
-  function setVoice(voice: SpeechSynthesisVoice | null) {
+  function setVoice(voice: EdgeVoice | null) {
     update((s) => ({ ...s, voice }));
   }
 
