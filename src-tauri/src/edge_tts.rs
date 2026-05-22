@@ -3,6 +3,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message;
+use base64::Engine;
+
+fn generate_websocket_key() -> String {
+    let mut nonce = [0u8; 16];
+    uuid::Uuid::new_v4()
+        .as_bytes()
+        .iter()
+        .enumerate()
+        .for_each(|(i, b)| nonce[i] = *b);
+    base64::engine::general_purpose::STANDARD.encode(&nonce)
+}
 
 pub const TRUSTED_CLIENT_TOKEN: &str = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 const WIN_EPOCH: i64 = 11644473600;
@@ -93,15 +104,24 @@ pub async fn synthesize(
     let url = build_websocket_url();
     log::debug!("Edge TTS WebSocket URL: {}", url);
 
-    // Build request with headers that match Edge browser extension
+    // Build request with headers that match Edge browser extension.
+    // We explicitly set all WebSocket upgrade headers so tungstenite
+    // doesn't need to mutate the request (avoiding http crate v1 quirks).
+    let ws_key = generate_websocket_key();
     let request = http::Request::builder()
+        .method("GET")
         .uri(&url)
+        .header("Host", BASE_URL)
         .header("Pragma", "no-cache")
         .header("Cache-Control", "no-cache")
         .header("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold")
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0")
         .header("Accept-Encoding", "gzip, deflate, br")
         .header("Accept-Language", "en-US,en;q=0.9")
+        .header("Connection", "Upgrade")
+        .header("Upgrade", "websocket")
+        .header("Sec-WebSocket-Version", "13")
+        .header("Sec-WebSocket-Key", &ws_key)
         .body(())
         .map_err(|e| format!("Failed to build WebSocket request: {}", e))?;
 
