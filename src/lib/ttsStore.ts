@@ -38,33 +38,24 @@ function createTtsStore() {
 
   async function loadVoices(engine: TtsEngine) {
     const current = get({ subscribe });
-    console.log("[ttsStore] loadVoices called for", engine, "current loadingVoices:", current.loadingVoices, "current voices:", current.voices.length);
-    if (current.loadingVoices) {
-      console.log("[ttsStore] already loading, skipping");
-      return;
-    }
+    // Skip if already loaded for this engine or currently loading
+    if (current.loadingVoices) return;
+    if (current.engine === engine && current.voices.length > 0) return;
 
     update((s) => ({ ...s, loadingVoices: true, error: null }));
-    console.log("[ttsStore] set loadingVoices=true");
 
     try {
-      console.log("[ttsStore] invoking tts_get_voices with engine:", engine);
       const raw = (await invoke("tts_get_voices", { engine })) as any[];
-      console.log("[ttsStore] invoke returned, raw type:", typeof raw, "isArray:", Array.isArray(raw), "length:", raw?.length);
 
       if (!Array.isArray(raw)) {
-        console.error("[ttsStore] raw is not array:", raw);
         update((s) => ({ ...s, error: "Failed to load voices", loadingVoices: false }));
         return;
       }
 
       if (raw.length === 0) {
-        console.warn("[ttsStore] raw array is empty");
         update((s) => ({ ...s, error: "No voices available", loadingVoices: false }));
         return;
       }
-
-      console.log("[ttsStore] first raw item:", raw[0]);
 
       const voices: TtsVoice[] = [];
       for (let i = 0; i < raw.length; i++) {
@@ -94,10 +85,7 @@ function createTtsStore() {
         }
       }
 
-      console.log("[ttsStore] mapped voices count:", voices.length);
-
       if (voices.length === 0) {
-        console.warn("[ttsStore] all voices failed to map");
         update((s) => ({ ...s, error: "No voices available", loadingVoices: false }));
         return;
       }
@@ -111,12 +99,28 @@ function createTtsStore() {
             : voices.find((v) => v.language.startsWith("en")) ||
               voices[0] ||
               null;
-        console.log("[ttsStore] updating store with", voices.length, "voices, preferred:", preferred?.name);
         return { ...s, engine, voices, voice: preferred, error: null, loadingVoices: false };
       });
     } catch (e) {
       console.error("[ttsStore] loadVoices error:", e);
       update((s) => ({ ...s, error: String(e), loadingVoices: false }));
+    }
+  }
+
+  /** Initialize store from persisted settings and load voices */
+  async function initFromSettings(
+    engine: TtsEngine,
+    voiceId: string,
+    rate: number
+  ) {
+    update((s) => ({ ...s, engine, rate: Math.max(0.5, Math.min(2.0, rate)) }));
+    await loadVoices(engine);
+    if (voiceId) {
+      const state = get({ subscribe });
+      const savedVoice = state.voices.find((v) => v.id === voiceId);
+      if (savedVoice) {
+        update((s) => ({ ...s, voice: savedVoice }));
+      }
     }
   }
 
@@ -247,6 +251,7 @@ function createTtsStore() {
   return {
     subscribe,
     loadVoices,
+    initFromSettings,
     speak,
     pause,
     resume,

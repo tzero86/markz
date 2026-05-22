@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { X } from "@lucide/svelte";
+  import { X, Play } from "@lucide/svelte";
   import { getVersion } from "@tauri-apps/api/app";
+  import { ttsStore, type TtsEngine } from "../../lib/ttsStore";
+  import { get } from "svelte/store";
   import {
     checkForUpdate,
     confirmAndDownload,
@@ -35,6 +37,9 @@
     preview_font_size: number;
     reduced_motion: boolean;
     ui_font_size: number;
+    tts_engine: string;
+    tts_voice_id: string;
+    tts_rate: number;
   } | null = $state(null);
 
   let loading = $state(true);
@@ -80,6 +85,11 @@
     loading = true;
     try {
       settings = await invoke("get_settings");
+      // Pre-load TTS voices so the dropdown is ready
+      const engine = (settings.tts_engine ?? "online") as TtsEngine;
+      if (get(ttsStore).voices.length === 0) {
+        ttsStore.loadVoices(engine);
+      }
     } catch (e) {
       console.error("Failed to load settings:", e);
     } finally {
@@ -89,6 +99,11 @@
 
   async function save() {
     if (!settings) return;
+    // Sync TTS runtime state into settings before persisting
+    const ttsState = get(ttsStore);
+    settings.tts_engine = ttsState.engine;
+    settings.tts_voice_id = ttsState.voice?.id ?? "";
+    settings.tts_rate = ttsState.rate;
     try {
       await invoke("update_settings", { settings });
       // Apply theme immediately
@@ -107,6 +122,9 @@
             uiFontSize: settings.ui_font_size,
             wordWrap: settings.word_wrap,
             showMinimap: settings.show_minimap,
+            ttsEngine: settings.tts_engine,
+            ttsVoiceId: settings.tts_voice_id,
+            ttsRate: settings.tts_rate,
           },
         })
       );
@@ -335,6 +353,81 @@
                 </span>
                 <input type="checkbox" bind:checked={settings.reduced_motion} />
               </label>
+            </div>
+
+            <!-- Text to Speech -->
+            <div class="settings-section">
+              <h3>Text to Speech</h3>
+              <div class="field-row">
+                <label class="field-label" for="tts-engine">Engine</label>
+                <select
+                  id="tts-engine"
+                  value={settings.tts_engine}
+                  onchange={(e) => {
+                    const engine = e.currentTarget.value as TtsEngine;
+                    settings.tts_engine = engine;
+                    settings.tts_voice_id = "";
+                    ttsStore.setEngine(engine);
+                  }}
+                >
+                  <option value="online">Online (Edge)</option>
+                  <option value="local">Local (Windows)</option>
+                </select>
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="tts-voice">Voice</label>
+                {#if $ttsStore.loadingVoices}
+                  <span class="voice-status">Loading voices…</span>
+                {:else if $ttsStore.voices.length > 0}
+                  <select
+                    id="tts-voice"
+                    value={$ttsStore.voice?.id ?? ""}
+                    onchange={(e) => {
+                      const id = e.currentTarget.value;
+                      const voice = $ttsStore.voices.find((v) => v.id === id) || null;
+                      settings.tts_voice_id = id;
+                      ttsStore.setVoice(voice);
+                    }}
+                  >
+                    {#each $ttsStore.voices as voice}
+                      <option value={voice.id}>{voice.name} ({voice.language})</option>
+                    {/each}
+                  </select>
+                {:else}
+                  <span class="voice-status">No voices loaded</span>
+                {/if}
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="tts-rate">Speed</label>
+                <div class="rate-control">
+                  <input
+                    id="tts-rate"
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={$ttsStore.rate}
+                    oninput={(e) => {
+                      const rate = parseFloat(e.currentTarget.value);
+                      settings.tts_rate = rate;
+                      ttsStore.setRate(rate);
+                    }}
+                  />
+                  <span class="rate-value">{$ttsStore.rate.toFixed(1)}x</span>
+                </div>
+              </div>
+              <div class="field-row">
+                <button
+                  class="test-voice-btn"
+                  disabled={!$ttsStore.voice || $ttsStore.state === "loading"}
+                  onclick={() => {
+                    ttsStore.speak("Hello! This is a test of the text to speech voice.");
+                  }}
+                >
+                  <Play size={14} />
+                  Test Voice
+                </button>
+              </div>
             </div>
 
             <!-- Auto Save -->
@@ -922,6 +1015,52 @@
   }
   .credits-text a:hover {
     text-decoration: underline;
+  }
+
+  /* TTS */
+  .voice-status {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .rate-control {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .rate-control input[type="range"] {
+    width: 120px;
+    accent-color: var(--accent-default);
+    cursor: pointer;
+  }
+  .rate-value {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    min-width: 36px;
+    text-align: right;
+  }
+  .test-voice-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--accent-default);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+  .test-voice-btn:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+  .test-voice-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--border-default);
+    color: var(--text-muted);
   }
 
   @keyframes fadeIn {

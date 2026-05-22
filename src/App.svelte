@@ -14,6 +14,7 @@
   import { initKeyboardShortcuts, newDocument } from "./lib/keyboard";
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
+  import { ttsStore, type TtsEngine } from "./lib/ttsStore";
 
   // Always start at 100% zoom — prevents stale localStorage values
   // (e.g., 160% left over from a previous session) from persisting.
@@ -35,7 +36,14 @@
   }
 
   invoke("get_settings")
-    .then((s: any) => applySettings(s))
+    .then((s: any) => {
+      applySettings(s);
+      // Initialize TTS from saved preferences
+      const engine = (s.tts_engine ?? "online") as TtsEngine;
+      const voiceId = s.tts_voice_id ?? "";
+      const rate = s.tts_rate ?? 1.0;
+      ttsStore.initFromSettings(engine, voiceId, rate);
+    })
     .catch(() => {});
 
   /* Adaptive layout — responsive breakpoints */

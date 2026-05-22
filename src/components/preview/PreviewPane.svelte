@@ -9,10 +9,9 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import { Copy, Check, Play, Pause, Square, Volume2, Pencil, RefreshCw } from "@lucide/svelte";
+  import { Copy, Check, Play, Pause, Square, Pencil, RefreshCw } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
   import DOMPurify from "dompurify";
-  import { onMount } from "svelte";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
 
@@ -30,15 +29,6 @@
   let previewEditing = $state(false);
   let syncFeedback = $state(false);
 
-  // Load TTS voices once on mount when HTML preview is active
-  let ttsLoaded = $state(false);
-  onMount(() => {
-    if (activeFormat === "html" && !ttsLoaded) {
-      ttsLoaded = true;
-      console.log("[PreviewPane] onMount: loading voices for", $ttsStore.engine);
-      ttsStore.loadVoices($ttsStore.engine);
-    }
-  });
 
   const formats: { id: PreviewFormat; label: string; icon: string }[] = [
     { id: "html", label: "HTML", icon: FORMAT_ICONS.html_sm },
@@ -446,45 +436,6 @@
               <Square size={14} strokeWidth={2} />
             </button>
           {/if}
-          {#if $ttsStore.voices.length > 0}
-            <select
-              class="tts-engine-select"
-              value={$ttsStore.engine}
-              onchange={(e) => {
-                ttsStore.setEngine(e.currentTarget.value as "local" | "online");
-              }}
-              title="TTS Engine"
-            >
-              <option value="online">Online (Edge)</option>
-              <option value="local">Local (Windows)</option>
-            </select>
-            <select
-              class="tts-voice-select"
-              value={$ttsStore.voice?.id ?? ""}
-              onchange={(e) => {
-                const id = e.currentTarget.value;
-                const voice = $ttsStore.voices.find((v) => v.id === id) || null;
-                ttsStore.setVoice(voice);
-              }}
-              title="Voice"
-            >
-              {#each $ttsStore.voices as voice}
-                <option value={voice.id}>{voice.name} ({voice.language})</option>
-              {/each}
-            </select>
-            <input
-              type="range"
-              min="0.5"
-              max="2.0"
-              step="0.1"
-              value={$ttsStore.rate}
-              oninput={(e) => ttsStore.setRate(parseFloat(e.currentTarget.value))}
-              class="tts-rate"
-              title="Speed: {$ttsStore.rate}x"
-            />
-          {:else if $ttsStore.error}
-            <span class="tts-error" title={$ttsStore.error}>!</span>
-          {/if}
         </div>
       {/if}
       <button
@@ -691,39 +642,6 @@
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-xs);
   }
-  .tts-engine-select {
-    background: var(--bg-base);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    font-size: 11px;
-    padding: 2px 4px;
-    max-width: 90px;
-    cursor: pointer;
-    outline: none;
-  }
-  .tts-engine-select:focus {
-    border-color: var(--accent-default);
-  }
-  .tts-voice-select {
-    background: var(--bg-base);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    font-size: 11px;
-    padding: 2px 4px;
-    max-width: 140px;
-    cursor: pointer;
-    outline: none;
-  }
-  .tts-voice-select:focus {
-    border-color: var(--accent-default);
-  }
-  .tts-rate {
-    width: 60px;
-    accent-color: var(--accent-default);
-    cursor: pointer;
-  }
   .tts-spinner {
     display: inline-block;
     width: 12px;
@@ -735,12 +653,6 @@
   }
   @keyframes spin {
     to { transform: rotate(360deg); }
-  }
-  .tts-error {
-    color: var(--error, #ef4444);
-    font-size: 14px;
-    font-weight: 700;
-    cursor: help;
   }
 
   .preview-scroller {
