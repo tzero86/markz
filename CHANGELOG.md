@@ -4,6 +4,24 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-22
+
+### Added
+- **Text to Speech (TTS)** — Dual-engine read-aloud with streaming synthesis
+  - **Online (Edge)** — 322 natural voices via direct `ureq`/`tungstenite` + `native-tls` WebSocket to Microsoft's Edge Read Aloud API. No `rustls`/`aws-lc-rs` dependency.
+  - **Local (Windows)** — Offline SAPI5 voices via WinRT `SpeechSynthesizer` (David, Zira, Hazel)
+  - **Streaming playback** — Text is split into sentence-sized chunks; first chunk starts playing immediately while subsequent chunks are prefetched in the background. Eliminates the multi-second wait for large documents.
+  - **XML-escaped SSML** — Special characters (`&`, `<`, `>`, `"`) are escaped before sending to Edge TTS, preventing WebSocket close errors on markdown with HTML entities or symbols.
+  - **Settings persistence** — Engine, voice, and speed are saved to `settings.json` and restored on startup
+  - **Settings panel UI** — New "Text to Speech" section in Settings with engine selector, voice dropdown, speed slider (0.5x–2.0x), and Test Voice button
+  - **Preview toolbar** — Minimal Play/Pause/Resume/Stop controls in the HTML preview toolbar
+
+### Changed
+- **Removed redundant voice-list HTTP call** — `edge_tts_crate::synthesize()` no longer re-fetches the full voice list on every Play click. This alone cuts ~200–500ms off initial playback latency.
+
+### Note
+- Bi-directional preview editing (`contenteditable` → Markdown sync) is implemented but **hidden from the UI** pending further testing. The backend (`htmd` crate integration) and frontend logic remain intact.
+
 ## [0.3.5] - 2026-05-22
 
 ### Fixed
