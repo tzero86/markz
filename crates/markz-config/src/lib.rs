@@ -20,6 +20,9 @@ pub struct Settings {
     pub preview_font_size: u8,
     pub reduced_motion: bool,
     pub ui_font_size: u8,
+    pub tts_engine: String,
+    pub tts_voice_id: String,
+    pub tts_rate: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,6 +61,9 @@ impl Default for Settings {
             preview_font_size: 16,
             reduced_motion: false,
             ui_font_size: 14,
+            tts_engine: "online".to_string(),
+            tts_voice_id: "".to_string(),
+            tts_rate: 1.0,
         }
     }
 }

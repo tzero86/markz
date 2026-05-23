@@ -23,7 +23,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libglib2.0-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libglib2.0-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libssl-dev
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -80,7 +80,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libglib2.0-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libglib2.0-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libssl-dev
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
