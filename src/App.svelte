@@ -80,24 +80,25 @@
     startupCheckpoint("App mounted");
 
     // Restore previous session if one exists
-    const session = getSession();
-    if (session && session.tabs.length > 0) {
-      tabStore
-        .restoreSession(
-          async (path: string) => {
-            await openDocumentByPath(path);
-          },
-          session.activeTabPath
-        )
-        .then((restored) => {
-          if (!restored) {
-            // No valid session to restore; keep default welcome tab
-          }
-        })
-        .catch(() => {
-          // Fallback: default welcome tab is already present
-        });
-    }
+    getSession().then((session) => {
+      if (session && session.tabs.length > 0) {
+        tabStore
+          .restoreSession(
+            async (path: string) => {
+              await openDocumentByPath(path);
+            },
+            session.activeTabPath
+          )
+          .then((restored) => {
+            if (!restored) {
+              // No valid session to restore; keep default welcome tab
+            }
+          })
+          .catch(() => {
+            // Fallback: default welcome tab is already present
+          });
+      }
+    });
 
     // Dismiss splash screen
     const splash = document.getElementById("splash");

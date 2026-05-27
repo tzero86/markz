@@ -532,6 +532,30 @@ export const tauriMockScriptString = `
     process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     export_to_docx: () => null,
+    save_session: () => null,
+    load_session: () => {
+      const raw = localStorage.getItem("markz-session");
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        // Convert camelCase to snake_case for backend compatibility
+        return {
+          tabs: (parsed.tabs || []).map((t) => ({
+            content: t.content || "",
+            path: t.path || null,
+            title: t.title || "Untitled",
+            is_dirty: t.isDirty ?? false,
+          })),
+          active_tab_path: parsed.activeTabPath || null,
+        };
+      } catch {
+        return null;
+      }
+    },
+    clear_session_disk: () => {
+      localStorage.removeItem("markz-session");
+      return null;
+    },
     "plugin:app|version": () => "0.1.12",
   };
 

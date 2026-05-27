@@ -4,6 +4,18 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-05-27
+
+### Added
+- **Full Session Restore** — All tabs (including untitled/unsaved) are now persisted to disk and restored on app launch. File-backed tabs are re-read from disk; untitled tabs are recreated with their saved content and dirty state.
+  - Session is stored in the app's config directory (`session.json`) via new Tauri commands `save_session`, `load_session`, `clear_session_disk`.
+  - `sessionStore.ts` rewritten to use async Tauri invoke instead of `localStorage`.
+  - `tabStore.ts` — `persistSession()` now saves full tab state (content, title, dirty flag). `restoreSession()` recreates untitled tabs directly without file I/O.
+
+### Fixed
+- **Math preprocessing no longer treats PowerShell/code variables as inline math** — `$legacy`, `$LastExitCode`, `$root\Inputs\DataDict.dbf` and similar are now preserved as literals. The heuristic distinguishes math expressions (containing digits, braces, `+`, `^`, etc.) from simple variable references and assignment patterns.
+  - Backtick-aware inline math processing: math inside `` `code` `` is skipped.
+
 ## [0.5.0] - 2026-05-27
 
 ### Added
@@ -13,7 +25,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - `App.svelte` — On mount, checks for a saved session and triggers `restoreSession`.
 - **Unit tests** (`vitest` + `jsdom`) — 9 tests for `sessionStore`: save/load, null-path filtering, deduplication, empty sessions, clearing, corrupted data, malformed shapes, quota errors.
 - **E2E tests** — 6 tests for session restore: full reload restore, empty session fallback, missing-file skipping, session persistence, corrupted data handling, duplicate-path deduplication.
-
 ## [0.4.0] - 2026-05-22
 ### Added
 - **Text to Speech (TTS)** — Dual-engine read-aloud with streaming synthesis

@@ -1,7 +1,7 @@
 import { writable, get } from "svelte/store";
 import { documentStore, type DocumentState } from "./documentStore";
 import { confirm } from "@tauri-apps/plugin-dialog";
-import { saveSession } from "./sessionStore";
+import { saveSession, type SessionTab } from "./sessionStore";
 
 export interface Tab {
   id: string;
@@ -445,7 +445,13 @@ function createTabStore() {
   function persistSession() {
     const state = get({ subscribe });
     const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
-    saveSession(state.tabs, activeTab?.path ?? null);
+    const sessionTabs: SessionTab[] = state.tabs.map((t) => ({
+      content: t.content,
+      path: t.path,
+      title: t.title,
+      isDirty: t.isDirty,
+    }));
+    saveSession(sessionTabs, activeTab?.path ?? null);
   }
 
   async function restoreSession(
@@ -453,20 +459,38 @@ function createTabStore() {
     setActivePath: string | null = null
   ): Promise<boolean> {
     const { getSession } = await import("./sessionStore");
-    const session = getSession();
+    const session = await getSession();
     if (!session || session.tabs.length === 0) return false;
 
     // Clear default tab before restoring
     set({ tabs: [], activeTabId: "" });
 
-    const seen = new Set<string>();
+    const seenPaths = new Set<string>();
     for (const tab of session.tabs) {
-      if (seen.has(tab.path)) continue;
-      seen.add(tab.path);
-      try {
-        await openFile(tab.path);
-      } catch {
-        // Skip files that no longer exist or are unreadable
+      if (tab.path) {
+        if (seenPaths.has(tab.path)) continue;
+        seenPaths.add(tab.path);
+        // File-backed tab: re-read from disk
+        try {
+          await openFile(tab.path);
+        } catch {
+          // Skip files that no longer exist or are unreadable
+        }
+      } else {
+        // Untitled tab: recreate from saved content
+        const restored: Tab = {
+          id: genId(),
+          content: tab.content,
+          path: null,
+          title: tab.title,
+          isDirty: tab.isDirty,
+          isLoading: false,
+        };
+        update((state) => ({
+          tabs: [...state.tabs, restored],
+          activeTabId: restored.id,
+        }));
+        syncToDocument(restored);
       }
     }
 
@@ -485,6 +509,13 @@ function createTabStore() {
       if (target) {
         update((s) => ({ ...s, activeTabId: target.id }));
         syncToDocument(target);
+      }
+    } else {
+      // If no active path was set, activate the last restored tab
+      const lastTab = state.tabs[state.tabs.length - 1];
+      if (lastTab) {
+        update((s) => ({ ...s, activeTabId: lastTab.id }));
+        syncToDocument(lastTab);
       }
     }
 

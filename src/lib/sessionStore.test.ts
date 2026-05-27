@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+}));
+
+import { invoke } from "@tauri-apps/api/core";
 import {
   saveSession,
   getSession,
@@ -6,131 +12,90 @@ import {
   hasSession,
 } from "./sessionStore";
 
-const STORAGE_KEY = "markz-session";
-
-class MockStorage implements Storage {
-  private store: Record<string, string> = {};
-
-  get length() {
-    return Object.keys(this.store).length;
-  }
-
-  key(index: number): string | null {
-    return Object.keys(this.store)[index] ?? null;
-  }
-
-  getItem(key: string): string | null {
-    return this.store[key] ?? null;
-  }
-
-  setItem(key: string, value: string): void {
-    this.store[key] = value;
-  }
-
-  removeItem(key: string): void {
-    delete this.store[key];
-  }
-
-  clear(): void {
-    this.store = {};
-  }
-}
+const invokeMock = invoke as unknown as ReturnType<typeof vi.fn>;
 
 describe("sessionStore", () => {
   beforeEach(() => {
-    // @ts-expect-error replace global localStorage with our mock
-    globalThis.localStorage = new MockStorage();
+    invokeMock.mockClear();
   });
 
-  it("returns null when no session exists", () => {
-    expect(getSession()).toBeNull();
-    expect(hasSession()).toBe(false);
-  });
+  it("saves session via invoke", async () => {
+    invokeMock.mockResolvedValue(undefined);
 
-  it("saves and loads a session with file tabs", () => {
-    saveSession(
+    await saveSession(
       [
-        { path: "/a.md" },
-        { path: "/b.md" },
+        { content: "# Hello", path: "/a.md", title: "a.md", isDirty: false },
+        { content: "# World", path: null, title: "Untitled", isDirty: true },
       ],
-      "/b.md"
+      "/a.md"
     );
 
-    const session = getSession();
+    expect(invokeMock).toHaveBeenCalledWith("save_session", {
+      tabs: [
+        { content: "# Hello", path: "/a.md", title: "a.md", is_dirty: false },
+        { content: "# World", path: null, title: "Untitled", is_dirty: true },
+      ],
+      active_tab_path: "/a.md",
+    });
+  });
+
+  it("loads session and maps snake_case to camelCase", async () => {
+    invokeMock.mockResolvedValue({
+      tabs: [
+        { content: "# Hello", path: "/a.md", title: "a.md", is_dirty: false },
+        { content: "# World", path: null, title: "Untitled", is_dirty: true },
+      ],
+      active_tab_path: "/a.md",
+    });
+
+    const session = await getSession();
     expect(session).not.toBeNull();
-    expect(session!.tabs).toEqual([{ path: "/a.md" }, { path: "/b.md" }]);
-    expect(session!.activeTabPath).toBe("/b.md");
-    expect(hasSession()).toBe(true);
-  });
-
-  it("skips tabs with null paths", () => {
-    saveSession(
-      [
-        { path: "/file.md" },
-        { path: null },
-        { path: "/other.md" },
-      ],
-      "/file.md"
-    );
-
-    const session = getSession();
-    expect(session!.tabs).toEqual([{ path: "/file.md" }, { path: "/other.md" }]);
-  });
-
-  it("deduplicates paths preserving first occurrence", () => {
-    saveSession(
-      [
-        { path: "/dup.md" },
-        { path: "/dup.md" },
-        { path: "/unique.md" },
-        { path: "/dup.md" },
-      ],
-      "/unique.md"
-    );
-
-    const session = getSession();
     expect(session!.tabs).toEqual([
-      { path: "/dup.md" },
-      { path: "/unique.md" },
+      { content: "# Hello", path: "/a.md", title: "a.md", isDirty: false },
+      { content: "# World", path: null, title: "Untitled", isDirty: true },
     ]);
+    expect(session!.activeTabPath).toBe("/a.md");
   });
 
-  it("handles empty tabs array", () => {
-    saveSession([], null);
-    const session = getSession();
+  it("returns null when no session exists", async () => {
+    invokeMock.mockResolvedValue(null);
+    const session = await getSession();
+    expect(session).toBeNull();
+  });
+
+  it("clears session via invoke", async () => {
+    invokeMock.mockResolvedValue(undefined);
+    await clearSession();
+    expect(invokeMock).toHaveBeenCalledWith("clear_session_disk");
+  });
+
+  it("hasSession returns true when session exists", async () => {
+    invokeMock.mockResolvedValue({
+      tabs: [{ content: "", path: "/x.md", title: "x.md", is_dirty: false }],
+      active_tab_path: "/x.md",
+    });
+    expect(await hasSession()).toBe(true);
+  });
+
+  it("hasSession returns false when session is null", async () => {
+    invokeMock.mockResolvedValue(null);
+    expect(await hasSession()).toBe(false);
+  });
+
+  it("hasSession returns false when session has no tabs", async () => {
+    invokeMock.mockResolvedValue({ tabs: [], active_tab_path: null });
+    expect(await hasSession()).toBe(false);
+  });
+
+  it("handles empty tabs array", async () => {
+    invokeMock.mockResolvedValue({ tabs: [], active_tab_path: null });
+    const session = await getSession();
     expect(session!.tabs).toEqual([]);
     expect(session!.activeTabPath).toBeNull();
   });
 
-  it("clears session from storage", () => {
-    saveSession([{ path: "/x.md" }], "/x.md");
-    expect(hasSession()).toBe(true);
-
-    clearSession();
-    expect(getSession()).toBeNull();
-    expect(hasSession()).toBe(false);
-  });
-
-  it("ignores corrupted localStorage data", () => {
-    localStorage.setItem(STORAGE_KEY, "invalid-json");
-    expect(getSession()).toBeNull();
-    expect(hasSession()).toBe(false);
-  });
-
-  it("ignores malformed object shape", () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ foo: "bar" }));
-    expect(getSession()).toBeNull();
-  });
-
-  it("survives localStorage quota errors gracefully", () => {
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = () => {
-      throw new Error("QuotaExceededError");
-    };
-
-    // Should not throw
-    expect(() => saveSession([{ path: "/big.md" }], "/big.md")).not.toThrow();
-
-    localStorage.setItem = originalSetItem;
+  it("survives invoke errors gracefully", async () => {
+    invokeMock.mockRejectedValue(new Error("Disk full"));
+    await expect(saveSession([], null)).rejects.toThrow("Disk full");
   });
 });

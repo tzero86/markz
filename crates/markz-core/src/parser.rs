@@ -57,9 +57,44 @@ fn process_inline_math(line: &str) -> String {
     let mut result = String::new();
     let chars: Vec<(usize, char)> = line.char_indices().collect();
     let mut i = 0;
+    let mut in_backticks = false;
+    let mut backtick_count = 0;
 
     while i < chars.len() {
         let (_, ch) = chars[i];
+
+        // Track backtick state for inline code
+        if ch == '`' {
+            let mut count = 1;
+            let mut k = i + 1;
+            while k < chars.len() && chars[k].1 == '`' {
+                count += 1;
+                k += 1;
+            }
+
+            if in_backticks {
+                if count >= backtick_count {
+                    in_backticks = false;
+                    backtick_count = 0;
+                }
+            } else {
+                in_backticks = true;
+                backtick_count = count;
+            }
+
+            for _ in 0..count {
+                result.push('`');
+            }
+            i = k;
+            continue;
+        }
+
+        if in_backticks {
+            result.push(ch);
+            i += 1;
+            continue;
+        }
+
         if ch == '$' {
             // Skip double dollars - should be block math, but if not, treat as literal
             if i + 1 < chars.len() && chars[i + 1].1 == '$' {
@@ -96,7 +131,7 @@ fn process_inline_math(line: &str) -> String {
                 let content_start = chars[start].0;
                 let content_end = chars[j].0;
                 let content = &line[content_start..content_end];
-                if !content.is_empty() {
+                if !content.is_empty() && looks_like_math(content) {
                     result.push_str(&format!(r#"<span class="math-inline">{}</span>"#, content));
                     i = j + 1;
                     continue;
@@ -112,6 +147,86 @@ fn process_inline_math(line: &str) -> String {
     }
 
     result
+}
+
+/// Heuristic: distinguish math expressions from simple variable references.
+/// Math typically contains spaces, operators, digits, or braces.
+/// Simple variables like $x, $legacy, $LastExitCode are not math.
+fn looks_like_math(content: &str) -> bool {
+    // Empty or single char is not math
+    if content.len() <= 1 {
+        return false;
+    }
+
+    let mut chars = content.chars().peekable();
+
+    // Skip leading identifier chars
+    let mut leading_ident_len = 0;
+    while let Some(c) = chars.peek() {
+        if c.is_ascii_alphabetic() || c.is_ascii_digit() || *c == '_' {
+            leading_ident_len += 1;
+            chars.next();
+        } else {
+            break;
+        }
+    }
+
+    // If the entire content is identifier-like, it's not math
+    if leading_ident_len > 0 && chars.peek().is_none() {
+        return false;
+    }
+
+    // If it starts with an identifier followed by optional whitespace then `= `, treat as assignment
+    if leading_ident_len > 0 {
+        while let Some(c) = chars.peek() {
+            if c.is_ascii_whitespace() {
+                chars.next();
+            } else {
+                break;
+            }
+        }
+        if let Some(c) = chars.peek() {
+            if *c == '=' {
+                chars.next();
+                if let Some(d) = chars.peek() {
+                    if d.is_ascii_whitespace() {
+                        let rest: String = chars.skip(1).collect();
+                        let has_math_chars = rest.chars().any(|c| {
+                            c.is_ascii_digit()
+                                || matches!(
+                                    c,
+                                    '+' | '^' | '{' | '}' | '[' | ']' | '|' | '<' | '>' | '~'
+                                        | '`' | '@' | '#' | '(' | ')' | '%' | '!'
+                                )
+                        });
+                        if !has_math_chars {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Must contain at least one unambiguous math character
+    let mut prev = '\0';
+    for c in content.chars() {
+        if c.is_ascii_digit() {
+            return true;
+        }
+        if matches!(c, '+' | '^' | '{' | '}' | '[' | ']' | '|' | '<' | '>' | '~' | '`' | '@' | '#') {
+            return true;
+        }
+        // Backslash at start or after whitespace suggests LaTeX (\int, \frac)
+        if c == '\\' && (prev == '\0' || prev.is_ascii_whitespace()) {
+            return true;
+        }
+        if matches!(c, '(' | ')' | '%' | '!') {
+            return true;
+        }
+        prev = c;
+    }
+    false
 }
 
 /// Parse Markdown text into a MarkZ Document AST.
@@ -702,5 +817,50 @@ y = 2</div>"#);
             html.contains("<li><p>normal nested</p></li>"),
             "normal nested item broken: {}", html
         );
+    }
+
+    #[test]
+    fn test_powershell_variables_not_treated_as_math() {
+        let input = r#"$legacy = & .\CreateDDlibrary.exe /ND "$root\Inputs\DataDict.dbf; $legacy | Select-Object -First 10; '---snip---'; $legacy | Select-Object -Last 10; $LastExitCode""#;
+        let processed = preprocess_math(input);
+        // Should NOT contain math-inline spans for simple variable names
+        assert!(
+            !processed.contains(r#"math-inline"#),
+            "PowerShell variables were incorrectly treated as math: {}", processed
+        );
+        // Dollar signs should be preserved as literals
+        assert!(processed.contains("$legacy"), "$legacy was modified");
+        assert!(processed.contains("$LastExitCode"), "$LastExitCode was modified");
+    }
+
+    #[test]
+    fn test_actual_math_still_rendered() {
+        let input = "The equation $E = mc^2$ is famous.";
+        let processed = preprocess_math(input);
+        assert!(
+            processed.contains(r#"<span class="math-inline">E = mc^2</span>"#),
+            "Actual math was not rendered: {}", processed
+        );
+    }
+
+    #[test]
+    fn test_math_with_braces_still_rendered() {
+        let input = r#"$\int_{0}^{\infty} f(x) dx$"#;
+        let processed = preprocess_math(input);
+        assert!(
+            processed.contains(r#"<span class="math-inline""#),
+            "Math with braces was not rendered: {}", processed
+        );
+    }
+
+    #[test]
+    fn test_single_variable_not_math() {
+        let input = "The variable $x is used.";
+        let processed = preprocess_math(input);
+        assert!(
+            !processed.contains("math-inline"),
+            "Single variable was treated as math: {}", processed
+        );
+        assert!(processed.contains("$x "), "$x was not preserved");
     }
 }

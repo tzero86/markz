@@ -455,7 +455,59 @@ pub struct DocumentInfo {
     content: String,
 }
 
-// ── Entrypoint ──────────────────────────────────────────────────────────────
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+struct SessionTab {
+    content: String,
+    path: Option<String>,
+    title: String,
+    is_dirty: bool,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+struct SessionState {
+    tabs: Vec<SessionTab>,
+    active_tab_path: Option<String>,
+}
+
+fn session_path() -> Option<std::path::PathBuf> {
+    let mut dir = dirs::config_dir()?;
+    dir.push("markz");
+    std::fs::create_dir_all(&dir).ok()?;
+    dir.push("session.json");
+    Some(dir)
+}
+
+#[tauri::command]
+async fn save_session(tabs: Vec<SessionTab>, active_tab_path: Option<String>) -> Result<(), String> {
+    let path = session_path().ok_or("Could not determine session path")?;
+    let state = SessionState { tabs, active_tab_path };
+    let json = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn load_session() -> Result<Option<SessionState>, String> {
+    let path = match session_path() {
+        Some(p) => p,
+        None => return Ok(None),
+    };
+    if !path.exists() {
+        return Ok(None);
+    }
+    let data = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let state: SessionState = serde_json::from_str(&data).map_err(|e| e.to_string())?;
+    Ok(Some(state))
+}
+
+#[tauri::command]
+async fn clear_session_disk() -> Result<(), String> {
+    if let Some(path) = session_path() {
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -505,6 +557,9 @@ pub fn run() {
             delete_template,
             apply_template,
             log_frontend,
+            save_session,
+            load_session,
+            clear_session_disk,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
