@@ -11,10 +11,12 @@
   import SettingsModal from "./components/settings/SettingsModal.svelte";
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
-  import { initKeyboardShortcuts, newDocument } from "./lib/keyboard";
+  import { initKeyboardShortcuts, newDocument, openDocumentByPath } from "./lib/keyboard";
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
   import { ttsStore, type TtsEngine } from "./lib/ttsStore";
+  import { tabStore } from "./lib/tabStore";
+  import { getSession } from "./lib/sessionStore";
 
   // Always start at 100% zoom — prevents stale localStorage values
   // (e.g., 160% left over from a previous session) from persisting.
@@ -75,8 +77,27 @@
   );
 
   onMount(() => {
-    initDebugLogging();
     startupCheckpoint("App mounted");
+
+    // Restore previous session if one exists
+    const session = getSession();
+    if (session && session.tabs.length > 0) {
+      tabStore
+        .restoreSession(
+          async (path: string) => {
+            await openDocumentByPath(path);
+          },
+          session.activeTabPath
+        )
+        .then((restored) => {
+          if (!restored) {
+            // No valid session to restore; keep default welcome tab
+          }
+        })
+        .catch(() => {
+          // Fallback: default welcome tab is already present
+        });
+    }
 
     // Dismiss splash screen
     const splash = document.getElementById("splash");

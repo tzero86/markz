@@ -522,7 +522,13 @@ export const tauriMockScriptString = `
     open_file_dialog: () => null,
     save_file_dialog: () => null,
     save_document: () => null,
-    open_document: (args) => ({ path: args?.path || "/test.md", content: "# Test\\n\\nHello world." }),
+    open_document: (args) => {
+      const rejectPaths = JSON.parse(localStorage.getItem("__e2e_reject_paths") || "[]");
+      if (rejectPaths.includes(args?.path)) {
+        return Promise.reject(new Error("File not found"));
+      }
+      return { path: args?.path || "/test.md", content: "# Test\\n\\nHello world." };
+    },
     process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     export_to_docx: () => null,

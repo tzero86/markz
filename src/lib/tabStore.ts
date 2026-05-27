@@ -1,6 +1,7 @@
 import { writable, get } from "svelte/store";
 import { documentStore, type DocumentState } from "./documentStore";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { saveSession } from "./sessionStore";
 
 export interface Tab {
   id: string;
@@ -337,7 +338,6 @@ function createTabStore() {
     });
     syncing = false;
   }
-
   function newTab(content?: string, title?: string, path?: string | null) {
     const tab: Tab = {
       id: genId(),
@@ -354,6 +354,7 @@ function createTabStore() {
       return { tabs: newTabs, activeTabId: tab.id };
     });
     syncToDocument(tab);
+    persistSession();
     return tab.id;
   }
 
@@ -393,6 +394,7 @@ function createTabStore() {
       }
     }
 
+    persistSession();
     return true;
   }
 
@@ -428,16 +430,65 @@ function createTabStore() {
     if (tabToSync) {
       syncToDocument(tabToSync);
     }
+    persistSession();
   }
 
   function getActiveTab(): Tab | null {
     const state = get({ subscribe });
     return state.tabs.find((t) => t.id === state.activeTabId) || null;
   }
-
   function hasDirtyTabs(): boolean {
     const state = get({ subscribe });
     return state.tabs.some((t) => t.isDirty);
+  }
+
+  function persistSession() {
+    const state = get({ subscribe });
+    const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+    saveSession(state.tabs, activeTab?.path ?? null);
+  }
+
+  async function restoreSession(
+    openFile: (path: string) => Promise<void>,
+    setActivePath: string | null = null
+  ): Promise<boolean> {
+    const { getSession } = await import("./sessionStore");
+    const session = getSession();
+    if (!session || session.tabs.length === 0) return false;
+
+    // Clear default tab before restoring
+    set({ tabs: [], activeTabId: "" });
+
+    const seen = new Set<string>();
+    for (const tab of session.tabs) {
+      if (seen.has(tab.path)) continue;
+      seen.add(tab.path);
+      try {
+        await openFile(tab.path);
+      } catch {
+        // Skip files that no longer exist or are unreadable
+      }
+    }
+
+    // If nothing was restored, fall back to default
+    const state = get({ subscribe });
+    if (state.tabs.length === 0) {
+      const fresh = makeDefaultTab();
+      set({ tabs: [fresh], activeTabId: fresh.id });
+      syncToDocument(fresh);
+      return false;
+    }
+
+    // Activate the previously active tab if it was restored
+    if (setActivePath) {
+      const target = state.tabs.find((t) => t.path === setActivePath);
+      if (target) {
+        update((s) => ({ ...s, activeTabId: target.id }));
+        syncToDocument(target);
+      }
+    }
+
+    return true;
   }
 
   return {
@@ -447,6 +498,8 @@ function createTabStore() {
     switchTab,
     getActiveTab,
     hasDirtyTabs,
+    persistSession,
+    restoreSession,
   };
 }
 
