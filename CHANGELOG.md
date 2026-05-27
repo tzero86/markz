@@ -4,8 +4,17 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2026-05-22
+## [0.5.0] - 2026-05-27
 
+### Added
+- **Session Restore** — Documents that were open when the app was last closed are automatically reopened on the next launch, with the previously active tab restored. Works like SublimeText: only file-backed tabs are persisted; untitled/unsaved tabs are not. Missing or unreadable files are skipped gracefully.
+  - `sessionStore.ts` — Persists tab state (file paths only) to `localStorage`. Handles corruption, quota errors, and malformed data gracefully.
+  - `tabStore.ts` — Added `persistSession()` called after every `newTab`, `closeTab`, and `switchTab`. Added `restoreSession()` that clears the default welcome tab, re-opens each file path, skips missing files, deduplicates paths, and re-activates the previously active tab.
+  - `App.svelte` — On mount, checks for a saved session and triggers `restoreSession`.
+- **Unit tests** (`vitest` + `jsdom`) — 9 tests for `sessionStore`: save/load, null-path filtering, deduplication, empty sessions, clearing, corrupted data, malformed shapes, quota errors.
+- **E2E tests** — 6 tests for session restore: full reload restore, empty session fallback, missing-file skipping, session persistence, corrupted data handling, duplicate-path deduplication.
+
+## [0.4.0] - 2026-05-22
 ### Added
 - **Text to Speech (TTS)** — Dual-engine read-aloud with streaming synthesis
   - **Online (Edge)** — 322 natural voices via direct `ureq`/`tungstenite` + `native-tls` WebSocket to Microsoft's Edge Read Aloud API. No `rustls`/`aws-lc-rs` dependency.
