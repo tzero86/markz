@@ -1,17 +1,18 @@
 <script lang="ts">
   import { Columns2, AlignLeft, Eye, Type, ZoomIn, Text } from "@lucide/svelte";
-  import { documentStore } from "../../lib/documentStore";
+  import { activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
 
   let { viewMode, onSetViewMode }: { viewMode: "split" | "editor" | "preview"; onSetViewMode: (mode: "split" | "editor" | "preview") => void } = $props();
 
   let wordCount = $derived(
-    $documentStore.content.trim() === ""
+    $activeDocumentStore.content.trim() === ""
       ? 0
-      : $documentStore.content.trim().split(/\s+/).filter((w) => w.length > 0).length
+      : $activeDocumentStore.content.trim().split(/\s+/).filter((w) => w.length > 0).length
   );
-  let charCount = $derived($documentStore.content.length);
+  let charCount = $derived($activeDocumentStore.content.length);
+  let readingTimeMinutes = $derived(Math.max(1, Math.ceil(wordCount / 200)));
 
   const modes: { mode: "split" | "editor" | "preview"; label: string; shortcut?: string }[] = [
     { mode: "split", label: "Split", shortcut: "Ctrl+1" },
@@ -22,9 +23,9 @@
 
 <div class="statusbar">
   <div class="status-left">
-    <div class="save-indicator" class:unsaved={$documentStore.isDirty}>
+    <div class="save-indicator" class:unsaved={$activeDocumentStore.isDirty}>
       <span class="save-dot"></span>
-      <span class="save-text">{$documentStore.isDirty ? "Unsaved" : "Saved"}</span>
+      <span class="save-text">{$activeDocumentStore.isDirty ? "Unsaved" : "Saved"}</span>
     </div>
     <div class="status-divider"></div>
     <span class="status-item cursor-info">
@@ -65,13 +66,17 @@
   </div>
 
   <div class="status-right">
-    <span class="stat-badge">
+    <span class="stat-badge" title="{wordCount} words, {charCount} chars, ~{readingTimeMinutes} min read">
       <Text size={11} strokeWidth={2} />
-      {wordCount}
+      {wordCount} words
     </span>
-    <span class="stat-badge">
+    <span class="stat-badge" title="{charCount} characters">
       <Text size={11} strokeWidth={2} />
-      {charCount}
+      {charCount} chars
+    </span>
+    <span class="stat-badge" title="~{readingTimeMinutes} min read">
+      <Text size={11} strokeWidth={2} />
+      ~{readingTimeMinutes}m
     </span>
     <div class="status-divider"></div>
     <span class="status-item format-badge">Markdown</span>

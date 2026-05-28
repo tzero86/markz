@@ -11,8 +11,8 @@ pub struct Document {
 pub struct Frontmatter {
     pub raw: String,
     pub format: FrontmatterFormat,
+    pub metadata: serde_json::Value,
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FrontmatterFormat {
     Yaml,

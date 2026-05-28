@@ -23,6 +23,7 @@ pub struct Settings {
     pub tts_engine: String,
     pub tts_voice_id: String,
     pub tts_rate: f32,
+    pub custom_css: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +65,7 @@ impl Default for Settings {
             tts_engine: "online".to_string(),
             tts_voice_id: "".to_string(),
             tts_rate: 1.0,
+            custom_css: String::new(),
         }
     }
 }

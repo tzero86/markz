@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { documentStore } from "../../lib/documentStore";
+  import { activeDocumentStore } from "../../lib/tabStore";
   import { ChevronLeft } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
 
@@ -9,7 +9,7 @@
   let activeAnchor = $state<string | null>(null);
 
   $effect(() => {
-    const content = $documentStore.content;
+    const content = $activeDocumentStore.content;
     toc = generateToc(content);
   });
 

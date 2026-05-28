@@ -1,6 +1,6 @@
 <script lang="ts">
   import { get } from "svelte/store";
-  import { documentStore } from "../../lib/documentStore";
+  import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { themeStore, type Theme } from "../../lib/themeStore";
   import { openDocument, saveDocument, openDocumentByPath, newDocument } from "../../lib/keyboard";
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
@@ -83,7 +83,7 @@ import Toast from "../ui/Toast.svelte";
 
   async function handleCopy(command: string, label: string, mode: "copy" | "export") {
     try {
-      const doc = get(documentStore);
+      const doc = tabStore.getActiveTab();
       if (mode === "export") {
         const defaultName = doc.title ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "document";
         const outputPath = await invoke<string | null>("save_file_dialog", {
@@ -210,8 +210,8 @@ import Toast from "../ui/Toast.svelte";
       </button>
     {/if}
     <div class="doc-info">
-      <span class="doc-title">{$documentStore.title}</span>
-      {#if $documentStore.isDirty}
+      <span class="doc-title">{$activeDocumentStore.title}</span>
+      {#if $activeDocumentStore.isDirty}
         <span class="dirty-dot" aria-label="Unsaved changes"></span>
       {/if}
     </div>

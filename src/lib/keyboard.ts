@@ -1,12 +1,12 @@
 import { get } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
-import { documentStore } from "./documentStore";
 import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
 import { contentZoomStore } from "./contentZoomStore";
 
 export async function saveDocument() {
-  const doc = get(documentStore);
+  const doc = tabStore.getActiveTab();
+  if (!doc) return;
   let path = doc.path;
 
   if (!path) {
@@ -23,8 +23,8 @@ export async function saveDocument() {
 
   try {
     await invoke("save_document", { path, content: doc.content });
-    documentStore.markClean();
-    if (!doc.path) documentStore.setPath(path);
+    tabStore.markClean();
+    if (!doc.path) tabStore.setPath(path);
     addRecentFile(path);
   } catch (e) {
     console.error("Save failed:", e);
@@ -45,10 +45,10 @@ export async function openDocument() {
     active.path === null &&
     active.content.trim() === "";
 
-  documentStore.setLoading(true);
+  tabStore.setLoading(true);
   try {
     if (shouldReplace) {
-      documentStore.loadDocument(result.content, result.path);
+      tabStore.loadDocument(result.content, result.path);
     } else {
       tabStore.newTab(result.content, undefined, result.path);
     }
@@ -57,7 +57,7 @@ export async function openDocument() {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));
   } finally {
-    documentStore.setLoading(false);
+    tabStore.setLoading(false);
   }
 }
 
@@ -69,23 +69,23 @@ export async function openDocumentByPath(path: string) {
     active.path === null &&
     active.content.trim() === "";
 
-  documentStore.setLoading(true);
+  tabStore.setLoading(true);
   try {
     const info = await invoke<{ content: string; path: string }>(
       "open_document",
       { path }
     );
     if (shouldReplace) {
-      documentStore.loadDocument(info.content, info.path);
+      tabStore.loadDocument(info.content, info.path);
     } else {
       tabStore.newTab(info.content, undefined, info.path);
     }
-    addRecentFile(info.path);
+    addRecentFile(path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));
   } finally {
-    documentStore.setLoading(false);
+    tabStore.setLoading(false);
   }
 }
 

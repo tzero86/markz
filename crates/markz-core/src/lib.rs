@@ -5,5 +5,6 @@ pub mod frontmatter;
 pub mod toc;
 pub mod html_to_markdown;
 pub mod e2e_render_tests;
+pub mod stats;
 
 pub use toc::{generate_toc, slugify};

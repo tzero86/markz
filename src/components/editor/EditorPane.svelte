@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import type { EditorView } from "@codemirror/view";
   import { invoke } from "@tauri-apps/api/core";
-  import { documentStore } from "../../lib/documentStore";
+  import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
   import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
@@ -188,13 +188,13 @@
 
   onMount(() => {
     startupCheckpoint("EditorPane mounting");
-    const editor = initEditor(container, $documentStore.content, {
+    const editor = initEditor(container, $activeDocumentStore.content, {
       fontFamily: baseFontFamily,
       fontSize: Math.round(baseFontSize * $contentZoomStore),
       lineHeight: baseLineHeight,
       showMinimap,
       onChange: (newContent) => {
-        documentStore.setContent(newContent);
+        tabStore.setContent(newContent);
       },
       onCursorChange: (pos) => {
         cursorPosition.set(pos);
@@ -223,7 +223,7 @@
     });
     observer.observe(document.documentElement, { attributes: true });
 
-    const unsub = documentStore.subscribe((doc) => {
+    const unsub = activeDocumentStore.subscribe((doc) => {
       const current = editor.view.state.doc.toString();
       if (current !== doc.content) {
         editor.view.dispatch({
