@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activeDocumentStore } from "../../lib/tabStore";
+  import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { invoke } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
@@ -11,6 +11,7 @@
   import { FORMAT_ICONS } from "../../lib/formatIcons";
   import { Copy, Check, Play, Pause, Square } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
+import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
@@ -29,6 +30,8 @@
   let copyFeedback = $state(false);
   let renderProgress = $state(0);
   let previewEditing = $state(false);
+  let tableEditorOpen = $state(false);
+  let tableEditorIndex = $state(0);
   let syncFeedback = $state(false);
 
   const formats: { id: PreviewFormat; label: string; icon: string }[] = [
@@ -120,6 +123,19 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  function handleTableDblClick(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    const table = target.closest("table");
+    if (!table || !contentDiv) return;
+    const tables = contentDiv.querySelectorAll("table");
+    let idx = -1;
+    tables.forEach((t, i) => { if (t === table) idx = i; });
+    if (idx >= 0) {
+      tableEditorIndex = idx;
+      tableEditorOpen = true;
+    }
   }
 
   function onScroll() {
@@ -428,6 +444,7 @@
           class:editing={previewEditing}
           bind:this={contentDiv}
           contenteditable={previewEditing}
+          ondblclick={handleTableDblClick}
           style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
         >
           {@html htmlContent}
@@ -438,6 +455,15 @@
         </div>
       {/if}
     {/key}
+  <TableEditorModal
+    open={tableEditorOpen}
+    markdown={$activeDocumentStore.content}
+    tableIndex={tableEditorIndex}
+    onApply={(newMd) => {
+      tabStore.setContent(newMd);
+    }}
+    onClose={() => (tableEditorOpen = false)}
+  />
   </div>
 </div>
 
@@ -816,5 +842,13 @@
   [data-tooltip]:hover::after {
     opacity: 1;
     transform: translateX(-50%) scale(1);
+  }
+  :global(.preview-content table) {
+    cursor: pointer;
+    transition: outline 0.1s;
+  }
+  :global(.preview-content table:hover) {
+    outline: 2px dashed var(--accent-default, #3b82f6);
+    outline-offset: 2px;
   }
 </style>
