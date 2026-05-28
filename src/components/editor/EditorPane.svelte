@@ -200,10 +200,9 @@
         cursorPosition.set(pos);
       },
       onScroll: () => {
-        const scroller = container.querySelector(".cm-scroller") as HTMLElement | null;
         const preview = document.querySelector(".preview-scroller") as HTMLElement | null;
-        if (scroller && preview) {
-          scrollSync.sync(scroller, preview);
+        if (editorInstance && preview) {
+          scrollSync.syncByHeading(editorInstance.view, preview);
         }
       },
     });

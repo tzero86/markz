@@ -124,9 +124,12 @@
 
   function onScroll() {
     if (!previewDiv) return;
-    const scroller = document.querySelector(".cm-scroller") as HTMLElement | null;
-    if (scroller) {
-      scrollSync.sync(previewDiv, scroller);
+    const cm = document.querySelector(".cm-editor") as HTMLElement | null;
+    if (cm) {
+      const view = (cm as any).cmView?.view;
+      if (view) {
+        scrollSync.syncByHeading(view, previewDiv);
+      }
     }
   }
 
