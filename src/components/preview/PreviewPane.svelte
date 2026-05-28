@@ -411,6 +411,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
 
       const wrapper = doc.createElement("div");
       wrapper.className = "preview-content";
+      const fontSize = contentDiv.style.fontSize;
       if (fontSize) wrapper.style.fontSize = fontSize;
       wrapper.innerHTML = contentDiv.innerHTML;
       doc.body.appendChild(wrapper);
