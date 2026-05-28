@@ -11,6 +11,7 @@
   import { FORMAT_ICONS } from "../../lib/formatIcons";
   import { Copy, Check, Play, Pause, Square } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
+  import { onMount } from "svelte";
 import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
 
@@ -336,6 +337,14 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     if (contentDiv) {
       setMermaidTheme(theme, contentDiv).catch(console.error);
     }
+  });
+
+  onMount(() => {
+    function onPrint() {
+      window.print();
+    }
+    window.addEventListener("markz:print", onPrint);
+    return () => window.removeEventListener("markz:print", onPrint);
   });
 
 </script>

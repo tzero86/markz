@@ -41,6 +41,7 @@
     tts_voice_id: string;
     tts_rate: number;
     custom_css: string;
+    pandoc_path: string | null;
   } | null = $state(null);
 
   let loading = $state(true);
@@ -86,6 +87,7 @@
     loading = true;
     try {
       settings = await invoke("get_settings");
+      if (!settings) return;
       // Pre-load TTS voices so the dropdown is ready
       const engine = (settings.tts_engine ?? "online") as TtsEngine;
       if (get(ttsStore).voices.length === 0) {
@@ -378,6 +380,7 @@
                   id="tts-engine"
                   value={settings.tts_engine}
                   onchange={(e) => {
+                    if (!settings) return;
                     const engine = e.currentTarget.value as TtsEngine;
                     settings.tts_engine = engine;
                     settings.tts_voice_id = "";
@@ -397,6 +400,7 @@
                     id="tts-voice"
                     value={$ttsStore.voice?.id ?? ""}
                     onchange={(e) => {
+                      if (!settings) return;
                       const id = e.currentTarget.value;
                       const voice = $ttsStore.voices.find((v) => v.id === id) || null;
                       settings.tts_voice_id = id;
@@ -422,6 +426,7 @@
                     step="0.1"
                     value={$ttsStore.rate}
                     oninput={(e) => {
+                      if (!settings) return;
                       const rate = parseFloat(e.currentTarget.value);
                       settings.tts_rate = rate;
                       ttsStore.setRate(rate);
@@ -470,7 +475,6 @@
                 </div>
               {/if}
             </div>
-
             <!-- Export -->
             <div class="settings-section">
               <h3>Export</h3>
@@ -484,6 +488,15 @@
                   bind:checked={settings.embed_remote_images}
                 />
               </label>
+              <div class="field-row">
+                <label class="field-label" for="pandoc-path">Pandoc path</label>
+                <input
+                  id="pandoc-path"
+                  type="text"
+                  placeholder="Leave empty to use system PATH"
+                  bind:value={settings.pandoc_path}
+                />
+              </div>
             </div>
           {:else}
             <div class="error">Failed to load settings.</div>

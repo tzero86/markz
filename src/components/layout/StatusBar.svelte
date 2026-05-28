@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Columns2, AlignLeft, Eye, Type, ZoomIn, Text } from "@lucide/svelte";
+  import { Columns2, AlignLeft, Eye, Type, ZoomIn, Text, GitBranch } from "@lucide/svelte";
   import { activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
-
+  import { invoke } from "@tauri-apps/api/core";
   let { viewMode, onSetViewMode }: { viewMode: "split" | "editor" | "preview"; onSetViewMode: (mode: "split" | "editor" | "preview") => void } = $props();
 
   let wordCount = $derived(
@@ -14,6 +14,18 @@
   let charCount = $derived($activeDocumentStore.content.length);
   let readingTimeMinutes = $derived(Math.max(1, Math.ceil(wordCount / 200)));
 
+  let gitStatus = $state<{ is_repo: boolean; branch: string | null; is_modified: boolean } | null>(null);
+
+  $effect(() => {
+    const path = $activeDocumentStore.path;
+    if (!path) {
+      gitStatus = null;
+      return;
+    }
+    invoke("git_status", { docPath: path })
+      .then((status) => { gitStatus = status as { is_repo: boolean; branch: string | null; is_modified: boolean }; })
+      .catch(() => { gitStatus = null; });
+  });
   const modes: { mode: "split" | "editor" | "preview"; label: string; shortcut?: string }[] = [
     { mode: "split", label: "Split", shortcut: "Ctrl+1" },
     { mode: "editor", label: "Editor", shortcut: "Ctrl+2" },
@@ -66,6 +78,15 @@
   </div>
 
   <div class="status-right">
+    {#if gitStatus?.is_repo}
+      <span class="stat-badge git-badge" title={gitStatus.is_modified ? "Modified" : "Clean"}>
+        <GitBranch size={11} strokeWidth={2} />
+        {gitStatus.branch ?? "detached"}
+        {#if gitStatus.is_modified}
+          <span class="git-modified-dot" aria-label="Modified"></span>
+        {/if}
+      </span>
+    {/if}
     <span class="stat-badge" title="{wordCount} words, {charCount} chars, ~{readingTimeMinutes} min read">
       <Text size={11} strokeWidth={2} />
       {wordCount} words
@@ -245,5 +266,18 @@
   .zoom-badge:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+
+  .git-badge {
+    color: var(--accent-default);
+    gap: 4px;
+  }
+  .git-modified-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--warning);
+    display: inline-block;
+    margin-left: 2px;
   }
 </style>

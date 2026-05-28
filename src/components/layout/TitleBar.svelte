@@ -1,5 +1,6 @@
 <script lang="ts">
   import { get } from "svelte/store";
+  import { onMount } from "svelte";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { themeStore, type Theme } from "../../lib/themeStore";
   import { openDocument, saveDocument, openDocumentByPath, newDocument } from "../../lib/keyboard";
@@ -44,6 +45,13 @@ import Toast from "../ui/Toast.svelte";
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let dropdownRef: HTMLDivElement | undefined = $state();
   let triggerRef: HTMLButtonElement | undefined = $state();
+  let pandocAvailable = $state(false);
+
+  onMount(() => {
+    invoke("pandoc_available")
+      .then((available) => { pandocAvailable = Boolean(available); })
+      .catch(() => { pandocAvailable = false; });
+  });
 
   const copyOptions = [
     { label: "Copy as JIRA", command: "convert_to_jira" as const, mode: "copy" as const, icon: "jira" as const },
@@ -54,6 +62,16 @@ import Toast from "../ui/Toast.svelte";
     { label: "Export as DOCX", command: "export_to_docx" as const, mode: "export" as const, icon: "docx" as const },
   ];
 
+  let exportOptions = $derived([
+    ...copyOptions,
+    ...(pandocAvailable ? [
+      { label: "Pandoc → Word", command: "export_via_pandoc" as const, mode: "export" as const, icon: "docx" as const, format: "docx" },
+      { label: "Pandoc → PDF", command: "export_via_pandoc" as const, mode: "export" as const, icon: "html" as const, format: "pdf" },
+      { label: "Pandoc → HTML", command: "export_via_pandoc" as const, mode: "export" as const, icon: "html" as const, format: "html" },
+      { label: "Pandoc → EPUB", command: "export_via_pandoc" as const, mode: "export" as const, icon: "html" as const, format: "epub" },
+    ] : []),
+    { label: "Print to PDF", command: "print", mode: "print" as const, icon: "html" as const },
+  ]);
   function showToast(message: string, type: "success" | "error" | "info" | "default" = "default") {
     toastMessage = message;
     toastType = type;
@@ -81,28 +99,59 @@ import Toast from "../ui/Toast.svelte";
     recentFiles = [];
   }
 
-  async function handleCopy(command: string, label: string, mode: "copy" | "export") {
+  async function handleCopy(command: string, label: string, mode: "copy" | "export" | "print", format?: string) {
     try {
       const doc = tabStore.getActiveTab();
+      if (!doc) {
+        showToast("No active document", "error");
+        dropdownOpen = false;
+        activeIndex = -1;
+        return;
+      }
+      if (mode === "print") {
+        window.dispatchEvent(new CustomEvent("markz:print"));
+        showToast("Printing...", "info");
+        dropdownOpen = false;
+        activeIndex = -1;
+        triggerRef?.focus();
+        return;
+      }
       if (mode === "export") {
         const defaultName = doc.title ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "document";
+        let ext = "docx";
+        let filterName = "Word Document";
+        let filterExtensions = ["docx"];
+        if (command === "export_via_pandoc") {
+          ext = format ?? "docx";
+          filterName = ext === "docx" ? "Word Document" : ext === "pdf" ? "PDF Document" : ext === "html" ? "HTML Document" : "EPUB Document";
+          filterExtensions = [ext];
+        }
         const outputPath = await invoke<string | null>("save_file_dialog", {
-          defaultName: `${defaultName}.docx`,
-          filterName: "Word Document",
-          filterExtensions: ["docx"],
+          defaultName: `${defaultName}.${ext}`,
+          filterName,
+          filterExtensions,
         });
         if (!outputPath) {
           dropdownOpen = false;
           activeIndex = -1;
           return;
         }
-        showToast("Preparing images for export...", "info");
-        const preparedMarkdown = await prepareMarkdownForDocx(doc.content);
-        await invoke(command, {
-          markdown: preparedMarkdown,
-          docPath: doc.path,
-          outputPath,
-        });
+        if (command === "export_via_pandoc") {
+          await invoke("export_via_pandoc", {
+            markdown: doc.content,
+            docPath: doc.path,
+            outputPath,
+            format: ext,
+          });
+        } else {
+          showToast("Preparing images for export...", "info");
+          const preparedMarkdown = await prepareMarkdownForDocx(doc.content);
+          await invoke(command, {
+            markdown: preparedMarkdown,
+            docPath: doc.path,
+            outputPath,
+          });
+        }
         showToast(`Exported ${label}`, "success");
       } else {
         const result = await invoke<string>(command, {
@@ -144,18 +193,18 @@ import Toast from "../ui/Toast.svelte";
         break;
       case "ArrowDown":
         event.preventDefault();
-        activeIndex = (activeIndex + 1) % copyOptions.length;
+        activeIndex = (activeIndex + 1) % exportOptions.length;
         break;
       case "ArrowUp":
         event.preventDefault();
-        activeIndex = (activeIndex - 1 + copyOptions.length) % copyOptions.length;
+        activeIndex = (activeIndex - 1 + exportOptions.length) % exportOptions.length;
         break;
       case "Enter":
       case " ":
         event.preventDefault();
         if (activeIndex >= 0) {
-          const opt = copyOptions[activeIndex];
-          handleCopy(opt.command, opt.label, opt.mode);
+          const opt = exportOptions[activeIndex];
+          handleCopy(opt.command, opt.label, opt.mode, (opt as any).format);
         }
         break;
       case "Tab":
@@ -305,18 +354,18 @@ import Toast from "../ui/Toast.svelte";
       {#if dropdownOpen}
         <div class="dropdown-panel" role="menu">
           <div class="dropdown-header">Copy or Export</div>
-          {#each copyOptions as option, i (option.command)}
+          {#each exportOptions as option, i (option.label)}
             <button
               class="dropdown-item"
               class:active={i === activeIndex}
               role="menuitem"
-              onclick={() => handleCopy(option.command, option.label, option.mode)}
+              onclick={() => handleCopy(option.command, option.label, option.mode, (option as any).format)}
               onmouseenter={() => (activeIndex = i)}
               tabindex="-1"
             >
               <span class="dropdown-icon">{@html FORMAT_ICONS[option.icon]}</span>
               <span class="dropdown-label">{option.label}</span>
-              <span class="dropdown-hint">{option.mode === "export" ? "Save" : "Copy"}</span>
+              <span class="dropdown-hint">{option.mode === "export" ? "Save" : option.mode === "print" ? "Print" : "Copy"}</span>
             </button>
           {/each}
         </div>
