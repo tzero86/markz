@@ -21,8 +21,13 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
     return markdown;
   }
 
+  interface ProtectedItem {
+    placeholder: string;
+    original: string;
+  }
+
   // 1. Extract mermaid blocks first (they may contain $ chars)
-  const mermaidRegex = /```mermaid\n([\s\S]*?)```/g;
+  const mermaidRegex = /```mermaid\r?\n([\s\S]*?)\r?\n```/g;
   const mermaidItems: ImageItem[] = [];
   let mermaidCounter = 0;
   let afterMermaid = markdown.replace(mermaidRegex, (_match, content: string) => {
@@ -31,18 +36,41 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
     return placeholder;
   });
 
-  // 2. Extract block math next
-  const blockMathRegex = /\$\$\n?([\s\S]*?)\n?\$\$/g;
+  // 2. Extract non-mermaid fenced code blocks (they may contain $ chars)
+  const codeBlockRegex = /```[a-zA-Z0-9_+-]*\r?\n[\s\S]*?\r?\n```/g;
+  const codeBlockItems: ProtectedItem[] = [];
+  let codeBlockCounter = 0;
+  let afterCodeBlocks = afterMermaid.replace(codeBlockRegex, (match: string) => {
+    if (match.startsWith("```mermaid")) {
+      return match;
+    }
+    const placeholder = `%%CODE_BLOCK_${codeBlockCounter++}%%`;
+    codeBlockItems.push({ placeholder, original: match });
+    return placeholder;
+  });
+
+  // 3. Extract inline code spans (they may contain $ chars)
+  const inlineCodeRegex = /`[^`\r\n]+`/g;
+  const inlineCodeItems: ProtectedItem[] = [];
+  let inlineCodeCounter = 0;
+  let afterInlineCode = afterCodeBlocks.replace(inlineCodeRegex, (match: string) => {
+    const placeholder = `%%INLINE_CODE_${inlineCodeCounter++}%%`;
+    inlineCodeItems.push({ placeholder, original: match });
+    return placeholder;
+  });
+
+  // 4. Extract block math next
+  const blockMathRegex = /\$\$\r?\n?([\s\S]*?)\r?\n?\$\$/g;
   const blockMathItems: ImageItem[] = [];
   let blockMathCounter = 0;
-  let afterBlockMath = afterMermaid.replace(blockMathRegex, (_match, content: string) => {
+  let afterBlockMath = afterInlineCode.replace(blockMathRegex, (_match, content: string) => {
     const placeholder = `%%MATH_BLOCK_${blockMathCounter++}%%`;
     blockMathItems.push({ placeholder, original: content, dataUrl: "", success: false });
     return placeholder;
   });
 
-  // 3. Extract inline math last
-  const inlineMathRegex = /\$([^\s$](?:[^$]*?[^\s$])?)\$/g;
+  // 5. Extract inline math last — must NOT cross line boundaries
+  const inlineMathRegex = /\$([^\s$](?:[^\r\n$]*?[^\s$])?)\$/g;
   const inlineMathItems: ImageItem[] = [];
   let inlineMathCounter = 0;
   let afterInlineMath = afterBlockMath.replace(inlineMathRegex, (_match, content: string) => {
@@ -64,7 +92,7 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
   document.body.appendChild(overlay);
 
   try {
-    // 4a. Render mermaid sequentially — mermaid uses mutable global config,
+    // 6a. Render mermaid sequentially — mermaid uses mutable global config,
     //    so parallel renders would race and corrupt each other's output.
     for (const item of mermaidItems) {
       try {
@@ -75,7 +103,7 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
       }
     }
 
-    // 4b. Render math in parallel — KaTeX is stateless per-call.
+    // 6b. Render math in parallel — KaTeX is stateless per-call.
     await Promise.all([
       ...blockMathItems.map(async (item) => {
         try {
@@ -100,21 +128,29 @@ export async function prepareMarkdownForDocx(markdown: string): Promise<string> 
     }
   }
 
-  // 5. Reconstruct markdown
+  // 7. Reconstruct markdown
   let result = afterInlineMath;
   for (const item of [...mermaidItems, ...blockMathItems, ...inlineMathItems]) {
     if (item.success) {
-      result = result.replaceAll(item.placeholder, `![rendered](${item.dataUrl})`);
+      result = result.replaceAll(item.placeholder, () => `![rendered](${item.dataUrl})`);
     } else {
       // Restore original syntax
       if (item.placeholder.startsWith("%%MERMAID_")) {
-        result = result.replaceAll(item.placeholder, `\`\`\`mermaid\n${item.original}\`\`\``);
+        result = result.replaceAll(item.placeholder, () => `\`\`\`mermaid\n${item.original}\`\`\``);
       } else if (item.placeholder.startsWith("%%MATH_BLOCK_")) {
-        result = result.replaceAll(item.placeholder, `$$${item.original}$$`);
+        result = result.replaceAll(item.placeholder, () => `$$${item.original}$$`);
       } else {
-        result = result.replaceAll(item.placeholder, `$${item.original}$`);
+        result = result.replaceAll(item.placeholder, () => `$${item.original}$`);
       }
     }
+  }
+
+  // Restore inline code and code blocks
+  for (const item of inlineCodeItems) {
+    result = result.replaceAll(item.placeholder, () => item.original);
+  }
+  for (const item of codeBlockItems) {
+    result = result.replaceAll(item.placeholder, () => item.original);
   }
 
   return result;
