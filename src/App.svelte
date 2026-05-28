@@ -35,6 +35,19 @@
     viewMode = s.view_mode || s.viewMode || "split";
     document.documentElement.setAttribute("data-reduced-motion", String(s.reduced_motion ?? s.reducedMotion ?? false));
     document.documentElement.style.setProperty("--ui-font-size", `${s.ui_font_size ?? s.uiFontSize ?? 14}px`);
+    // Inject custom CSS if provided
+    let styleEl = document.getElementById("markz-custom-css") as HTMLStyleElement | null;
+    const customCss = s.custom_css ?? s.customCss ?? "";
+    if (customCss.trim()) {
+      if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = "markz-custom-css";
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = customCss;
+    } else if (styleEl) {
+      styleEl.textContent = "";
+    }
   }
 
   invoke("get_settings")

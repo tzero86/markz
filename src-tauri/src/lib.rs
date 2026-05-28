@@ -394,6 +394,12 @@ async fn export_to_docx(
 }
 
 #[tauri::command]
+async fn compute_stats(markdown: String) -> Result<markz_core::stats::DocumentStats, String> {
+    let doc = parse_document(&markdown);
+    Ok(markz_core::stats::compute(&doc))
+}
+
+#[tauri::command]
 async fn list_templates() -> Result<Vec<markz_templates::Template>, String> {
     markz_templates::list_templates().map_err(|e| e.to_string())
 }
@@ -551,6 +557,7 @@ pub fn run() {
             tts_get_voices,
             tts_speak,
             export_to_docx,
+            compute_stats,
             list_templates,
             get_template,
             save_template,

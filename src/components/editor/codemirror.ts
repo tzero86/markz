@@ -15,7 +15,7 @@ import { type Extension } from "@codemirror/state";
 import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownKeymap } from "@codemirror/lang-markdown";
-import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { highlightSelectionMatches, searchKeymap, search, openSearchPanel } from "@codemirror/search";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import type { CursorPosition } from "../../lib/editorStore";
@@ -168,7 +168,12 @@ export function initEditor(
       ...defaultKeymap,
       ...historyKeymap,
       ...searchKeymap,
+      {
+        key: "Mod-h",
+        run: openSearchPanel,
+      },
     ]),
+    search(),
     highlightSelectionMatches(),
     markdown(),
     syntaxHighlighting(markdownHighlightStyle),

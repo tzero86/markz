@@ -528,6 +528,16 @@ pub fn parse(markdown: &str) -> Document {
     }
 }
 
+/// Parse Markdown text into a Document AST, including frontmatter extraction.
+pub fn parse_full(markdown: &str) -> Document {
+    let text = preprocess_math(markdown);
+    let mut doc = parse(&text);
+    let remaining = crate::frontmatter::parse_into_document(&text, &mut doc);
+    if !remaining.is_empty() {
+        doc.blocks = parse(&remaining).blocks;
+    }
+    doc
+}
 fn alignment_from_pulldown(a: pulldown_cmark::Alignment) -> Option<Alignment> {
     match a {
         pulldown_cmark::Alignment::Left => Some(Alignment::Left),

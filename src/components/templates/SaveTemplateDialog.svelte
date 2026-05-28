@@ -2,7 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { get } from "svelte/store";
   import { X } from "@lucide/svelte";
-  import { documentStore } from "../../lib/documentStore";
+  import { tabStore } from "../../lib/tabStore";
 
   let { open = $bindable(false) } = $props();
 
@@ -22,8 +22,8 @@
 
   $effect(() => {
     if (open) {
-      const doc = get(documentStore);
-      name = doc.title !== "Untitled" ? doc.title : "";
+      const doc = tabStore.getActiveTab();
+      name = doc && doc.title !== "Untitled" ? doc.title : "";
       description = "";
       category = "Custom";
     }
@@ -33,7 +33,8 @@
     if (!name.trim()) return;
     saving = true;
     try {
-      const doc = get(documentStore);
+      const doc = tabStore.getActiveTab();
+      if (!doc) return;
       const id = name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")

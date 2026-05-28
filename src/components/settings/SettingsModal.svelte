@@ -40,6 +40,7 @@
     tts_engine: string;
     tts_voice_id: string;
     tts_rate: number;
+    custom_css: string;
   } | null = $state(null);
 
   let loading = $state(true);
@@ -125,6 +126,7 @@
             ttsEngine: settings.tts_engine,
             ttsVoiceId: settings.tts_voice_id,
             ttsRate: settings.tts_rate,
+            customCss: settings.custom_css,
           },
         })
       );
@@ -353,6 +355,18 @@
                 </span>
                 <input type="checkbox" bind:checked={settings.reduced_motion} />
               </label>
+            </div>
+
+            <!-- Custom CSS -->
+            <div class="settings-section">
+              <h3>Custom CSS</h3>
+              <p class="field-hint">Override CSS variables or add custom styles. Applied globally.</p>
+              <textarea
+                class="custom-css-input"
+                bind:value={settings.custom_css}
+                rows={6}
+                placeholder={"/* Example: change accent color */\n:root {\n  --accent-default: #ff6b6b;\n}"}
+              ></textarea>
             </div>
 
             <!-- Text to Speech -->

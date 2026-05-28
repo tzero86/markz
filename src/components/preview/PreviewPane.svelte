@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { documentStore } from "../../lib/documentStore";
+  import { activeDocumentStore } from "../../lib/tabStore";
   import { invoke } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
@@ -15,8 +15,10 @@
 
   type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
 
-  /** Cache of content hash → rendered HTML to avoid redundant re-renders */
+  /** Cache of content+format → rendered HTML to avoid redundant re-renders.
+   *  Implemented as an LRU (least-recently-used) Map with a max size. */
   const renderCache = new Map<string, string>();
+  const MAX_CACHE_SIZE = 10;
 
   let htmlContent = $state("<p>Loading preview...</p>");
   let isRendering = $state(false);
@@ -29,7 +31,6 @@
   let previewEditing = $state(false);
   let syncFeedback = $state(false);
 
-
   const formats: { id: PreviewFormat; label: string; icon: string }[] = [
     { id: "html", label: "HTML", icon: FORMAT_ICONS.html_sm },
     { id: "jira", label: "JIRA", icon: FORMAT_ICONS.jira_sm },
@@ -38,35 +39,24 @@
     { id: "github", label: "GitHub", icon: FORMAT_ICONS.github_sm },
   ];
 
-  /** Simple string hash for cache key */
-  function hash(str: string): string {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) - h) + str.charCodeAt(i);
-      h |= 0;
-    }
-    return `h${h}`;
-  }
-
-  // Load settings once on mount
   invoke("get_settings")
     .then((s) => { settings = s as { embed_remote_images: boolean; preview_font_size: number }; })
     .catch(() => { settings = { embed_remote_images: false, preview_font_size: 16 }; });
 
   // Debounced render with progress animation and content hash caching
   let timeout: ReturnType<typeof setTimeout>;
-  let lastContentHash = "";
+  let lastCacheKey = "";
   $effect(() => {
-    const content = $documentStore.content;
-    const contentHash = hash(content + activeFormat);
+    const content = $activeDocumentStore.content;
+    const cacheKey = content + "\n###FORMAT###\n" + activeFormat;
     // Skip re-render if content hasn't actually changed
-    if (contentHash === lastContentHash && htmlContent !== "<p>Loading preview...</p>") {
+    if (cacheKey === lastCacheKey && htmlContent !== "<p>Loading preview...</p>") {
       return;
     }
-    lastContentHash = contentHash;
+    lastCacheKey = cacheKey;
 
     // Check cache — clear any pending render before returning
-    const cached = renderCache.get(contentHash);
+    const cached = renderCache.get(cacheKey);
     if (cached) {
       clearTimeout(timeout);
       htmlContent = cached;
@@ -86,23 +76,25 @@
         renderProgress = 90;
         let result: string;
         if (format === "html") {
-          result = await invoke<string>("render_preview", { markdown: content, docPath: $documentStore.path });
+          result = await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path });
           // Sanitize HTML to prevent XSS from untrusted markdown content
           result = DOMPurify.sanitize(result);
         } else {
           const command = `convert_to_${format}`;
           result = await invoke<string>(command, {
             markdown: content,
-            docPath: $documentStore.path,
+            docPath: $activeDocumentStore.path,
           });
           result = escapeHtml(result);
         }
         htmlContent = result;
-        renderCache.set(contentHash, result);
-        // Limit cache size to 10 entries to avoid memory leak
-        if (renderCache.size > 10) {
-          const firstKey = renderCache.keys().next().value;
-          if (firstKey) renderCache.delete(firstKey);
+        // LRU insertion: delete old key first to bump to most-recent position
+        renderCache.delete(cacheKey);
+        renderCache.set(cacheKey, result);
+        // Evict oldest entries if over max size
+        while (renderCache.size > MAX_CACHE_SIZE) {
+          const oldestKey = renderCache.keys().next().value;
+          if (oldestKey) renderCache.delete(oldestKey);
         }
         renderProgress = 100;
       } catch (e) {
@@ -211,8 +203,8 @@
         // For non-HTML formats, also fetch the rendered HTML so rich editors
         // (JIRA, Confluence, etc.) can paste formatted content properly.
         const renderedHtml = await invoke<string>("render_preview", {
-          markdown: $documentStore.content,
-          docPath: $documentStore.path,
+          markdown: $activeDocumentStore.content,
+          docPath: $activeDocumentStore.path,
         });
         const blobHtml = new Blob([renderedHtml], { type: "text/html" });
         const blobText = new Blob([plainText], { type: "text/plain" });
