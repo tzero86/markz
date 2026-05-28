@@ -396,7 +396,13 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       `;
       doc.head.appendChild(printStyle);
 
-      doc.body.innerHTML = contentDiv.innerHTML;
+      const wrapper = doc.createElement("div");
+      wrapper.className = "preview-content";
+      // Preserve zoom-scaled font size from the live preview
+      const fontSize = contentDiv.style.fontSize;
+      if (fontSize) wrapper.style.fontSize = fontSize;
+      wrapper.innerHTML = contentDiv.innerHTML;
+      doc.body.appendChild(wrapper);
 
       const images = Array.from(doc.querySelectorAll("img"));
       const pending = images.filter((img) => !img.complete);
