@@ -445,6 +445,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
           bind:this={contentDiv}
           contenteditable={previewEditing}
           ondblclick={handleTableDblClick}
+          role="presentation"
           style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
         >
           {@html htmlContent}

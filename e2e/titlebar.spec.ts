@@ -123,3 +123,32 @@ test.describe("Template buttons", () => {
     await expect(modal).toHaveAttribute("aria-label", "Save as Template");
   });
 });
+
+test.describe("DOCX export", () => {
+  test("triggers export_to_docx command", async ({ page }) => {
+    // Clear any previous calls
+    await page.evaluate(() => localStorage.removeItem("__e2e_export_docx_calls"));
+
+    // Open export dropdown
+    await page.locator('button[aria-label="Copy as"]').click();
+    await page.locator('button:has-text("Export as DOCX")').click();
+
+    // Wait for async operations
+    await page.waitForTimeout(500);
+
+    // Verify export_to_docx was called
+    const calls = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]")
+    );
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(calls[0]).toHaveProperty("markdown");
+    expect(calls[0]).toHaveProperty("output_path");
+    expect(calls[0].output_path).toBe("/tmp/test-export.docx");
+  });
+
+  test("shows info toast during export", async ({ page }) => {
+    await page.locator('button[aria-label="Copy as"]').click();
+    await page.locator('button:has-text("Export as DOCX")').click();
+    await expect(page.locator('.toast:has-text("Preparing")')).toBeVisible({ timeout: 3000 });
+  });
+});

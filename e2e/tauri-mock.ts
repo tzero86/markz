@@ -520,7 +520,12 @@ export const tauriMockScriptString = `
     log_frontend: () => null,
     generate_toc: () => [],
     open_file_dialog: () => null,
-    save_file_dialog: () => null,
+    save_file_dialog: (args) => {
+      if (args?.filterExtensions?.includes("docx")) {
+        return "/tmp/test-export.docx";
+      }
+      return null;
+    },
     save_document: () => null,
     open_document: (args) => {
       const rejectPaths = JSON.parse(localStorage.getItem("__e2e_reject_paths") || "[]");
@@ -531,7 +536,12 @@ export const tauriMockScriptString = `
     },
     process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
-    export_to_docx: () => null,
+    export_to_docx: (args) => {
+      const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_export_docx_calls", JSON.stringify(calls));
+      return null;
+    },
     save_session: () => null,
     load_session: () => {
       const raw = localStorage.getItem("markz-session");
