@@ -4,6 +4,38 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-28
+
+### Added
+- **WikiLinks `[[Target]]` and `[[Target|Display]]`** — Internal document linking with automatic backlink discovery. Post-processed on the AST after parsing to correctly handle pulldown-cmark's event splitting.
+- **Backlinks panel** — New "Links" tab in the sidebar showing outgoing WikiLinks and incoming backlinks for the current document. Click any link to open it. Backend scans the document directory for `[[CurrentDoc]]` references.
+- **Full footnote support** — `ENABLE_FOOTNOTES` enabled in parser. Footnote definitions are collected at the end of the HTML preview in an ordered list. Supported across all 5 converters (JIRA, Confluence, Slack, GitHub, DOCX) and in the TOC and stats modules.
+- **Auto-save** — Debounced timer in `tabStore` saves dirty tabs automatically. Interval and on/off toggle configurable in Settings and persisted across sessions.
+- **Text snippets / expansion** — 8 built-in snippets (`rfc`, `adr`, `todo`, `link`, `img`, `code`, `table`, `frontmatter`) with tab-stop support (`$1`, `${1:default}`). Triggered by typing the keyword and pressing `Tab`.
+- **Heading-anchor scroll sync** — Editor-to-preview sync now scrolls to the nearest heading above the viewport instead of using scroll ratio. Falls back to ratio-based sync for documents without headings.
+- **Inline table editing** — Double-click any table in the preview to open a grid editor. Add/remove rows and columns, edit cell content, set alignment. Changes are serialized back to markdown pipe-table syntax.
+- **Markdown lint + spellcheck** — CodeMirror linter extension checks for trailing whitespace, empty links, missing alt text, unclosed code blocks, heading level jumps, and duplicate headings. Browser native spellcheck enabled via `spellcheckFacet`.
+- **Document statistics** — Rust `markz_core::stats` module computes words, characters, sentences, paragraphs, reading time (200 WPM), Flesch Reading Ease, and Flesch-Kincaid Grade Level. Shown in the status bar.
+- **Custom CSS themes** — Users can paste custom CSS in Settings; injected as a dynamic `<style>` block on app load and settings change.
+- **Frontmatter parsing** — YAML and TOML frontmatter parsed into structured metadata using `serde_yaml` and `toml`.
+- **Find & Replace** — `Ctrl+H` opens CodeMirror's built-in find/replace panel.
+- **LRU preview cache** — Replaced unbounded Map with proper LRU (max 10 entries).
+- **E2E DOCX export test** — Playwright test verifies the export command is invoked without error.
+- **CI E2E job** — GitHub Actions now runs Playwright tests with `xvfb-run`.
+
+### Changed
+- **Single source of truth refactor** — Eliminated `documentStore`. `tabStore` is now the sole source of truth for document state. All consumers (`App.svelte`, `EditorPane`, `PreviewPane`, `keyboard.ts`, `sessionStore`) updated to use `$derived(tabStore.activeTab)`.
+- **Command module split** — `lib.rs` reduced from 580 lines to 198 lines. Commands extracted into 8 focused modules: `documents`, `convert`, `settings`, `tts`, `session`, `templates`, `logging`, `backlinks`.
+- **Scroll sync lock fix** — Replaced dual-lock approach with a single shared `programmaticScroll` flag to prevent bidirectional feedback loops causing scroll jumps.
+
+### Fixed
+- **Missing closing quotes in footnote HTML** — `FootnoteReference` and `FootnoteDefinition` rendering were missing `"` after `href` and `id` attribute values.
+- **Splash screen freeze** — `${TODAY}` unescaped in `snippetStore.ts` template literal caused `ReferenceError` at module load. Fixed by escaping to `\${TODAY}`.
+- **markdownLinter runtime crash** — `import { type EditorView }` was stripped at compile time, causing `ReferenceError` when `EditorView.contentAttributes.of()` was called. Fixed by importing `EditorView` as a value.
+- **editorInstance typo in scroll handler** — `EditorPane.svelte` used undefined `editorInstance` instead of `editorView`, causing scroll sync to never fire.
+- **PreviewPane self-referencing scroll sync** — Called `syncByHeading(view, previewDiv)` from the preview's own scroll handler, creating a feedback loop. Now uses ratio-based `sync(preview, editorScroller)`.
+- **DOCX export code block corruption** (0.5.2) — Code blocks and inline backtick content were replaced with base64 image data due to math regexes not respecting code boundaries.
+
 ## [0.5.2] - 2026-05-28
 
 ### Fixed
