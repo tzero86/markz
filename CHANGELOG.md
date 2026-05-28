@@ -4,9 +4,25 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-05-28
+## [0.7.0] - 2026-05-28
 
 ### Added
+- **Git status indicator** — Status bar shows current branch name and a dot when the file is modified. Uses `git2` crate. Gracefully disappears for files outside a repository.
+- **Pandoc integration** — Auto-detects if Pandoc is installed. "Export via Pandoc" submenu in the TitleBar supports Word (DOCX), PDF, HTML, and EPUB formats. Falls back to native converter if Pandoc is unavailable.
+- **Print to PDF** — Prints only the preview content via a hidden iframe, excluding all app UI chrome. Forces light-theme colors for readability regardless of app theme. Preserves spacing, headings, code blocks, and multi-page pagination.
+
+### Fixed
+- **Print: UI chrome in output** — `window.print()` on main window captured title bar, sidebar, editor, menus. Fixed by printing from a hidden iframe containing only the preview content.
+- **Print: missing spacing** — CSS spacing rules are scoped under `.preview-content`. Fixed by wrapping iframe content in `div.preview-content`.
+- **Print: dark-mode grey text** — Dark theme sets `--text-primary` to light grey which was barely visible on white paper. Fixed by forcing explicit light-theme color variables in the print iframe.
+- **Print: single-page truncation** — `position: fixed` + `height: 100%` constrained content to one viewport. Fixed with `position: absolute`, `min-height: 100%`, and `overflow: visible`.
+- **Print: ReferenceError for fontSize** — `fontSize` variable was used but not declared after a prior refactor. Fixed by adding `const fontSize = contentDiv.style.fontSize;`.
+
+
+## [0.6.0] - 2026-05-28
+### Added
+
+
 - **WikiLinks `[[Target]]` and `[[Target|Display]]`** — Internal document linking with automatic backlink discovery. Post-processed on the AST after parsing to correctly handle pulldown-cmark's event splitting.
 - **Backlinks panel** — New "Links" tab in the sidebar showing outgoing WikiLinks and incoming backlinks for the current document. Click any link to open it. Backend scans the document directory for `[[CurrentDoc]]` references.
 - **Full footnote support** — `ENABLE_FOOTNOTES` enabled in parser. Footnote definitions are collected at the end of the HTML preview in an ordered list. Supported across all 5 converters (JIRA, Confluence, Slack, GitHub, DOCX) and in the TOC and stats modules.

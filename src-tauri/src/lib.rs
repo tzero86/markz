@@ -190,7 +190,10 @@ pub fn run() {
             commands::logging::log_frontend,
             commands::session::save_session,
             commands::session::load_session,
+            commands::pandoc::pandoc_available,
+            commands::pandoc::export_via_pandoc,
             commands::session::clear_session_disk,
+            commands::git::git_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

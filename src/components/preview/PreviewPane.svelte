@@ -11,6 +11,7 @@
   import { FORMAT_ICONS } from "../../lib/formatIcons";
   import { Copy, Check, Play, Pause, Square } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
+  import { onMount } from "svelte";
 import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
 
@@ -336,6 +337,111 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     if (contentDiv) {
       setMermaidTheme(theme, contentDiv).catch(console.error);
     }
+  });
+
+  onMount(() => {
+    function onPrint() {
+      if (!contentDiv) {
+        window.print();
+        return;
+      }
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "absolute";
+      iframe.style.top = "-9999px";
+      iframe.style.left = "-9999px";
+      iframe.style.width = "100%";
+      iframe.style.minHeight = "100%";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+
+      for (const sheet of document.styleSheets) {
+        try {
+          const rules = sheet.cssRules;
+          const style = doc.createElement("style");
+          for (const rule of rules) {
+            style.textContent += rule.cssText + "\n";
+          }
+          doc.head.appendChild(style);
+        } catch {
+          // Cross-origin stylesheets — skip
+        }
+      }
+
+      // Always use light theme for print so text is dark-on-light
+      doc.documentElement.setAttribute("data-theme", "light");
+
+      // Inject explicit light-theme color variables so text is readable
+      // regardless of the app's current theme.
+      const lightVars = doc.createElement("style");
+      lightVars.textContent = `
+        :root {
+          --text-primary: #1a1a1a;
+          --text-secondary: #333333;
+          --text-tertiary: #666666;
+          --bg-base: #ffffff;
+          --bg-surface: #ffffff;
+          --bg-hover: #f5f5f5;
+          --bg-subtle: #f6f8fa;
+          --border-default: #d0d7de;
+          --accent-default: #0969da;
+          --accent-hover: #0550ae;
+        }
+      `;
+      doc.head.appendChild(lightVars);
+
+      const printStyle = doc.createElement("style");
+      printStyle.textContent = `
+        html, body {
+          height: auto !important;
+          overflow: visible !important;
+        }
+        @media print {
+          body { margin: 0; padding: 20px; background: white; color: black; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
+          pre, table, img, blockquote, .mermaid, .math-block {
+            page-break-inside: avoid;
+          }
+          p { orphans: 3; widows: 3; }
+        }
+      `;
+      doc.head.appendChild(printStyle);
+
+      const wrapper = doc.createElement("div");
+      wrapper.className = "preview-content";
+      const fontSize = contentDiv.style.fontSize;
+      if (fontSize) wrapper.style.fontSize = fontSize;
+      wrapper.innerHTML = contentDiv.innerHTML;
+      doc.body.appendChild(wrapper);
+
+      const images = Array.from(doc.querySelectorAll("img"));
+      const pending = images.filter((img) => !img.complete);
+      if (pending.length === 0) {
+        iframe.contentWindow?.print();
+        setTimeout(() => iframe.remove(), 1000);
+      } else {
+        let loaded = 0;
+        const onDone = () => {
+          loaded++;
+          if (loaded >= pending.length) {
+            iframe.contentWindow?.print();
+            setTimeout(() => iframe.remove(), 1000);
+          }
+        };
+        pending.forEach((img) => {
+          img.onload = onDone;
+          img.onerror = onDone;
+        });
+        setTimeout(() => {
+          iframe.contentWindow?.print();
+          setTimeout(() => iframe.remove(), 1000);
+        }, 2000);
+      }
+    }
+    window.addEventListener("markz:print", onPrint);
+    return () => window.removeEventListener("markz:print", onPrint);
   });
 
 </script>
