@@ -346,16 +346,13 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
         return;
       }
       const iframe = document.createElement("iframe");
-      iframe.style.position = "fixed";
-      iframe.style.top = "0";
-      iframe.style.left = "0";
+      iframe.style.position = "absolute";
+      iframe.style.top = "-9999px";
+      iframe.style.left = "-9999px";
       iframe.style.width = "100%";
-      iframe.style.height = "100%";
+      iframe.style.minHeight = "100%";
       iframe.style.border = "none";
-      iframe.style.zIndex = "-9999";
-      iframe.style.opacity = "0";
       document.body.appendChild(iframe);
-
       const doc = iframe.contentDocument;
       if (!doc) return;
 
@@ -396,17 +393,24 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
 
       const printStyle = doc.createElement("style");
       printStyle.textContent = `
+        html, body {
+          height: auto !important;
+          overflow: visible !important;
+        }
         @media print {
           body { margin: 0; padding: 20px; background: white; color: black; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
+          pre, table, img, blockquote, .mermaid, .math-block {
+            page-break-inside: avoid;
+          }
+          p { orphans: 3; widows: 3; }
         }
       `;
       doc.head.appendChild(printStyle);
 
       const wrapper = doc.createElement("div");
       wrapper.className = "preview-content";
-      // Preserve zoom-scaled font size from the live preview
-      const fontSize = contentDiv.style.fontSize;
       if (fontSize) wrapper.style.fontSize = fontSize;
       wrapper.innerHTML = contentDiv.innerHTML;
       doc.body.appendChild(wrapper);
