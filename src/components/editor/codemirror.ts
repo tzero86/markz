@@ -20,6 +20,7 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import type { CursorPosition } from "../../lib/editorStore";
 import { indentSelection } from "./editorCommands";
+import { snippetKeymap, cycleSnippetTabStops } from "./snippets";
 
 const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
@@ -155,11 +156,15 @@ export function initEditor(
     highlightActiveLine(),
     drawSelection(),
     history(),
+    snippetKeymap(),
     keymap.of([
       ...markdownKeymap,
       {
         key: "Tab",
-        run: (view) => indentSelection(view, "indent"),
+        run: (view) => {
+          if (cycleSnippetTabStops(view)) return true;
+          return indentSelection(view, "indent");
+        },
       },
       {
         key: "Shift-Tab",
