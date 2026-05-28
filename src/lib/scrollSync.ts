@@ -1,75 +1,63 @@
 import type { EditorView } from "@codemirror/view";
 
 export class ScrollSyncController {
-  private editorLock = false;
-  private previewLock = false;
-  private rafId: number | null = null;
+  /** True while we are programmatically scrolling one pane.
+   *  Prevents the other pane's scroll event handler from syncing back. */
+  private programmaticScroll = false;
 
-  /** Ratio-based sync from source element to target element.
-   *  Used for preview→editor sync. */
-  sync(source: HTMLElement, target: HTMLElement) {
-    if (this.previewLock) return;
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-    }
+  /** Scroll preview to match editor position.
+   *  Uses heading anchor when possible, ratio-based fallback otherwise. */
+  syncEditorToPreview(
+    editorView: EditorView,
+    editorScroller: HTMLElement,
+    previewScroller: HTMLElement
+  ) {
+    if (this.programmaticScroll) return;
 
-    this.rafId = requestAnimationFrame(() => {
-      const sourceMax = source.scrollHeight - source.clientHeight;
-      const targetMax = target.scrollHeight - target.clientHeight;
-
-      if (sourceMax > 0 && targetMax > 0) {
-        const ratio = source.scrollTop / sourceMax;
-        const newScrollTop = ratio * targetMax;
-        if (Math.abs(target.scrollTop - newScrollTop) > 1) {
-          target.scrollTop = newScrollTop;
+    const headingId = this.findNearestHeading(editorView);
+    if (headingId) {
+      const el = previewScroller.querySelector(
+        `#${CSS.escape(headingId)}`
+      ) as HTMLElement | null;
+      if (el) {
+        const targetTop = el.offsetTop - 20;
+        if (Math.abs(previewScroller.scrollTop - targetTop) > 5) {
+          this.programmaticScroll = true;
+          previewScroller.scrollTop = targetTop;
+          requestAnimationFrame(() => {
+            this.programmaticScroll = false;
+          });
+          return;
         }
       }
+    }
 
-      this.rafId = null;
-      this.previewLock = true;
-      requestAnimationFrame(() => {
-        this.previewLock = false;
-      });
-    });
+    // No heading found (or already aligned) — fall back to ratio sync
+    this.syncByRatio(editorScroller, previewScroller);
   }
 
-  /** Scroll the preview to match the editor's current heading position.
-   *  Falls back to ratio-based sync when no heading is found. */
-  syncEditorToPreview(editorView: EditorView, editorScroller: HTMLElement, previewScroller: HTMLElement) {
-    if (this.editorLock) return;
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-    }
+  /** Scroll editor to match preview position (ratio-based). */
+  syncPreviewToEditor(previewScroller: HTMLElement, editorScroller: HTMLElement) {
+    if (this.programmaticScroll) return;
+    this.syncByRatio(previewScroller, editorScroller);
+  }
 
-    this.rafId = requestAnimationFrame(() => {
-      const headingId = this.findNearestHeading(editorView);
-      if (headingId) {
-        const el = previewScroller.querySelector(`#${CSS.escape(headingId)}`) as HTMLElement | null;
-        if (el) {
-          const targetTop = el.offsetTop - 20; // small padding
-          if (Math.abs(previewScroller.scrollTop - targetTop) > 5) {
-            previewScroller.scrollTop = targetTop;
-          }
-        }
-      } else {
-        // Fallback: ratio-based sync when no heading found
-        const sourceMax = editorScroller.scrollHeight - editorScroller.clientHeight;
-        const targetMax = previewScroller.scrollHeight - previewScroller.clientHeight;
-        if (sourceMax > 0 && targetMax > 0) {
-          const ratio = editorScroller.scrollTop / sourceMax;
-          const newScrollTop = ratio * targetMax;
-          if (Math.abs(previewScroller.scrollTop - newScrollTop) > 1) {
-            previewScroller.scrollTop = newScrollTop;
-          }
-        }
-      }
+  private syncByRatio(source: HTMLElement, target: HTMLElement) {
+    const sourceMax = source.scrollHeight - source.clientHeight;
+    const targetMax = target.scrollHeight - target.clientHeight;
 
-      this.rafId = null;
-      this.editorLock = true;
+    if (sourceMax <= 0 || targetMax <= 0) return;
+
+    const ratio = source.scrollTop / sourceMax;
+    const newScrollTop = ratio * targetMax;
+
+    if (Math.abs(target.scrollTop - newScrollTop) > 1) {
+      this.programmaticScroll = true;
+      target.scrollTop = newScrollTop;
       requestAnimationFrame(() => {
-        this.editorLock = false;
+        this.programmaticScroll = false;
       });
-    });
+    }
   }
 
   private findNearestHeading(editorView: EditorView): string | null {

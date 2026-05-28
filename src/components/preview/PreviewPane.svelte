@@ -142,7 +142,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     if (!previewDiv) return;
     const scroller = document.querySelector(".cm-scroller") as HTMLElement | null;
     if (scroller) {
-      scrollSync.sync(previewDiv, scroller);
+      scrollSync.syncPreviewToEditor(previewDiv, scroller);
     }
   }
 

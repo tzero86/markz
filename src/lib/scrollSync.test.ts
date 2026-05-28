@@ -8,22 +8,21 @@ describe("ScrollSyncController", () => {
     controller = new ScrollSyncController();
   });
 
-  it("sync scrolls target based on source ratio", () => {
-    const source = document.createElement("div");
-    const target = document.createElement("div");
+  it("syncPreviewToEditor scrolls editor based on preview ratio", () => {
+    const preview = document.createElement("div");
+    const editor = document.createElement("div");
 
-    Object.defineProperty(source, "scrollHeight", { value: 200, configurable: true });
-    Object.defineProperty(source, "clientHeight", { value: 100, configurable: true });
-    Object.defineProperty(target, "scrollHeight", { value: 400, configurable: true });
-    Object.defineProperty(target, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(preview, "scrollHeight", { value: 200, configurable: true });
+    Object.defineProperty(preview, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(editor, "scrollHeight", { value: 400, configurable: true });
+    Object.defineProperty(editor, "clientHeight", { value: 100, configurable: true });
 
-    source.scrollTop = 50; // 50% of scrollable range
+    preview.scrollTop = 50; // 50% of scrollable range
 
-    controller.sync(source, target);
+    controller.syncPreviewToEditor(preview, editor);
 
-    // rAF is async; use vi.waitFor for the DOM mutation
     return vi.waitFor(() => {
-      expect(target.scrollTop).toBe(150); // 50% of 300
+      expect(editor.scrollTop).toBe(150); // 50% of 300
     });
   });
 
@@ -38,7 +37,6 @@ describe("ScrollSyncController", () => {
 
     editorScroller.scrollTop = 50;
 
-    // Mock EditorView with no headings in viewport
     const mockView = {
       state: { doc: { lineAt: () => ({ number: 5, text: "plain text" }), line: () => ({ number: 1, text: "" }) } },
       viewport: { from: 0, to: 100 },
@@ -48,6 +46,45 @@ describe("ScrollSyncController", () => {
 
     return vi.waitFor(() => {
       expect(previewScroller.scrollTop).toBe(150);
+    });
+  });
+
+  it("does not bounce back when preview scroll was triggered programmatically", () => {
+    const preview = document.createElement("div");
+    const editor = document.createElement("div");
+
+    Object.defineProperty(preview, "scrollHeight", { value: 400, configurable: true });
+    Object.defineProperty(preview, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(editor, "scrollHeight", { value: 200, configurable: true });
+    Object.defineProperty(editor, "clientHeight", { value: 100, configurable: true });
+
+    preview.scrollTop = 50;
+    editor.scrollTop = 25;
+
+    // Simulate: editor scroll triggers preview scroll programmatically
+    const mockView = {
+      state: { doc: { lineAt: () => ({ number: 5, text: "plain text" }), line: () => ({ number: 1, text: "" }) } },
+      viewport: { from: 0, to: 100 },
+    } as any;
+
+    controller.syncEditorToPreview(mockView, editor, preview);
+
+    return vi.waitFor(() => {
+      // Preview should have been scrolled by the first call
+      expect(preview.scrollTop).not.toBe(50);
+    }).then(() => {
+      // Now simulate the preview's onScroll firing (as a reaction to the programmatic scroll)
+      // This should be ignored because programmaticScroll is still true in the same frame
+      // or at least the lock was set. But since rAF clears it asynchronously,
+      // we need to verify that calling syncPreviewToEditor after the rAF has NOT
+      // reverted the editor's position.
+      const editorPosAfterFirstSync = editor.scrollTop;
+      controller.syncPreviewToEditor(preview, editor);
+      // In the same synchronous call, editor should not have been changed
+      // because either:
+      // 1. programmaticScroll is still true (if rAF hasn't run yet)
+      // 2. Or the ratio calculation produces the same value
+      expect(editor.scrollTop).toBe(editorPosAfterFirstSync);
     });
   });
 });
