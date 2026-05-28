@@ -341,7 +341,86 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
 
   onMount(() => {
     function onPrint() {
-      window.print();
+      if (!contentDiv) {
+        window.print();
+        return;
+      }
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.top = "0";
+      iframe.style.left = "0";
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      iframe.style.border = "none";
+      iframe.style.zIndex = "-9999";
+      iframe.style.opacity = "0";
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+
+      for (const sheet of document.styleSheets) {
+        try {
+          const rules = sheet.cssRules;
+          const style = doc.createElement("style");
+          for (const rule of rules) {
+            style.textContent += rule.cssText + "\n";
+          }
+          doc.head.appendChild(style);
+        } catch {
+          // Cross-origin stylesheets — skip
+        }
+      }
+
+      const theme = document.documentElement.getAttribute("data-theme") || "light";
+      doc.documentElement.setAttribute("data-theme", theme);
+
+      const computed = getComputedStyle(document.documentElement);
+      const cssVars: string[] = [];
+      for (let i = 0; i < computed.length; i++) {
+        const prop = computed[i];
+        if (prop.startsWith("--")) {
+          cssVars.push(`${prop}: ${computed.getPropertyValue(prop)};`);
+        }
+      }
+      const varStyle = doc.createElement("style");
+      varStyle.textContent = `:root { ${cssVars.join(" ")} }`;
+      doc.head.appendChild(varStyle);
+
+      const printStyle = doc.createElement("style");
+      printStyle.textContent = `
+        @media print {
+          body { margin: 0; padding: 20px; background: white; color: black; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `;
+      doc.head.appendChild(printStyle);
+
+      doc.body.innerHTML = contentDiv.innerHTML;
+
+      const images = Array.from(doc.querySelectorAll("img"));
+      const pending = images.filter((img) => !img.complete);
+      if (pending.length === 0) {
+        iframe.contentWindow?.print();
+        setTimeout(() => iframe.remove(), 1000);
+      } else {
+        let loaded = 0;
+        const onDone = () => {
+          loaded++;
+          if (loaded >= pending.length) {
+            iframe.contentWindow?.print();
+            setTimeout(() => iframe.remove(), 1000);
+          }
+        };
+        pending.forEach((img) => {
+          img.onload = onDone;
+          img.onerror = onDone;
+        });
+        setTimeout(() => {
+          iframe.contentWindow?.print();
+          setTimeout(() => iframe.remove(), 1000);
+        }, 2000);
+      }
     }
     window.addEventListener("markz:print", onPrint);
     return () => window.removeEventListener("markz:print", onPrint);
