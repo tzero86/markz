@@ -4,6 +4,11 @@ All notable changes to MarkZ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-05-28
+
+### Fixed
+- **DOCX export no longer corrupts code blocks and inline code as images** — `prepareMarkdownForDocx` now respects markdown code boundaries when scanning for math expressions. Fenced code blocks and inline code spans are extracted before math regexes run, preventing `$$` inside bash blocks and `$var$` inside backticks from being replaced with rendered PNG data URLs. Inline math regex is now line-bound so it cannot span multiple lines. Also fixed a `String.prototype.replaceAll` `$$` interpolation bug that silently corrupted restored code blocks.
+
 ## [0.5.1] - 2026-05-27
 
 ### Added
