@@ -3,11 +3,29 @@ use crate::toc;
 use std::fmt::Write;
 
 /// Render a Document AST to HTML string.
+
 pub fn render(document: &Document) -> String {
     let mut output = String::new();
+    let mut footnotes: Vec<&Block> = Vec::new();
     for block in &document.blocks {
-        render_block(&mut output, block);
-        output.push('\n');
+        match block {
+            Block::FootnoteDefinition { .. } => footnotes.push(block),
+            _ => {
+                render_block(&mut output, block);
+                output.push('\n');
+            }
+        }
+    }
+    if !footnotes.is_empty() {
+        output.push_str("<div class=\"footnotes\">\n<hr />\n<ol>\n");
+        for block in footnotes {
+            if let Block::FootnoteDefinition { label: _, .. } = block {
+                output.push_str("<li>");
+                render_block(&mut output, block);
+                output.push_str("</li>\n");
+            }
+        }
+        output.push_str("</ol>\n</div>\n");
     }
     output
 }
@@ -152,7 +170,7 @@ fn render_block(output: &mut String, block: &Block) {
         Block::FootnoteDefinition { label, blocks } => {
             output.push_str(r#"<div class="footnote" id="fn-"#);
             escape_attr(output, label);
-            output.push_str(">");
+            output.push_str("\">");
             output.push_str("<sup>");
             escape_html(output, label);
             output.push_str("</sup> ");
@@ -239,7 +257,7 @@ fn render_inline(output: &mut String, inline: &Inline) {
         Inline::FootnoteReference { label } => {
             output.push_str("<sup><a href=\"#fn-");
             escape_attr(output, label);
-            output.push_str(">");
+            output.push_str("\">");
             escape_html(output, label);
             output.push_str("</a></sup>");
         }
@@ -497,6 +515,38 @@ mod tests {
         };
         assert_eq!(render(&doc).trim(), "<hr />");
     }
+    #[test]
+    fn test_render_footnotes_collected_at_end() {
+        let doc = Document {
+            frontmatter: None,
+            blocks: vec![
+                Block::Paragraph {
+                    text: vec![
+                        Inline::Text("Hello".to_string()),
+                        Inline::FootnoteReference { label: "1".to_string() },
+                    ],
+                },
+                Block::FootnoteDefinition {
+                    label: "1".to_string(),
+                    blocks: vec![Block::Paragraph {
+                        text: vec![Inline::Text("First footnote.".to_string())],
+                    }],
+                },
+            ],
+        };
+        let html = render(&doc);
+        assert!(html.contains("<p>Hello<sup><a href=\"#fn-1\">1</a></sup></p>"));
+        assert!(html.contains("<div class=\"footnotes\">"));
+        assert!(html.contains("<hr />"));
+        assert!(html.contains("<ol>"));
+        assert!(html.contains("<li><div class=\"footnote\" id=\"fn-1\"><sup>1</sup> <p>First footnote.</p>\n</div></li>"));
+        assert!(html.contains("</ol>"));
+        assert!(html.contains("</div>"));
+        let footnotes_pos = html.find("<div class=\"footnotes\">").unwrap();
+        let fn_def_pos = html.find("<div class=\"footnote\" id=\"fn-1\">").unwrap();
+        assert!(fn_def_pos > footnotes_pos);
+
+    }
 
     #[test]
     fn test_escape_html() {
@@ -508,4 +558,5 @@ mod tests {
         };
         assert_eq!(render(&doc).trim(), "<p>&lt;script&gt;</p>");
     }
+
 }
