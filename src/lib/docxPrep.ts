@@ -10,6 +10,81 @@ interface ImageItem {
   success: boolean;
 }
 
+interface ProtectedItem {
+  placeholder: string;
+  original: string;
+}
+/**
+ * Extract mermaid blocks, code blocks, inline code, and math expressions
+ * from markdown, replacing them with placeholders.
+ * Exported for unit testing the extraction/reconstruction logic.
+ */
+export function extractDocxPlaceholders(markdown: string): {
+  modified: string;
+  mermaidItems: ImageItem[];
+  blockMathItems: ImageItem[];
+  inlineMathItems: ImageItem[];
+  codeBlockItems: ProtectedItem[];
+  inlineCodeItems: ProtectedItem[];
+} {
+  const mermaidRegex = /```mermaid\r?\n([\s\S]*?)\r?\n```/g;
+  const mermaidItems: ImageItem[] = [];
+  let mermaidCounter = 0;
+  let afterMermaid = markdown.replace(mermaidRegex, (_match, content: string) => {
+    const placeholder = `%%MERMAID_${mermaidCounter++}%%`;
+    mermaidItems.push({ placeholder, original: content, dataUrl: "", success: false });
+    return placeholder;
+  });
+
+  const codeBlockRegex = /```[a-zA-Z0-9_+-]*\r?\n[\s\S]*?\r?\n```/g;
+  const codeBlockItems: ProtectedItem[] = [];
+  let codeBlockCounter = 0;
+  let afterCodeBlocks = afterMermaid.replace(codeBlockRegex, (match: string) => {
+    if (match.startsWith("```mermaid")) {
+      return match;
+    }
+    const placeholder = `%%CODE_BLOCK_${codeBlockCounter++}%%`;
+    codeBlockItems.push({ placeholder, original: match });
+    return placeholder;
+  });
+
+  const inlineCodeRegex = /`[^`\r\n]+`/g;
+  const inlineCodeItems: ProtectedItem[] = [];
+  let inlineCodeCounter = 0;
+  let afterInlineCode = afterCodeBlocks.replace(inlineCodeRegex, (match: string) => {
+    const placeholder = `%%INLINE_CODE_${inlineCodeCounter++}%%`;
+    inlineCodeItems.push({ placeholder, original: match });
+    return placeholder;
+  });
+
+  const blockMathRegex = /\$\$\r?\n?([\s\S]*?)\r?\n?\$\$/g;
+  const blockMathItems: ImageItem[] = [];
+  let blockMathCounter = 0;
+  let afterBlockMath = afterInlineCode.replace(blockMathRegex, (_match, content: string) => {
+    const placeholder = `%%MATH_BLOCK_${blockMathCounter++}%%`;
+    blockMathItems.push({ placeholder, original: content, dataUrl: "", success: false });
+    return placeholder;
+  });
+
+  const inlineMathRegex = /\$([^\s$](?:[^\r\n$]*?[^\s$])?)\$/g;
+  const inlineMathItems: ImageItem[] = [];
+  let inlineMathCounter = 0;
+  let afterInlineMath = afterBlockMath.replace(inlineMathRegex, (_match, content: string) => {
+    const placeholder = `%%MATH_INLINE_${inlineMathCounter++}%%`;
+    inlineMathItems.push({ placeholder, original: content, dataUrl: "", success: false });
+    return placeholder;
+  });
+
+  return {
+    modified: afterInlineMath,
+    mermaidItems,
+    blockMathItems,
+    inlineMathItems,
+    codeBlockItems,
+    inlineCodeItems,
+  };
+}
+
 /**
  * Scan markdown for mermaid blocks and math expressions, render each to a PNG,
  * and return a modified markdown where originals are replaced with data-URL
