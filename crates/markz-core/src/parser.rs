@@ -183,6 +183,60 @@ fn split_wikilinks(text: &str, output: &mut Vec<Inline>) {
     }
 }
 
+/// Merge consecutive Inline::Text nodes and re-split them to detect WikiLinks.
+/// Pulldown-cmark splits `[[...]]` into separate Text events (e.g. `[`, `[`, content, `]`, `]`),
+/// so we must coalesce them before running split_wikilinks.
+fn coalesce_text_and_wikilinks(inlines: &mut Vec<Inline>) {
+    let mut result = Vec::new();
+    let mut pending_text = String::new();
+    for inline in inlines.drain(..) {
+        match inline {
+            Inline::Text(t) => {
+                pending_text.push_str(&t);
+            }
+            other => {
+                if !pending_text.is_empty() {
+                    split_wikilinks(&pending_text, &mut result);
+                    pending_text.clear();
+                }
+                result.push(other);
+            }
+        }
+    }
+    if !pending_text.is_empty() {
+        split_wikilinks(&pending_text, &mut result);
+    }
+    *inlines = result;
+}
+
+/// Recursively post-process all blocks to coalesce Text nodes and extract WikiLinks.
+fn postprocess_wikilinks(blocks: &mut [Block]) {
+    for block in blocks.iter_mut() {
+        match block {
+            Block::Heading { text, .. } => coalesce_text_and_wikilinks(text),
+            Block::Paragraph { text } => coalesce_text_and_wikilinks(text),
+            Block::BlockQuote { blocks } => postprocess_wikilinks(blocks),
+            Block::List { items, .. } => {
+                for item in items.iter_mut() {
+                    postprocess_wikilinks(&mut item.blocks);
+                }
+            }
+            Block::Table { header, rows } => {
+                for cell in header.iter_mut() {
+                    coalesce_text_and_wikilinks(&mut cell.text);
+                }
+                for row in rows.iter_mut() {
+                    for cell in row.iter_mut() {
+                        coalesce_text_and_wikilinks(&mut cell.text);
+                    }
+                }
+            }
+            Block::FootnoteDefinition { blocks, .. } => postprocess_wikilinks(blocks),
+            _ => {}
+        }
+    }
+}
+
 /// Heuristic: distinguish math expressions from simple variable references.
 /// Math typically contains spaces, operators, digits, or braces.
 /// Simple variables like $x, $legacy, $LastExitCode are not math.
@@ -578,9 +632,11 @@ pub fn parse(markdown: &str) -> Document {
         }
     }
 
+    let mut blocks = blocks_stack.pop().unwrap_or_default();
+    postprocess_wikilinks(&mut blocks);
     Document {
         frontmatter: None,
-        blocks: blocks_stack.pop().unwrap_or_default(),
+        blocks,
     }
 }
 
