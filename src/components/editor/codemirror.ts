@@ -21,6 +21,7 @@ import { tags } from "@lezer/highlight";
 import type { CursorPosition } from "../../lib/editorStore";
 import { indentSelection } from "./editorCommands";
 import { snippetKeymap, cycleSnippetTabStops } from "./snippets";
+import { markdownLinter, spellcheckFacet } from "./markdownLinter";
 
 const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
@@ -182,6 +183,8 @@ export function initEditor(
     highlightSelectionMatches(),
     markdown(),
     syntaxHighlighting(markdownHighlightStyle),
+    markdownLinter,
+    spellcheckFacet,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         config.onChange(update.state.doc.toString());
