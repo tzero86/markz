@@ -1,5 +1,5 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
-import { type EditorView } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 
 export const markdownLinter = linter((view: EditorView): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
