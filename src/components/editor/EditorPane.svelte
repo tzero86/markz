@@ -201,8 +201,9 @@
       },
       onScroll: () => {
         const preview = document.querySelector(".preview-scroller") as HTMLElement | null;
-        if (editorInstance && preview) {
-          scrollSync.syncByHeading(editorInstance.view, preview);
+        const scroller = container.querySelector(".cm-scroller") as HTMLElement | null;
+        if (editorView && preview && scroller) {
+          scrollSync.syncEditorToPreview(editorView, scroller, preview);
         }
       },
     });

@@ -1,11 +1,14 @@
 import type { EditorView } from "@codemirror/view";
 
 export class ScrollSyncController {
-  private lock = false;
+  private editorLock = false;
+  private previewLock = false;
   private rafId: number | null = null;
 
+  /** Ratio-based sync from source element to target element.
+   *  Used for preview→editor sync. */
   sync(source: HTMLElement, target: HTMLElement) {
-    if (this.lock) return;
+    if (this.previewLock) return;
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
     }
@@ -23,17 +26,17 @@ export class ScrollSyncController {
       }
 
       this.rafId = null;
-      this.lock = true;
+      this.previewLock = true;
       requestAnimationFrame(() => {
-        this.lock = false;
+        this.previewLock = false;
       });
     });
   }
 
-  /// Find the nearest heading above the given scroll position in the editor,
-  /// then scroll the preview to the matching heading element.
-  syncByHeading(editorView: EditorView, previewScroller: HTMLElement) {
-    if (this.lock) return;
+  /** Scroll the preview to match the editor's current heading position.
+   *  Falls back to ratio-based sync when no heading is found. */
+  syncEditorToPreview(editorView: EditorView, editorScroller: HTMLElement, previewScroller: HTMLElement) {
+    if (this.editorLock) return;
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
     }
@@ -48,30 +51,38 @@ export class ScrollSyncController {
             previewScroller.scrollTop = targetTop;
           }
         }
+      } else {
+        // Fallback: ratio-based sync when no heading found
+        const sourceMax = editorScroller.scrollHeight - editorScroller.clientHeight;
+        const targetMax = previewScroller.scrollHeight - previewScroller.clientHeight;
+        if (sourceMax > 0 && targetMax > 0) {
+          const ratio = editorScroller.scrollTop / sourceMax;
+          const newScrollTop = ratio * targetMax;
+          if (Math.abs(previewScroller.scrollTop - newScrollTop) > 1) {
+            previewScroller.scrollTop = newScrollTop;
+          }
+        }
       }
 
       this.rafId = null;
-      this.lock = true;
+      this.editorLock = true;
       requestAnimationFrame(() => {
-        this.lock = false;
+        this.editorLock = false;
       });
     });
   }
 
   private findNearestHeading(editorView: EditorView): string | null {
     const doc = editorView.state.doc;
-    // Get the first visible line
     const vp = editorView.viewport;
     if (!vp) return null;
 
     let lineStart = doc.lineAt(vp.from);
-    // Scan upward to find the nearest heading
     while (lineStart.number > 1) {
       const text = lineStart.text.trimStart();
       if (text.startsWith("#")) {
         return slugify(text.replace(/^#+\s*/, ""));
       }
-      // Move to previous line
       lineStart = doc.line(lineStart.number - 1);
     }
     return null;
