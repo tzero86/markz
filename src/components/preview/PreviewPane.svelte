@@ -372,20 +372,27 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
         }
       }
 
-      const theme = document.documentElement.getAttribute("data-theme") || "light";
-      doc.documentElement.setAttribute("data-theme", theme);
+      // Always use light theme for print so text is dark-on-light
+      doc.documentElement.setAttribute("data-theme", "light");
 
-      const computed = getComputedStyle(document.documentElement);
-      const cssVars: string[] = [];
-      for (let i = 0; i < computed.length; i++) {
-        const prop = computed[i];
-        if (prop.startsWith("--")) {
-          cssVars.push(`${prop}: ${computed.getPropertyValue(prop)};`);
+      // Inject explicit light-theme color variables so text is readable
+      // regardless of the app's current theme.
+      const lightVars = doc.createElement("style");
+      lightVars.textContent = `
+        :root {
+          --text-primary: #1a1a1a;
+          --text-secondary: #333333;
+          --text-tertiary: #666666;
+          --bg-base: #ffffff;
+          --bg-surface: #ffffff;
+          --bg-hover: #f5f5f5;
+          --bg-subtle: #f6f8fa;
+          --border-default: #d0d7de;
+          --accent-default: #0969da;
+          --accent-hover: #0550ae;
         }
-      }
-      const varStyle = doc.createElement("style");
-      varStyle.textContent = `:root { ${cssVars.join(" ")} }`;
-      doc.head.appendChild(varStyle);
+      `;
+      doc.head.appendChild(lightVars);
 
       const printStyle = doc.createElement("style");
       printStyle.textContent = `
