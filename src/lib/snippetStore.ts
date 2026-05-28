@@ -81,7 +81,7 @@ $5
     description: "YAML frontmatter",
     body: `---
 title: $1
-date: ${TODAY}
+date: \${TODAY}
 author: $2
 tags: [$3]
 ---
