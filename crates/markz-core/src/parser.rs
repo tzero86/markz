@@ -149,6 +149,40 @@ fn process_inline_math(line: &str) -> String {
     result
 }
 
+/// Split text into regular text segments and WikiLinks.
+/// Supports `[[Target]]` and `[[Target|Display]]` syntax.
+fn split_wikilinks(text: &str, output: &mut Vec<Inline>) {
+    let mut rest = text;
+    while let Some(start) = rest.find("[[") {
+        if start > 0 {
+            output.push(Inline::Text(rest[..start].to_string()));
+        }
+        rest = &rest[start + 2..];
+        if let Some(end) = rest.find("]]") {
+            let inner = &rest[..end];
+            let (target, display) = if let Some(pipe) = inner.find('|') {
+                (inner[..pipe].trim().to_string(), inner[pipe + 1..].trim().to_string())
+            } else {
+                let t = inner.trim().to_string();
+                (t.clone(), t)
+            };
+            if !target.is_empty() {
+                output.push(Inline::WikiLink { target, display });
+            } else {
+                output.push(Inline::Text("[[]]".to_string()));
+            }
+            rest = &rest[end + 2..];
+        } else {
+            // Unclosed [[ — treat remainder as text
+            output.push(Inline::Text("[[".to_string()));
+            break;
+        }
+    }
+    if !rest.is_empty() {
+        output.push(Inline::Text(rest.to_string()));
+    }
+}
+
 /// Heuristic: distinguish math expressions from simple variable references.
 /// Math typically contains spaces, operators, digits, or braces.
 /// Simple variables like $x, $legacy, $LastExitCode are not math.
@@ -237,6 +271,7 @@ pub fn parse(markdown: &str) -> Document {
     opts.insert(Options::ENABLE_TABLES);
     opts.insert(Options::ENABLE_TASKLISTS);
     opts.insert(Options::ENABLE_SMART_PUNCTUATION);
+    opts.insert(Options::ENABLE_FOOTNOTES);
 
     let parser = Parser::new_ext(&processed, opts);
     let mut blocks_stack: Vec<Vec<Block>> = vec![Vec::new()];
@@ -255,6 +290,7 @@ pub fn parse(markdown: &str) -> Document {
     let mut link_stack: Vec<(String, Option<String>)> = Vec::new();
     let mut image_stack: Vec<(String, Option<String>)> = Vec::new();
     let mut task_stack: Vec<Option<bool>> = Vec::new();
+    let mut footnote_stack: Vec<String> = Vec::new();
 
     fn push_block(blocks_stack: &mut Vec<Vec<Block>>, block: Block) {
         if let Some(top) = blocks_stack.last_mut() {
@@ -285,6 +321,10 @@ pub fn parse(markdown: &str) -> Document {
                 }
                 Tag::BlockQuote(_) => {
                     blocks_stack.push(Vec::new());
+                }
+                Tag::FootnoteDefinition(name) => {
+                    blocks_stack.push(Vec::new());
+                    footnote_stack.push(name.to_string());
                 }
                 Tag::List(start) => {
                     list_stack.push((start.is_some(), start, Vec::new()));
@@ -366,6 +406,15 @@ pub fn parse(markdown: &str) -> Document {
                 TagEnd::BlockQuote(_) => {
                     let inner = blocks_stack.pop().unwrap_or_default();
                     push_block(&mut blocks_stack, Block::BlockQuote { blocks: inner });
+                }
+                TagEnd::FootnoteDefinition => {
+                    let inner = blocks_stack.pop().unwrap_or_default();
+                    if let Some(label) = footnote_stack.pop() {
+                        push_block(
+                            &mut blocks_stack,
+                            Block::FootnoteDefinition { label, blocks: inner },
+                        );
+                    }
                 }
                 TagEnd::List(_) => {
                     if let Some((ordered, start, items)) = list_stack.pop() {
@@ -478,7 +527,7 @@ pub fn parse(markdown: &str) -> Document {
                 if in_code_block {
                     code_content.push_str(&text);
                 } else if let Some(top) = inline_stack.last_mut() {
-                    top.push(Inline::Text(text.into_string()));
+                    split_wikilinks(&text, top);
                 }
             }
             Event::Code(code) => {
@@ -516,6 +565,13 @@ pub fn parse(markdown: &str) -> Document {
             Event::TaskListMarker(checked) => {
                 if let Some(top) = task_stack.last_mut() {
                     *top = Some(checked);
+                }
+            }
+            Event::FootnoteReference(name) => {
+                if let Some(top) = inline_stack.last_mut() {
+                    top.push(Inline::FootnoteReference {
+                        label: name.to_string(),
+                    });
                 }
             }
             _ => {}

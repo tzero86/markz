@@ -402,9 +402,15 @@ fn append_block(
             let text = strip_html_tags(html);
             Ok(docx.add_paragraph(Paragraph::new().add_run(Run::new().add_text(text))))
         }
+        Block::FootnoteDefinition { blocks, .. } => {
+            let mut d = docx;
+            for b in blocks {
+                d = append_block(d, b, ctx, list_depth)?;
+            }
+            Ok(d)
+        }
     }
 }
-
 /// Extract the first run from a paragraph (helper for list item prefix injection).
 fn extract_first_run(para: &Paragraph) -> Option<Run> {
     para.children.first().and_then(|child| {
@@ -521,6 +527,12 @@ fn append_inline_to_paragraph(
         Inline::Html(html) => {
             para.add_run(apply_style(Run::new().add_text(html), bold, italic, strike))
         }
+        Inline::WikiLink { target, display } => {
+            para.add_run(apply_style(Run::new().add_text(format!("{} ({})", display, target)), bold, italic, strike))
+        }
+        Inline::FootnoteReference { label } => {
+            para.add_run(apply_style(Run::new().add_text(format!("[^{}]", label)), bold, italic, strike))
+        }
     }
 }
 
@@ -554,6 +566,8 @@ fn extract_plain_text(inlines: &[Inline]) -> String {
             Inline::Image { alt, .. } => result.push_str(alt),
             Inline::HardBreak | Inline::SoftBreak => result.push(' '),
             Inline::Html(html) => result.push_str(html),
+            Inline::WikiLink { display, .. } => result.push_str(display),
+            Inline::FootnoteReference { label } => result.push_str(&format!("[^{}]", label)),
         }
     }
     result

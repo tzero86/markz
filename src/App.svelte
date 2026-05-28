@@ -49,7 +49,6 @@
       styleEl.textContent = "";
     }
   }
-
   invoke("get_settings")
     .then((s: any) => {
       applySettings(s);
@@ -58,6 +57,11 @@
       const voiceId = s.tts_voice_id ?? "";
       const rate = s.tts_rate ?? 1.0;
       ttsStore.initFromSettings(engine, voiceId, rate);
+      // Initialize auto-save from saved preferences
+      tabStore.setAutoSave(
+        s.auto_save ?? s.autoSave ?? true,
+        s.auto_save_interval_seconds ?? s.autoSaveIntervalSeconds ?? 30
+      );
     })
     .catch(() => {});
 
@@ -129,10 +133,14 @@
     window.addEventListener("markz:toggle-sidebar", handleToggleSidebar);
 
     const handleSettingsChanged = (e: Event) => {
-      applySettings((e as CustomEvent).detail || {});
+      const detail = (e as CustomEvent).detail || {};
+      applySettings(detail);
+      tabStore.setAutoSave(
+        detail.auto_save ?? detail.autoSave ?? true,
+        detail.auto_save_interval_seconds ?? detail.autoSaveIntervalSeconds ?? 30
+      );
     };
     window.addEventListener("markz:settings-changed", handleSettingsChanged);
-
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
         e.preventDefault();

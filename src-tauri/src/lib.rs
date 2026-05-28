@@ -11,7 +11,7 @@ use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 #[cfg(windows)]
 mod windows_tts;
 mod edge_tts_crate;
-
+mod commands;
 pub struct AppState {
     pub current_path: Mutex<Option<String>>,
 }
@@ -132,7 +132,8 @@ async fn render_preview(
 #[tauri::command]
 async fn open_document(path: String) -> Result<DocumentInfo, String> {
     let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    Ok(DocumentInfo { path, content })
+    let title = std::path::Path::new(&path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+        Ok(DocumentInfo { path, content, title })
 }
 
 #[tauri::command]
@@ -155,10 +156,12 @@ async fn open_file_dialog(app: tauri::AppHandle) -> Result<Option<DocumentInfo>,
         Some(path) => {
             let path_str = path.to_string();
             let content = std::fs::read_to_string(&path_str).map_err(|e| e.to_string())?;
-            Ok(Some(DocumentInfo {
-                path: path_str,
-                content,
-            }))
+            let title = std::path::Path::new(&path_str).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
+                        Ok(Some(DocumentInfo {
+                            path: path_str,
+                            content,
+                            title,
+                        }))
         }
         None => Ok(None),
     }
@@ -459,6 +462,7 @@ async fn apply_template(id: String) -> Result<String, String> {
 pub struct DocumentInfo {
     path: String,
     content: String,
+    title: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -558,6 +562,9 @@ pub fn run() {
             tts_speak,
             export_to_docx,
             compute_stats,
+            commands::backlinks::get_backlinks,
+            commands::backlinks::get_wikilinks,
+            commands::backlinks::resolve_wikilink,
             list_templates,
             get_template,
             save_template,

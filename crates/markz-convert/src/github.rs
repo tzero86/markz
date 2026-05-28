@@ -128,6 +128,11 @@ fn render_block(output: &mut String, block: &Block, ctx: &ConvertContext) {
         Block::RawHtml(html) => {
             output.push_str(html);
         }
+        Block::FootnoteDefinition { blocks, .. } => {
+            for b in blocks {
+                render_block(output, b, ctx);
+            }
+        }
     }
 }
 
@@ -195,6 +200,18 @@ fn render_inline(output: &mut String, inline: &Inline, ctx: &ConvertContext) {
         }
         Inline::Html(html) => {
             output.push_str(html);
+        }
+        Inline::WikiLink { target, display } => {
+            output.push('[');
+            output.push_str(display);
+            output.push_str("](");
+            output.push_str(target);
+            output.push_str(".md)");
+        }
+        Inline::FootnoteReference { label } => {
+            output.push_str("[^");
+            output.push_str(label);
+            output.push(']');
         }
     }
 }

@@ -44,10 +44,13 @@ pub enum Block {
         header: Vec<TableCell>,
         rows: Vec<Vec<TableCell>>,
     },
+    FootnoteDefinition {
+        label: String,
+        blocks: Vec<Block>,
+    },
     ThematicBreak,
     RawHtml(String),
 }
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ListItem {
     pub blocks: Vec<Block>,
@@ -84,9 +87,16 @@ pub enum Inline {
         url: String,
         title: Option<String>,
     },
+    FootnoteReference {
+        label: String,
+    },
     HardBreak,
     SoftBreak,
     Html(String),
+    WikiLink {
+        target: String,
+        display: String,
+    },
 }
 
 impl Document {

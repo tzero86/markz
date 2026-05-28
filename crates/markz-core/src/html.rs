@@ -149,6 +149,19 @@ fn render_block(output: &mut String, block: &Block) {
         Block::RawHtml(html) => {
             output.push_str(html);
         }
+        Block::FootnoteDefinition { label, blocks } => {
+            output.push_str(r#"<div class="footnote" id="fn-"#);
+            escape_attr(output, label);
+            output.push_str(">");
+            output.push_str("<sup>");
+            escape_html(output, label);
+            output.push_str("</sup> ");
+            for b in blocks {
+                render_block(output, b);
+                output.push('\n');
+            }
+            output.push_str("</div>");
+        }
     }
 }
 
@@ -215,6 +228,20 @@ fn render_inline(output: &mut String, inline: &Inline) {
         }
         Inline::Html(html) => {
             output.push_str(html);
+        }
+        Inline::WikiLink { target, display } => {
+            output.push_str("<a href=\"");
+            escape_attr(output, target);
+            output.push_str(".md\">");
+            escape_html(output, display);
+            output.push_str("</a>");
+        }
+        Inline::FootnoteReference { label } => {
+            output.push_str("<sup><a href=\"#fn-");
+            escape_attr(output, label);
+            output.push_str(">");
+            escape_html(output, label);
+            output.push_str("</a></sup>");
         }
     }
 }

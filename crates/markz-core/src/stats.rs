@@ -85,65 +85,72 @@ fn extract_plain_text(document: &Document) -> String {
 
 fn append_block_text(result: &mut String, block: &Block) {
     match block {
-        Block::Heading { text, .. } => {
-            append_inlines(result, text);
-            result.push('\n');
-        }
-        Block::Paragraph { text } => {
-            append_inlines(result, text);
-            result.push('\n');
-        }
-        Block::CodeBlock { content, .. } => {
-            result.push_str(content);
-            result.push('\n');
-        }
-        Block::BlockQuote { blocks } => {
-            for b in blocks {
-                append_block_text(result, b);
+            Block::Heading { text, .. } => {
+                append_inlines(result, text);
+                result.push('\n');
             }
-        }
-        Block::List { items, .. } => {
-            for item in items {
-                for b in &item.blocks {
+            Block::Paragraph { text } => {
+                append_inlines(result, text);
+                result.push('\n');
+            }
+            Block::CodeBlock { content, .. } => {
+                result.push_str(content);
+                result.push('\n');
+            }
+            Block::BlockQuote { blocks } => {
+                for b in blocks {
                     append_block_text(result, b);
                 }
             }
-        }
-        Block::Table { header, rows } => {
-            for cell in header {
-                append_inlines(result, &cell.text);
-                result.push(' ');
+            Block::List { items, .. } => {
+                for item in items {
+                    for b in &item.blocks {
+                        append_block_text(result, b);
+                    }
+                }
             }
-            result.push('\n');
-            for row in rows {
-                for cell in row {
+            Block::Table { header, rows } => {
+                for cell in header {
                     append_inlines(result, &cell.text);
                     result.push(' ');
                 }
                 result.push('\n');
+                for row in rows {
+                    for cell in row {
+                        append_inlines(result, &cell.text);
+                        result.push(' ');
+                    }
+                    result.push('\n');
+                }
+            }
+            Block::ThematicBreak => {}
+            Block::RawHtml(html) => {
+                result.push_str(html);
+                result.push('\n');
+            }
+            Block::FootnoteDefinition { blocks, .. } => {
+                for b in blocks {
+                    append_block_text(result, b);
+                }
             }
         }
-        Block::ThematicBreak => {}
-        Block::RawHtml(html) => {
-            result.push_str(html);
-            result.push('\n');
-        }
-    }
 }
 
 fn append_inlines(result: &mut String, inlines: &[Inline]) {
     for inline in inlines {
         match inline {
-            Inline::Text(t) => result.push_str(t),
-            Inline::Code(c) => result.push_str(c),
-            Inline::Emphasis(inner)
-            | Inline::Strong(inner)
-            | Inline::Strikethrough(inner) => append_inlines(result, inner),
-            Inline::Link { text, .. } => append_inlines(result, text),
-            Inline::Image { alt, .. } => result.push_str(alt),
-            Inline::HardBreak | Inline::SoftBreak => result.push(' '),
-            Inline::Html(h) => result.push_str(h),
-        }
+                    Inline::Text(t) => result.push_str(t),
+                    Inline::Code(c) => result.push_str(c),
+                    Inline::Emphasis(inner)
+                    | Inline::Strong(inner)
+                    | Inline::Strikethrough(inner) => append_inlines(result, inner),
+                    Inline::Link { text, .. } => append_inlines(result, text),
+                    Inline::Image { alt, .. } => result.push_str(alt),
+                    Inline::HardBreak | Inline::SoftBreak => result.push(' '),
+                    Inline::Html(h) => result.push_str(h),
+                    Inline::FootnoteReference { .. } => {}
+                    Inline::WikiLink { display, .. } => result.push_str(display),
+                }
     }
 }
 

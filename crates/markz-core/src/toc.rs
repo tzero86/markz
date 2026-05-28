@@ -47,6 +47,10 @@ pub fn extract_text(inlines: &[Inline]) -> String {
             Inline::Html(html) => {
                 result.push_str(html);
             }
+            Inline::FootnoteReference { .. } => {}
+            Inline::WikiLink { display, .. } => {
+                result.push_str(display);
+            }
         }
     }
     result.trim().to_string()

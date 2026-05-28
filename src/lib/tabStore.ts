@@ -1,5 +1,6 @@
 import { writable, get, derived } from "svelte/store";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import { saveSession, type SessionTab } from "./sessionStore";
 
 export interface Tab {
@@ -312,6 +313,43 @@ function createTabStore() {
     return state.tabs.some((t) => t.isDirty);
   }
 
+  // --- Auto-save ---
+  let autoSaveEnabled = false;
+  let autoSaveIntervalMs = 30000;
+  let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function setAutoSave(enabled: boolean, intervalSeconds: number) {
+    autoSaveEnabled = enabled;
+    autoSaveIntervalMs = Math.max(intervalSeconds, 1) * 1000;
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = null;
+    }
+  }
+
+  async function triggerAutoSave() {
+    if (!autoSaveEnabled) return;
+    const doc = getActiveTab();
+    if (!doc || !doc.isDirty || !doc.path) return;
+    try {
+      await invoke("save_document", { path: doc.path, content: doc.content });
+      markClean();
+    } catch (e) {
+      console.error("Auto-save failed:", e);
+    }
+  }
+
+  function scheduleAutoSave() {
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer);
+    }
+    if (!autoSaveEnabled) return;
+    autoSaveTimer = setTimeout(() => {
+      autoSaveTimer = null;
+      triggerAutoSave();
+    }, autoSaveIntervalMs);
+  }
+  // --- Active-tab mutations (single source of truth) ---
   function persistSession() {
     const state = get({ subscribe });
     const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
@@ -324,8 +362,6 @@ function createTabStore() {
     saveSession(sessionTabs, activeTab?.path ?? null);
   }
 
-  // --- Active-tab mutations (single source of truth) ---
-
   function setContent(content: string) {
     update((state) => {
       const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
@@ -335,6 +371,7 @@ function createTabStore() {
       return { ...state, tabs: newTabs };
     });
     persistSession();
+    scheduleAutoSave();
   }
 
   function loadDocument(content: string, path: string) {
@@ -525,6 +562,7 @@ function createTabStore() {
     hasDirtyTabs,
     persistSession,
     restoreSession,
+    setAutoSave,
     // Active-tab mutations
     setContent,
     loadDocument,
