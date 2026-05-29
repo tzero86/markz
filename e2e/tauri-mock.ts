@@ -569,6 +569,33 @@ export const tauriMockScriptString = `
         "+Hello modified world.\\n" +
         "+New line.\\n";
     },
+    open_folder_dialog: () => {
+      const override = localStorage.getItem("__e2e_open_folder_result");
+      console.log("[MOCK] open_folder_dialog called, override:", override);
+      if (override) return override;
+      return null;
+    },
+    list_workspace_files: (args) => {
+      const root = args?.root || "";
+      if (!root) return [];
+      return [
+        { name: "docs", path: root + "/docs", rel_path: "docs", is_dir: true, children: [
+          { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
+        ]},
+        { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+      ];
+    },
+    search_workspace: (args) => {
+      const root = args?.root || "";
+      const query = (args?.query || "").toLowerCase();
+      if (!root || !query) return [];
+      return [
+        { path: root + "/notes.md", rel_path: "notes.md", line_number: 1, context: "Hello " + query + " world" },
+      ];
+    },
+    read_file_text: (args) => {
+      return "# Test file\\n\\nHello world.";
+    },
     pandoc_available: () => true,
     export_via_pandoc: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");

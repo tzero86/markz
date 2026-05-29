@@ -2,14 +2,17 @@
   import { invoke } from "@tauri-apps/api/core";
   import { activeDocumentStore } from "../../lib/tabStore";
   import { openDocumentByPath } from "../../lib/keyboard";
-  import { ChevronLeft, Link2, ArrowLeft, ArrowRight } from "@lucide/svelte";
+  import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
+  import { ChevronLeft, Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
 
   let { visible }: { visible: boolean } = $props();
 
-  let activeTab = $state<"outline" | "backlinks">("outline");
+  let activeTab = $state<"outline" | "backlinks" | "files">("outline");
   let toc = $state<TocEntry[]>([]);
   let activeAnchor = $state<string | null>(null);
+  let searchInput = $state("");
+  let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
   let backlinks = $state<Array<{ path: string; title: string }>>([]);
   let outgoingLinks = $state<string[]>([]);
@@ -88,6 +91,26 @@
       console.error("resolve_wikilink failed:", e);
     }
   }
+
+  async function handleOpenFile(path: string) {
+    await openDocumentByPath(path);
+  }
+
+  function handleToggleDir(relPath: string) {
+    workspaceStore.toggleDir(relPath);
+  }
+
+  function handleSearchInput(value: string) {
+    searchInput = value;
+    if (searchDebounce) clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      workspaceStore.search(value);
+    }, 300);
+  }
+
+  function isActiveFile(path: string): boolean {
+    return $activeDocumentStore.path === path;
+  }
 </script>
 
 <div class="sidebar" class:collapsed={!visible}>
@@ -123,6 +146,14 @@
           <span class="tab-badge">{backlinks.length}</span>
         {/if}
       </button>
+      <button
+        class="sidebar-tab"
+        class:active={activeTab === "files"}
+        onclick={() => (activeTab = "files")}
+        aria-pressed={activeTab === "files"}
+      >
+        Files
+      </button>
     </div>
 
     {#if activeTab === "outline"}
@@ -145,7 +176,7 @@
           </ul>
         {/if}
       </div>
-    {:else}
+    {:else if activeTab === "backlinks"}
       <div class="toc-scroller">
         {#if linksLoading}
           <div class="empty">Loading links…</div>
@@ -195,9 +226,105 @@
           {/if}
         {/if}
       </div>
+    {:else}
+      <div class="toc-scroller file-tree-scroller">
+        {#if !$workspaceStore.rootPath}
+          <div class="empty">
+            <FolderOpen size={32} strokeWidth={1.5} style="opacity: 0.4; margin-bottom: 8px;" />
+            <div>No folder open</div>
+            <button class="open-folder-btn" onclick={() => workspaceStore.openWorkspace()}>
+              Open Folder
+            </button>
+          </div>
+        {:else}
+          <div class="file-tree-header">
+            <span class="file-tree-root" title={$workspaceStore.rootPath}>
+              {$workspaceStore.rootPath.split(/[\\/]/).pop() || "Workspace"}
+            </span>
+            <button class="refresh-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
+              <span style="font-size: 11px;">↻</span>
+            </button>
+          </div>
+
+          <div class="search-box">
+            <Search size={12} strokeWidth={2} />
+            <input
+              type="text"
+              placeholder="Search files…"
+              value={searchInput}
+              oninput={(e) => handleSearchInput(e.currentTarget.value)}
+            />
+          </div>
+
+          {#if $workspaceStore.searchLoading}
+            <div class="empty">Searching…</div>
+          {:else if $workspaceStore.searchResults.length > 0}
+            <ul class="link-list search-results">
+              {#each $workspaceStore.searchResults as result (result.path + ":" + result.line_number)}
+                <li>
+                  <button class="link-btn search-result-btn" onclick={() => handleOpenFile(result.path)}>
+                    <FileText size={12} />
+                    <div class="search-result-text">
+                      <div class="search-result-path">{result.rel_path}:{result.line_number}</div>
+                      <div class="search-result-context">{result.context}</div>
+                    </div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {:else if searchInput.trim()}
+            <div class="empty">No matches</div>
+          {:else if $workspaceStore.fileTree.length === 0}
+            <div class="empty">No markdown files found.</div>
+          {:else}
+            <ul class="file-tree">
+              {#each $workspaceStore.fileTree as node (node.path)}
+                {@render fileTreeNode(node, 0)}
+              {/each}
+            </ul>
+          {/if}
+        {/if}
+      </div>
     {/if}
   {/if}
 </div>
+
+{#snippet fileTreeNode(node: FileTreeNode, depth: number)}
+  {#if node.is_dir}
+    <li>
+      <button
+        class="tree-node tree-dir"
+        style="padding-left: {12 + depth * 14}px"
+        onclick={() => handleToggleDir(node.rel_path)}
+      >
+        <span class="tree-chevron" class:expanded={$workspaceStore.expandedDirs.has(node.rel_path)}>
+          <ChevronRight size={12} strokeWidth={2} />
+        </span>
+        <Folder size={12} strokeWidth={2} />
+        <span class="tree-label">{node.name}</span>
+      </button>
+      {#if $workspaceStore.expandedDirs.has(node.rel_path) && node.children.length > 0}
+        <ul class="file-tree">
+          {#each node.children as child (child.path)}
+            {@render fileTreeNode(child, depth + 1)}
+          {/each}
+        </ul>
+      {/if}
+    </li>
+  {:else}
+    <li>
+      <button
+        class="tree-node tree-file"
+        class:active={isActiveFile(node.path)}
+        style="padding-left: {26 + depth * 14}px"
+        onclick={() => handleOpenFile(node.path)}
+      >
+        <FileText size={12} strokeWidth={2} />
+        <span class="tree-label">{node.name}</span>
+      </button>
+    </li>
+  {/if}
+{/snippet}
 
 <style>
   .sidebar {
@@ -384,6 +511,139 @@
     color: var(--accent-default);
   }
   .link-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* File tree styles */
+  .file-tree-scroller {
+    padding: 0;
+  }
+  .open-folder-btn {
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background: var(--accent-default);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+  .open-folder-btn:hover {
+    background: var(--accent-hover);
+  }
+  .file-tree-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-default);
+  }
+  .file-tree-root {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+  }
+  .refresh-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+  }
+  .refresh-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-default);
+  }
+  .search-box input {
+    flex: 1;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    outline: none;
+  }
+  .search-box input:focus {
+    border-color: var(--accent-default);
+  }
+  .file-tree {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-1) 0;
+  }
+  .tree-node {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    text-align: left;
+    padding: var(--space-1) var(--space-3);
+    background: transparent;
+    border: none;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .tree-node:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .tree-node.active {
+    background: var(--accent-muted);
+    color: var(--accent-default);
+  }
+  .tree-chevron {
+    display: inline-flex;
+    transition: transform 150ms ease;
+    color: var(--text-tertiary);
+  }
+  .tree-chevron.expanded {
+    transform: rotate(90deg);
+  }
+  .tree-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .search-results {
+    padding: var(--space-1) 0;
+  }
+  .search-result-btn {
+    align-items: flex-start;
+    padding: var(--space-1) var(--space-3);
+  }
+  .search-result-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .search-result-path {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .search-result-context {
+    font-size: 11px;
+    color: var(--text-tertiary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

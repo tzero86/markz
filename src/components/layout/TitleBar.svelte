@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { themeStore, type Theme } from "../../lib/themeStore";
-  import { openDocument, saveDocument, openDocumentByPath, newDocument } from "../../lib/keyboard";
+  import { openDocument, saveDocument, openDocumentByPath, newDocument, openFolder } from "../../lib/keyboard";
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
   import { updateReady, confirmAndRestart } from "../../lib/updater";
   import { prepareMarkdownForDocx } from "../../lib/docxPrep";
@@ -273,6 +273,11 @@ import Toast from "../ui/Toast.svelte";
         <FilePlus size={15} strokeWidth={2} />
       </button>
       <button class="tool-btn" onclick={openDocument} aria-label="Open file" data-tooltip="Open (Ctrl+O)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+      <button class="tool-btn" onclick={openFolder} aria-label="Open folder" data-tooltip="Open Folder (Ctrl+Shift+O)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
         </svg>

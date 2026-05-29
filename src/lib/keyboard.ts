@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
 import { contentZoomStore } from "./contentZoomStore";
+import { workspaceStore } from "./workspaceStore";
 
 export async function saveDocument() {
   const doc = tabStore.getActiveTab();
@@ -89,6 +90,10 @@ export async function openDocumentByPath(path: string) {
   }
 }
 
+export async function openFolder() {
+  await workspaceStore.openWorkspace();
+}
+
 export function newDocument() {
   tabStore.newTab("", "Untitled", null);
 }
@@ -111,6 +116,11 @@ export function initKeyboardShortcuts() {
     if (mod && e.shiftKey && key === "d") {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent("markz:open-git-diff"));
+      return;
+    }
+    if (mod && e.shiftKey && key === "o") {
+      e.preventDefault();
+      openFolder();
       return;
     }
     if (!mod) return;

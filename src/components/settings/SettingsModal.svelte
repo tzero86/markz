@@ -72,6 +72,7 @@
     { keys: ["Ctrl", "I"], action: "Italic (in editor)", context: "editor" },
     { keys: ["Esc"], action: "Close modal / dropdown" },
     { keys: ["Ctrl", "Shift", "D"], action: "View Git diff" },
+    { keys: ["Ctrl", "Shift", "O"], action: "Open folder" },
   ];
 
   $effect(() => {

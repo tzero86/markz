@@ -195,6 +195,10 @@ pub fn run() {
             commands::pandoc::pandoc_available,
             commands::pandoc::export_via_pandoc,
             commands::session::clear_session_disk,
+            commands::workspace::open_folder_dialog,
+            commands::workspace::list_workspace_files,
+            commands::workspace::search_workspace,
+            commands::workspace::read_file_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
