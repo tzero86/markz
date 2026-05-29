@@ -19,7 +19,7 @@
   import { ttsStore, type TtsEngine } from "./lib/ttsStore";
   import { tabStore, activeDocumentStore } from "./lib/tabStore";
   import { getSession } from "./lib/sessionStore";
-
+  import { workspaceStore } from "./lib/workspaceStore";
   // Always start at 100% zoom — prevents stale localStorage values
   // (e.g.: 160% left over from a previous session) from persisting.
   contentZoomStore.reset();
@@ -126,6 +126,10 @@
           .catch(() => {
             // Fallback: default welcome tab is already present
           });
+      }
+      // Restore workspace folder if one was open
+      if (session?.workspacePath) {
+        workspaceStore.loadWorkspace(session.workspacePath).catch(() => {});
       }
     });
 

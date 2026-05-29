@@ -10,11 +10,13 @@ export interface SessionTab {
 export interface SessionState {
   tabs: SessionTab[];
   activeTabPath: string | null;
+  workspacePath: string | null;
 }
 
 export async function saveSession(
   tabs: SessionTab[],
-  activeTabPath: string | null
+  activeTabPath: string | null,
+  workspacePath: string | null
 ): Promise<void> {
   await invoke("save_session", {
     tabs: tabs.map((t) => ({
@@ -24,6 +26,7 @@ export async function saveSession(
       is_dirty: t.isDirty,
     })),
     active_tab_path: activeTabPath,
+    workspace_path: workspacePath,
   });
 }
 
@@ -36,6 +39,7 @@ export async function getSession(): Promise<SessionState | null> {
       is_dirty: boolean;
     }>;
     active_tab_path: string | null;
+    workspace_path: string | null;
   } | null>("load_session");
 
   if (!result) return null;
@@ -48,6 +52,7 @@ export async function getSession(): Promise<SessionState | null> {
       isDirty: t.is_dirty,
     })),
     activeTabPath: result.active_tab_path,
+    workspacePath: result.workspace_path,
   };
 }
 

@@ -147,4 +147,40 @@ test.describe("Session restore", () => {
     const sameCount = texts.filter((t) => t.includes("same.md")).length;
     expect(sameCount).toBe(1);
   });
+
+  test("restores previously opened workspace folder on reload", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector(".app", { timeout: 10000 });
+
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "markz-session",
+        JSON.stringify({
+          tabs: [
+            { content: "# Doc1", path: "/test-workspace/doc1.md", title: "doc1.md", isDirty: false },
+          ],
+          activeTabPath: "/test-workspace/doc1.md",
+          workspacePath: "/test-workspace",
+        })
+      );
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+      localStorage.setItem("__e2e_workspace_files", JSON.stringify([
+        { path: "/test-workspace/doc1.md", rel_path: "doc1.md", name: "doc1.md", is_dir: false, children: [] },
+        { path: "/test-workspace/docs", rel_path: "docs", name: "docs", is_dir: true, children: [
+          { path: "/test-workspace/docs/readme.md", rel_path: "docs/readme.md", name: "readme.md", is_dir: false, children: [] },
+        ]},
+      ]));
+    });
+
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+
+    // Open Files panel
+    await page.click('.activity-btn[aria-label="Files"]');
+
+    // Workspace tree should be visible
+    await expect(page.locator(".tree-file").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(".tree-file").first()).toContainText("doc1.md");
+    await expect(page.locator(".tree-dir").first()).toContainText("docs");
+  });
 });

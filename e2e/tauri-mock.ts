@@ -578,6 +578,10 @@ export const tauriMockScriptString = `
     list_workspace_files: (args) => {
       const root = args?.root || "";
       if (!root) return [];
+      const override = localStorage.getItem("__e2e_workspace_files");
+      if (override) {
+        try { return JSON.parse(override); } catch { /* fall through */ }
+      }
       return [
         { name: "docs", path: root + "/docs", rel_path: "docs", is_dir: true, children: [
           { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
@@ -585,7 +589,6 @@ export const tauriMockScriptString = `
         { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
       ];
     },
-    search_workspace: (args) => {
       const root = args?.root || "";
       const query = (args?.query || "").toLowerCase();
       if (!root || !query) return [];
@@ -609,21 +612,28 @@ export const tauriMockScriptString = `
       localStorage.setItem("__e2e_export_docx_calls", JSON.stringify(calls));
       return null;
     },
-    save_session: () => null,
+    save_session: (args) => {
+      localStorage.setItem("markz-session", JSON.stringify({
+        tabs: args?.tabs || [],
+        activeTabPath: args?.active_tab_path || null,
+        workspacePath: args?.workspace_path || null,
+      }));
+      return null;
+    },
     load_session: () => {
       const raw = localStorage.getItem("markz-session");
       if (!raw) return null;
       try {
         const parsed = JSON.parse(raw);
-        // Convert camelCase to snake_case for backend compatibility
         return {
           tabs: (parsed.tabs || []).map((t) => ({
             content: t.content || "",
             path: t.path || null,
             title: t.title || "Untitled",
-            is_dirty: t.isDirty ?? false,
+            is_dirty: t.isDirty ?? t.is_dirty ?? false,
           })),
-          active_tab_path: parsed.activeTabPath || null,
+          active_tab_path: parsed.activeTabPath ?? parsed.active_tab_path ?? null,
+          workspace_path: parsed.workspacePath ?? parsed.workspace_path ?? null,
         };
       } catch {
         return null;

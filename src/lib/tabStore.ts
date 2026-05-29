@@ -2,7 +2,7 @@ import { writable, get, derived } from "svelte/store";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { saveSession, type SessionTab } from "./sessionStore";
-
+import { workspaceStore } from "./workspaceStore";
 export interface Tab {
   id: string;
   content: string;
@@ -349,7 +349,6 @@ function createTabStore() {
       triggerAutoSave();
     }, autoSaveIntervalMs);
   }
-  // --- Active-tab mutations (single source of truth) ---
   function persistSession() {
     const state = get({ subscribe });
     const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
@@ -359,7 +358,8 @@ function createTabStore() {
       title: t.title,
       isDirty: t.isDirty,
     }));
-    saveSession(sessionTabs, activeTab?.path ?? null);
+    const ws = get(workspaceStore);
+    saveSession(sessionTabs, activeTab?.path ?? null, ws.rootPath);
   }
 
   function setContent(content: string) {

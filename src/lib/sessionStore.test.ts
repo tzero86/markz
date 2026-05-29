@@ -27,7 +27,8 @@ describe("sessionStore", () => {
         { content: "# Hello", path: "/a.md", title: "a.md", isDirty: false },
         { content: "# World", path: null, title: "Untitled", isDirty: true },
       ],
-      "/a.md"
+      "/a.md",
+      "/projects"
     );
 
     expect(invokeMock).toHaveBeenCalledWith("save_session", {
@@ -36,6 +37,7 @@ describe("sessionStore", () => {
         { content: "# World", path: null, title: "Untitled", is_dirty: true },
       ],
       active_tab_path: "/a.md",
+      workspace_path: "/projects",
     });
   });
 
@@ -46,6 +48,7 @@ describe("sessionStore", () => {
         { content: "# World", path: null, title: "Untitled", is_dirty: true },
       ],
       active_tab_path: "/a.md",
+      workspace_path: "/projects",
     });
 
     const session = await getSession();
@@ -55,6 +58,7 @@ describe("sessionStore", () => {
       { content: "# World", path: null, title: "Untitled", isDirty: true },
     ]);
     expect(session!.activeTabPath).toBe("/a.md");
+    expect(session!.workspacePath).toBe("/projects");
   });
 
   it("returns null when no session exists", async () => {
@@ -73,6 +77,7 @@ describe("sessionStore", () => {
     invokeMock.mockResolvedValue({
       tabs: [{ content: "", path: "/x.md", title: "x.md", is_dirty: false }],
       active_tab_path: "/x.md",
+      workspace_path: null,
     });
     expect(await hasSession()).toBe(true);
   });
@@ -83,19 +88,20 @@ describe("sessionStore", () => {
   });
 
   it("hasSession returns false when session has no tabs", async () => {
-    invokeMock.mockResolvedValue({ tabs: [], active_tab_path: null });
+    invokeMock.mockResolvedValue({ tabs: [], active_tab_path: null, workspace_path: null });
     expect(await hasSession()).toBe(false);
   });
 
   it("handles empty tabs array", async () => {
-    invokeMock.mockResolvedValue({ tabs: [], active_tab_path: null });
+    invokeMock.mockResolvedValue({ tabs: [], active_tab_path: null, workspace_path: null });
     const session = await getSession();
     expect(session!.tabs).toEqual([]);
     expect(session!.activeTabPath).toBeNull();
+    expect(session!.workspacePath).toBeNull();
   });
 
   it("survives invoke errors gracefully", async () => {
     invokeMock.mockRejectedValue(new Error("Disk full"));
-    await expect(saveSession([], null)).rejects.toThrow("Disk full");
+    await expect(saveSession([], null, null)).rejects.toThrow("Disk full");
   });
 });

@@ -126,6 +126,7 @@ pub struct SessionTab {
 pub struct SessionState {
     tabs: Vec<SessionTab>,
     active_tab_path: Option<String>,
+    workspace_path: Option<String>,
 }
 
 pub fn session_path() -> Option<std::path::PathBuf> {

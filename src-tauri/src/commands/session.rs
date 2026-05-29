@@ -1,9 +1,17 @@
 use crate::{session_path, SessionState, SessionTab};
 
 #[tauri::command]
-pub async fn save_session(tabs: Vec<SessionTab>, active_tab_path: Option<String>) -> Result<(), String> {
+pub async fn save_session(
+    tabs: Vec<SessionTab>,
+    active_tab_path: Option<String>,
+    workspace_path: Option<String>,
+) -> Result<(), String> {
     let path = session_path().ok_or("Could not determine session path")?;
-    let state = SessionState { tabs, active_tab_path };
+    let state = SessionState {
+        tabs,
+        active_tab_path,
+        workspace_path,
+    };
     let json = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| e.to_string())
 }
