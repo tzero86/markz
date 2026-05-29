@@ -142,13 +142,79 @@ test.describe("DOCX export", () => {
     );
     expect(calls.length).toBeGreaterThanOrEqual(1);
     expect(calls[0]).toHaveProperty("markdown");
-    expect(calls[0]).toHaveProperty("output_path");
-    expect(calls[0].output_path).toBe("/tmp/test-export.docx");
+    expect(calls[0]).toHaveProperty("outputPath");
+    expect(calls[0].outputPath).toBe("/tmp/test-export.docx");
   });
 
   test("shows info toast during export", async ({ page }) => {
     await page.locator('button[aria-label="Copy as"]').click();
     await page.locator('button:has-text("Export as DOCX")').click();
     await expect(page.locator('.toast:has-text("Preparing")')).toBeVisible({ timeout: 3000 });
+  });
+});
+
+test.describe("Pandoc export", () => {
+  test("shows Pandoc export options when Pandoc is available", async ({ page }) => {
+    await page.locator('button[aria-label="Copy as"]').click();
+
+    // The mock returns pandoc_available: true
+    await expect(page.locator('button:has-text("Pandoc → Word")')).toBeVisible();
+    await expect(page.locator('button:has-text("Pandoc → PDF")')).toBeVisible();
+    await expect(page.locator('button:has-text("Pandoc → HTML")')).toBeVisible();
+    await expect(page.locator('button:has-text("Pandoc → EPUB")')).toBeVisible();
+  });
+
+  test("triggers export_via_pandoc for Word", async ({ page }) => {
+    await page.evaluate(() => localStorage.removeItem("__e2e_export_pandoc_calls"));
+
+    await page.locator('button[aria-label="Copy as"]').click();
+    await page.locator('button:has-text("Pandoc → Word")').click();
+    await page.waitForTimeout(500);
+
+    const calls = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]")
+    );
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(calls[0]).toHaveProperty("markdown");
+    expect(calls[0]).toHaveProperty("outputPath");
+    expect(calls[0].format).toBe("docx");
+  });
+
+  test("triggers export_via_pandoc for PDF", async ({ page }) => {
+    await page.evaluate(() => localStorage.removeItem("__e2e_export_pandoc_calls"));
+
+    await page.locator('button[aria-label="Copy as"]').click();
+    await page.locator('button:has-text("Pandoc → PDF")').click();
+    await page.waitForTimeout(500);
+
+    const calls = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]")
+    );
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(calls[0].format).toBe("pdf");
+  });
+});
+
+test.describe("Print to PDF", () => {
+  test("shows Print to PDF option in export dropdown", async ({ page }) => {
+    await page.locator('button[aria-label="Copy as"]').click();
+    await expect(page.locator('button:has-text("Print to PDF")')).toBeVisible();
+  });
+
+  test("dispatches markz:print event when clicked", async ({ page }) => {
+    // Listen for the custom event
+    await page.evaluate(() => {
+      window.__e2e_print_triggered = false;
+      window.addEventListener("markz:print", () => {
+        window.__e2e_print_triggered = true;
+      });
+    });
+
+    await page.locator('button[aria-label="Copy as"]').click();
+    await page.locator('button:has-text("Print to PDF")').click();
+    await page.waitForTimeout(200);
+
+    const triggered = await page.evaluate(() => window.__e2e_print_triggered);
+    expect(triggered).toBe(true);
   });
 });

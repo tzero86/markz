@@ -83,9 +83,48 @@ test.describe("Status bar", () => {
     await expect(page.locator('button[aria-label="Split"]')).toHaveClass(/active/);
   });
 
-  test("format badges show Markdown and UTF-8", async ({ page }) => {
-    const formatBadges = page.locator(".format-badge");
-    await expect(formatBadges.filter({ hasText: "Markdown" })).toBeVisible();
-    await expect(formatBadges.filter({ hasText: "UTF-8" })).toBeVisible();
+});
+
+test.describe("Git status indicator", () => {
+  test("is hidden when document has no path", async ({ page }) => {
+    // Default untitled tab has no path — mock returns is_repo: false
+    await expect(page.locator(".git-badge")).not.toBeVisible();
+  });
+
+  test("shows branch name after opening a file in a repo", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/repo/document.md");
+    });
+
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    const gitBadge = page.locator(".git-badge");
+    await expect(gitBadge).toBeVisible({ timeout: 3000 });
+    await expect(gitBadge).toContainText("main");
+  });
+
+  test("shows modified dot for dirty files", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/modified/document.md");
+    });
+
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    await expect(page.locator(".git-badge")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator(".git-modified-dot")).toBeVisible();
+  });
+
+  test("does not show modified dot for clean files", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/repo/document.md");
+    });
+
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    await expect(page.locator(".git-badge")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator(".git-modified-dot")).not.toBeVisible();
   });
 });

@@ -31,6 +31,16 @@ test.describe("Settings modal", () => {
     await expect(modal.locator('h3:has-text("Export")')).toBeVisible();
   });
 
+  test("export section has Pandoc path field", async ({ page }) => {
+    const modal = await openSettings(page);
+    const exportSection = modal.locator('.settings-section').filter({ hasText: 'Export' });
+    await expect(exportSection).toBeVisible();
+    // The Pandoc path input should be visible with empty default
+    const pandocInput = exportSection.locator('input[type="text"]');
+    await expect(pandocInput).toBeVisible();
+    await expect(pandocInput).toHaveValue("");
+  });
+
   test("appearance fields have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
     await expect(modal.locator('select#theme-select')).toHaveValue("dark");

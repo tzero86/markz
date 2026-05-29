@@ -18,6 +18,7 @@ export const MOCK_SETTINGS = {
   preview_font_size: 16,
   reduced_motion: false,
   ui_font_size: 14,
+  pandoc_path: "",
 };
 
 export const MOCK_HTML = `<h1>Welcome to MarkZ</h1>
@@ -519,11 +520,17 @@ export const tauriMockScriptString = `
     },
     log_frontend: () => null,
     generate_toc: () => [],
-    open_file_dialog: () => null,
+    open_file_dialog: () => {
+      const override = localStorage.getItem("__e2e_open_file_result");
+      if (override) return { path: override };
+      return null;
+    },
     save_file_dialog: (args) => {
-      if (args?.filterExtensions?.includes("docx")) {
-        return "/tmp/test-export.docx";
-      }
+      const exts = args?.filterExtensions || [];
+      if (exts.includes("docx")) return "/tmp/test-export.docx";
+      if (exts.includes("pdf")) return "/tmp/test-export.pdf";
+      if (exts.includes("html")) return "/tmp/test-export.html";
+      if (exts.includes("epub")) return "/tmp/test-export.epub";
       return null;
     },
     save_document: () => null,
@@ -536,6 +543,25 @@ export const tauriMockScriptString = `
     },
     process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
+    git_status: (args) => {
+      const path = args?.docPath || "";
+      if (!path || path.includes("no-git")) {
+        return { is_repo: false, is_modified: false, branch: null, ahead_behind: null };
+      }
+      return {
+        is_repo: true,
+        is_modified: path.includes("modified"),
+        branch: "main",
+        ahead_behind: path.includes("ahead") ? "2 ahead, 0 behind" : null,
+      };
+    },
+    pandoc_available: () => true,
+    export_via_pandoc: (args) => {
+      const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));
+      return null;
+    },
     export_to_docx: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");
       calls.push(args);
