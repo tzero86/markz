@@ -91,7 +91,9 @@ export async function openDocumentByPath(path: string) {
 }
 
 export async function openFolder() {
+  console.log("[keyboard] openFolder called");
   await workspaceStore.openWorkspace();
+  console.log("[keyboard] openWorkspace done");
 }
 
 export function newDocument() {

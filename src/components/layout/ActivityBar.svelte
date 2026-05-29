@@ -1,11 +1,7 @@
 <script lang="ts">
   import { Files, ListTree, Link2 } from "@lucide/svelte";
 
-  let {
-    activeActivity,
-    visible,
-    onSelectActivity,
-  }: {
+  let props: {
     activeActivity: "files" | "outline" | "links";
     visible: boolean;
     onSelectActivity: (activity: "files" | "outline" | "links") => void;
@@ -16,14 +12,19 @@
     { id: "outline" as const, icon: ListTree, label: "Outline" },
     { id: "links" as const, icon: Link2, label: "Links" },
   ];
+
+  function handleClick(activityId: "files" | "outline" | "links") {
+    console.log("[ActivityBar] clicked:", activityId);
+    props.onSelectActivity(activityId);
+  }
 </script>
 
 <div class="activity-bar">
   {#each activities as activity}
     <button
       class="activity-btn"
-      class:active={activeActivity === activity.id && visible}
-      onclick={() => onSelectActivity(activity.id)}
+      class:active={props.activeActivity === activity.id && props.visible}
+      onclick={() => handleClick(activity.id)}
       aria-label={activity.label}
       title={activity.label}
     >

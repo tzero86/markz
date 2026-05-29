@@ -20,6 +20,7 @@
   import { tabStore, activeDocumentStore } from "./lib/tabStore";
   import { getSession } from "./lib/sessionStore";
   import { workspaceStore } from "./lib/workspaceStore";
+
   // Always start at 100% zoom — prevents stale localStorage values
   // (e.g.: 160% left over from a previous session) from persisting.
   contentZoomStore.reset();
@@ -33,6 +34,7 @@
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
   let viewMode = $state<"split" | "editor" | "preview">("split");
+
   function applySettings(s: any) {
     activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
     viewMode = s.view_mode || s.viewMode || "split";
@@ -97,12 +99,14 @@
   );
 
   function handleSelectActivity(activity: "files" | "outline" | "links") {
+    console.log("[App] handleSelectActivity called:", activity, "current:", activeActivity, "visible:", sidebarPanelVisible);
     if (activeActivity === activity && sidebarPanelVisible) {
       sidebarPanelVisible = false;
     } else {
       activeActivity = activity;
       sidebarPanelVisible = true;
     }
+    console.log("[App] after handleSelectActivity:", activeActivity, sidebarPanelVisible);
   }
 
   onMount(() => {
@@ -157,6 +161,7 @@
       );
     };
     window.addEventListener("markz:settings-changed", handleSettingsChanged);
+
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey) {
         e.preventDefault();
@@ -173,10 +178,12 @@
       gitDiffOpen = true;
     };
     window.addEventListener("markz:open-git-diff", handleOpenGitDiff);
+
     const handleWorkspaceChanged = () => {
       workspaceStore.refresh();
     };
     window.addEventListener("markz:workspace-changed", handleWorkspaceChanged);
+
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
