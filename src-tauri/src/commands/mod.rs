@@ -8,4 +8,5 @@ pub mod templates;
 pub mod pandoc;
 pub mod tts;
 pub mod git;
+pub mod watcher;
 pub mod workspace;

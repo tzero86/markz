@@ -638,19 +638,18 @@ export const tauriMockScriptString = `
       } catch {
         return null;
       }
-    },
     clear_session_disk: () => {
       localStorage.removeItem("markz-session");
       return null;
     },
+    watch_workspace: () => null,
+    unwatch_workspace: () => null,
     "plugin:app|version": () => "0.1.12",
   };
-
   // Mock dialog plugin commands used by @tauri-apps/plugin-dialog
   responses["plugin:dialog|confirm"] = () => true;
   responses["plugin:dialog|open"] = () => null;
   responses["plugin:dialog|save"] = () => null;
-
   window.__TAURI_INTERNALS__ = {
     invoke: function(cmd, args) {
       const handler = responses[cmd];
@@ -662,7 +661,6 @@ export const tauriMockScriptString = `
     },
     convertFileSrc: function(path) { return path; },
   };
-
   // Mock navigator.clipboard for copy operations in test environment
   if (!navigator.clipboard) {
     navigator.clipboard = {};
@@ -671,4 +669,4 @@ export const tauriMockScriptString = `
     return Promise.resolve();
   };
 })();
-`;
+`

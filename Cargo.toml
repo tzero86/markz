@@ -32,6 +32,9 @@ docx-rs = "0.4"
 # HTTP Client
 ureq = "3"
 
+# File system watcher
+notify = "7"
+
 # Base64 encoding (local image embedding in preview)
 base64 = "0.22"
 

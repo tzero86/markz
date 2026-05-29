@@ -173,13 +173,17 @@
       gitDiffOpen = true;
     };
     window.addEventListener("markz:open-git-diff", handleOpenGitDiff);
-
+    const handleWorkspaceChanged = () => {
+      workspaceStore.refresh();
+    };
+    window.addEventListener("markz:workspace-changed", handleWorkspaceChanged);
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
       window.removeEventListener("markz:settings-changed", handleSettingsChanged);
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("markz:open-git-diff", handleOpenGitDiff);
+      window.removeEventListener("markz:workspace-changed", handleWorkspaceChanged);
     };
   });
 </script>

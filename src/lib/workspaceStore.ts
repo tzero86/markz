@@ -42,12 +42,30 @@ function createWorkspaceStore() {
   }
 
   async function loadWorkspace(path: string) {
+    // Stop any previous watcher
+    await invoke("unwatch_workspace").catch(() => {});
+
     update((s) => ({ ...s, rootPath: path, fileTree: [], expandedDirs: new Set() }));
     try {
       const tree = await invoke<FileTreeNode[]>("list_workspace_files", { root: path });
       update((s) => ({ ...s, fileTree: tree }));
+      // Start watching for external changes
+      await invoke("watch_workspace", { path }).catch((e) => {
+        console.warn("Failed to start workspace watcher:", e);
+      });
     } catch (e) {
       console.error("Failed to load workspace:", e);
+    }
+  }
+
+  async function refresh() {
+    const state = get({ subscribe });
+    if (!state.rootPath) return;
+    try {
+      const tree = await invoke<FileTreeNode[]>("list_workspace_files", { root: state.rootPath });
+      update((s) => ({ ...s, fileTree: tree }));
+    } catch (e) {
+      console.error("Failed to refresh workspace:", e);
     }
   }
 
@@ -82,7 +100,8 @@ function createWorkspaceStore() {
     }
   }
 
-  function closeWorkspace() {
+  async function closeWorkspace() {
+    await invoke("unwatch_workspace").catch(() => {});
     set({
       rootPath: null,
       fileTree: [],
@@ -97,6 +116,7 @@ function createWorkspaceStore() {
     subscribe,
     openWorkspace,
     loadWorkspace,
+    refresh,
     toggleDir,
     search,
     closeWorkspace,

@@ -37,6 +37,7 @@ markz-config = { path = "../crates/markz-config" }
 markz-images = { path = "../crates/markz-images" }
 markz-templates = { path = "../crates/markz-templates" }
 dirs.workspace = true
+notify = { workspace = true }
 
 git2 = "0.20"
 [target.'cfg(windows)'.dependencies]
