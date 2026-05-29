@@ -167,16 +167,18 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
   }
   .modal {
-    background: var(--bg-primary, #fff);
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border-default);
     min-width: 400px;
     max-width: 90vw;
     max-height: 90vh;
@@ -192,13 +194,18 @@
   .modal-header h3 {
     margin: 0;
     font-size: 1.2rem;
+    color: var(--text-primary);
   }
   .close-btn {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary);
+    line-height: 1;
+  }
+  .close-btn:hover {
+    color: var(--text-primary);
   }
   .table-editor {
     overflow: auto;
@@ -210,57 +217,72 @@
   }
   .table-editor th,
   .table-editor td {
-    border: 1px solid var(--border-default, #d1d5db);
+    border: 1px solid var(--border-default);
     padding: 4px;
   }
   .table-editor th {
-    background: var(--bg-secondary, #f3f4f6);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+  }
+  .table-editor td {
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
   .corner {
     width: 60px;
     min-width: 60px;
+    background: var(--bg-surface);
   }
   .col-control,
   .row-control {
     white-space: nowrap;
     text-align: center;
+    background: var(--bg-surface);
   }
   .align-row th {
     padding: 2px;
+    background: var(--bg-subtle);
   }
   .align-row select {
     width: 100%;
     font-size: 0.75rem;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
   }
   .table-editor input[type="text"] {
     width: 100%;
     border: none;
     background: transparent;
+    color: var(--text-primary);
     font: inherit;
     padding: 4px;
     outline: none;
   }
   .table-editor input[type="text"]:focus {
-    background: var(--accent-default, #3b82f6);
-    color: white;
-    border-radius: 2px;
+    background: var(--accent-muted);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
   }
   .icon-btn {
     font-size: 0.7rem;
     padding: 2px 6px;
     margin: 1px;
-    border: 1px solid var(--border-default, #d1d5db);
-    background: var(--bg-secondary, #f3f4f6);
-    border-radius: 3px;
+    border: 1px solid var(--border-default);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
     cursor: pointer;
   }
   .icon-btn:hover {
-    background: var(--bg-tertiary, #e5e7eb);
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
   .icon-btn.danger:hover {
-    background: #fee2e2;
-    border-color: #ef4444;
-    color: #ef4444;
+    background: var(--error-bg);
+    border-color: var(--error);
+    color: var(--error);
   }
   .icon-btn:disabled {
     opacity: 0.4;
@@ -273,26 +295,30 @@
   }
   .btn {
     padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid var(--border-default, #d1d5db);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
     cursor: pointer;
     font-size: 0.9rem;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
   }
   .btn.primary {
-    background: var(--accent-default, #3b82f6);
-    color: white;
-    border-color: var(--accent-default, #3b82f6);
+    background: var(--accent-default);
+    color: var(--text-inverse);
+    border-color: var(--accent-default);
   }
-  .btn.secondary {
-    background: var(--bg-secondary, #f3f4f6);
-    color: var(--text-primary, #111);
+  .btn.primary:hover {
+    background: var(--accent-hover);
+  }
+  .btn.secondary:hover {
+    background: var(--bg-hover);
   }
   .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
   .error {
-    color: #ef4444;
+    color: var(--error);
     margin: 8px 0;
   }
 </style>
