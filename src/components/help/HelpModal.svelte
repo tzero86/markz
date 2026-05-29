@@ -18,10 +18,16 @@
 
   const shortcuts = [
     { keys: ["Ctrl", "O"], action: "Open file" },
+    { keys: ["Ctrl", "Shift", "O"], action: "Open folder / workspace" },
+    { keys: ["Ctrl", "T"], action: "New file" },
     { keys: ["Ctrl", "S"], action: "Save file" },
-    { keys: ["Ctrl", "B"], action: "Toggle sidebar" },
-    { keys: ["Ctrl", "B"], action: "Bold (in editor)", context: "editor" },
-    { keys: ["Ctrl", "I"], action: "Italic (in editor)", context: "editor" },
+    { keys: ["Ctrl", "W"], action: "Close active tab" },
+    { keys: ["Ctrl", "B"], action: "Toggle sidebar panel" },
+    { keys: ["Ctrl", "F"], action: "Find / Replace" },
+    { keys: ["Ctrl", "Shift", "D"], action: "Git diff panel" },
+    { keys: ["Ctrl", "="], action: "Zoom in" },
+    { keys: ["Ctrl", "-"], action: "Zoom out" },
+    { keys: ["Ctrl", "0"], action: "Reset zoom" },
     { keys: ["Esc"], action: "Close modal / dropdown" },
   ];
 
@@ -144,15 +150,20 @@
             </div>
 
             <div class="about-features">
-              <h4>Features</h4>
               <ul>
                 <li>Live preview with math, Mermaid diagrams, and syntax highlighting</li>
-                <li>Export to JIRA, Confluence, Slack, GitHub, and DOCX</li>
+                <li>Export to JIRA, Confluence, Slack, GitHub, HTML, and DOCX</li>
+                <li>Workspace mode — open folders, file tree, project-wide search</li>
+                <li>WikiLinks & backlinks — [[Target]] syntax with automatic discovery</li>
+                <li>Inline table editing — double-click tables to edit in a grid</li>
+                <li>Text snippets with tab-triggered expansion</li>
+                <li>Auto-save with configurable debounce</li>
+                <li>Session restore — all tabs persisted across launches</li>
+                <li>Git integration — branch status and diff panel</li>
                 <li>Built-in engineering templates (RFC, ADR, Bug Report, etc.)</li>
                 <li>Image paste & drag-and-drop support</li>
-                <li>Dark / light / system themes</li>
+                <li>Dark / light / system themes with custom CSS support</li>
               </ul>
-            </div>
 
             <div class="about-tech">
               <h4>Tech Stack</h4>

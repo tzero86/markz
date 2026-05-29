@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarkZ — A Markdown Editor for Engineers</title>
+  <meta name="description" content="MarkZ is a fast, offline-first dual-pane Markdown editor for engineers. Live preview, multi-format export, engineering templates, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0d0d0d;
+      --bg-surface: #141414;
+      --bg-elevated: #1a1a1a;
+      --bg-hover: #222;
+      --border-default: #2a2a2a;
+      --border-subtle: #1f1f1f;
+      --text-primary: #f0f0f0;
+      --text-secondary: #a0a0a0;
+      --text-tertiary: #6b6b6b;
+      --accent: #3dd68d;
+      --accent-dim: #2a5c45;
+      --accent-glow: rgba(61, 214, 141, 0.15);
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+    /* Navigation */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(13, 13, 13, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .nav-logo svg {
+      width: 28px;
+      height: 28px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .nav-cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(61, 214, 141, 0.3);
+    }
+
+    /* Hero */
+    .hero {
+      position: relative;
+      padding: 160px 24px 100px;
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .hero-bg::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(61, 214, 141, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(61, 214, 141, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+    }
+    .hero-inner {
+      position: relative;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-full);
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+    .hero-badge .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 24px;
+    }
+    .hero h1 .accent {
+      color: var(--accent);
+    }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(61, 214, 141, 0.35);
+    }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      border: 1px solid var(--border-default);
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-default);
+    }
+
+    /* App Preview */
+    .app-preview {
+      position: relative;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    .app-frame {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(61, 214, 141, 0.05),
+        0 24px 80px rgba(0, 0, 0, 0.4);
+    }
+    .app-frame-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 18px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-default);
+    }
+    .app-frame-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+    }
+    .app-frame-dot:nth-child(1) { background: #ff5f56; }
+    .app-frame-dot:nth-child(2) { background: #ffbd2e; }
+    .app-frame-dot:nth-child(3) { background: #27c93f; }
+    .app-frame-body {
+      display: grid;
+      grid-template-columns: 44px 240px 1fr 1fr;
+      min-height: 520px;
+    }
+    @media (max-width: 900px) {
+      .app-frame-body {
+        grid-template-columns: 44px 180px 1fr 1fr;
+        min-height: 380px;
+      }
+    }
+    @media (max-width: 640px) {
+      .app-frame-body {
+        grid-template-columns: 36px 0 1fr 0;
+        min-height: 300px;
+      }
+    }
+    .app-activity {
+      background: var(--bg-base);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 8px;
+    }
+    .app-activity-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app-activity-icon.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+    .app-sidebar {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      padding: 16px;
+    }
+    .app-sidebar h4 {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin-bottom: 12px;
+    }
+    .app-sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+    .app-sidebar-item.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+    .app-editor, .app-preview-pane {
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.7;
+      overflow: hidden;
+    }
+    .app-editor {
+      background: var(--bg-base);
+      border-right: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+    .app-editor .line { display: block; }
+    .app-editor .line .sym { color: var(--accent); }
+    .app-editor .line .heading { color: var(--text-primary); font-weight: 600; }
+    .app-editor .line .code { color: #e6a23c; }
+    .app-editor .line .str { color: #7ec699; }
+    .app-editor .line .comment { color: var(--text-tertiary); }
+    .app-preview-pane {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+    .app-preview-pane h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+    .app-preview-pane p {
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+    .app-preview-pane ul {
+      padding-left: 20px;
+      margin-bottom: 12px;
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+    .app-preview-pane li { margin-bottom: 4px; }
+    .app-preview-pane pre {
+      background: var(--bg-base);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .app-preview-pane code {
+      font-family: var(--font-mono);
+      color: #e6a23c;
+    }
+
+    /* Sections */
+    .section {
+      padding: 100px 24px;
+    }
+    .section-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section-label {
+      display: inline-block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .section h2 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .section p.lead {
+      font-size: 1.125rem;
+      color: var(--text-secondary);
+      max-width: 560px;
+      line-height: 1.7;
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 56px;
+    }
+    .feature-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .feature-card:hover {
+      border-color: var(--border-default);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 1.25rem;
+    }
+    .feature-card h3 {
+      font-size: 1.0625rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Shortcuts Table */
+    .shortcuts-table {
+      margin-top: 48px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .shortcuts-table-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.9375rem;
+    }
+    .shortcuts-table-row:last-child {
+      border-bottom: none;
+    }
+    .shortcuts-table-row:hover {
+      background: var(--bg-elevated);
+    }
+    .shortcuts-table-row .action {
+      color: var(--text-primary);
+    }
+    .shortcuts-table-row .keys {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      min-width: 28px;
+    }
+    .plus {
+      color: var(--text-tertiary);
+      font-size: 0.75rem;
+      padding: 0 2px;
+    }
+
+    /* Tech Stack */
+    .tech-section {
+      text-align: center;
+    }
+    .tech-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 40px;
+    }
+    .tech-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-full);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+    .tech-badge:hover {
+      border-color: var(--accent-dim);
+      color: var(--text-primary);
+    }
+
+    /* Download */
+    .download-section {
+      text-align: center;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-default);
+      border-bottom: 1px solid var(--border-default);
+    }
+    .download-grid {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+    .download-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 32px 40px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      min-width: 200px;
+      transition: border-color 0.2s ease;
+    }
+    .download-card:hover {
+      border-color: var(--accent-dim);
+    }
+    .download-card .os {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+    .download-card .ext {
+      font-size: 0.8125rem;
+      color: var(--text-tertiary);
+    }
+
+    /* Footer */
+    .footer {
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .footer p {
+      font-size: 0.875rem;
+      color: var(--text-tertiary);
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 20px;
+      list-style: none;
+    }
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.2s ease;
+    }
+    .footer-links a:hover {
+      color: var(--accent);
+    }
+
+    /* Mobile nav */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .hero { padding: 120px 20px 60px; }
+      .section { padding: 60px 20px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .shortcuts-table-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="8" fill="#3dd68d"/>
+          <path d="M8 10h3l4.5 8.5L20 10h3v12h-2.5v-8l-4 8h-1l-4-8v8H8V10z" fill="#0d0d0d"/>
+        </svg>
+        MarkZ
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#shortcuts">Shortcuts</a></li>
+        <li><a href="#download">Download</a></li>
+        <li><a href="https://github.com/tzero86/markz" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+      <a href="https://github.com/tzero86/markz/releases/latest" class="nav-cta" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-bg"><div class="hero-grid"></div></div>
+    <div class="hero-inner">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        v0.8.2 — Now with Workspace Mode
+      </div>
+      <h1>A Markdown Editor<br>for <span class="accent">Engineers</span></h1>
+      <p>Fast, offline-first, and purpose-built for technical writing. Live preview, multi-format export, engineering templates, and a VS Code-style workspace. No cloud, no telemetry, no distractions.</p>
+      <div class="hero-actions">
+        <a href="https://github.com/tzero86/markz/releases/latest" class="btn-primary" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Latest
+        </a>
+        <a href="https://github.com/tzero86/markz" class="btn-secondary" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-preview">
+    <div class="app-frame">
+      <div class="app-frame-header">
+        <div class="app-frame-dot"></div>
+        <div class="app-frame-dot"></div>
+        <div class="app-frame-dot"></div>
+      </div>
+      <div class="app-frame-body">
+        <div class="app-activity">
+          <div class="app-activity-icon active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="app-activity-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </div>
+          <div class="app-activity-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </div>
+        </div>
+        <div class="app-sidebar">
+          <h4>Workspace</h4>
+          <div class="app-sidebar-item active">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            README.md
+          </div>
+          <div class="app-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ROADMAP.md
+          </div>
+          <div class="app-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            docs/
+          </div>
+        </div>
+        <div class="app-editor">
+          <span class="line"><span class="sym">#</span> <span class="heading">Project Overview</span></span>
+          <span class="line"></span>
+          <span class="line">This is a <span class="code">markdown</span> file.</span>
+          <span class="line"></span>
+          <span class="line"><span class="sym">-</span> Live preview</span>
+          <span class="line"><span class="sym">-</span> KaTeX math: <span class="code">$E=mc^2$</span></span>
+          <span class="line"><span class="sym">-</span> Mermaid diagrams</span>
+          <span class="line"></span>
+          <span class="line"><span class="comment">&lt;!-- comment --&gt;</span></span>
+        </div>
+        <div class="app-preview-pane">
+          <h2>Project Overview</h2>
+          <p>This is a <code>markdown</code> file.</p>
+          <ul>
+            <li>Live preview</li>
+            <li>KaTeX math: <em>E = mc²</em></li>
+            <li>Mermaid diagrams</li>
+          </ul>
+          <pre><code>fn main() {
+    println!("Hello");
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section" id="features">
+    <div class="section-inner">
+      <span class="section-label">Features</span>
+      <h2>Everything you need for<br>technical writing</h2>
+      <p class="lead">Built from the ground up for engineers who write RFCs, ADRs, design docs, and runbooks. No bloat, no cloud lock-in.</p>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <h3>Live Preview</h3>
+          <p>Side-by-side editor and rendered preview with instant updates. KaTeX math, Mermaid diagrams, syntax highlighting, and scroll sync.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h3>Multi-Format Export</h3>
+          <p>Copy or export to JIRA, Confluence, Slack, GitHub, HTML, and DOCX. AST-first conversion ensures consistent, reliable output every time.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </div>
+          <h3>Workspace Mode</h3>
+          <p>Open any folder and browse the recursive file tree. Project-wide search greps across all <code>.md</code> files. File watcher auto-refreshes on external changes.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3>Engineering Templates</h3>
+          <p>Built-in RFC, ADR, Bug Report, Test Plan, PR Description, Meeting Notes, and Weekly Status templates. Save any document as a reusable template.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <h3>WikiLinks & Backlinks</h3>
+          <p>Link documents with <code>[[Target]]</code> or <code>[[Target|Display]]</code> syntax. Automatic backlink discovery shows incoming references across your workspace.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <h3>Inline Table Editing</h3>
+          <p>Double-click any table in the preview to open a grid editor. Add or remove rows and columns, edit cells, and set alignment — all synced back to markdown.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Offline-First & Zero Telemetry</h3>
+          <p>Everything runs locally. No accounts, no cloud sync, no data collection. Your documents stay on your machine, period.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <h3>Git Integration</h3>
+          <p>Status bar shows branch and modification status. One-click git diff panel with unified diff view. Pandoc integration for advanced export pipelines.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3>Snippets & Auto-Save</h3>
+          <p>Tab-triggered text snippets with placeholders (<code>$1</code>, <code>${1:default}</code>). Configurable auto-save with per-interval debouncing. Full session restore on launch.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tech-section" id="stack">
+    <div class="section-inner">
+      <span class="section-label">Built With</span>
+      <h2>Modern, battle-tested stack</h2>
+      <p class="lead">Rust for performance. Svelte 5 for reactivity. CodeMirror 6 for the editing experience.</p>
+      <div class="tech-badges">
+        <span class="tech-badge">Tauri v2</span>
+        <span class="tech-badge">Svelte 5</span>
+        <span class="tech-badge">TypeScript</span>
+        <span class="tech-badge">CodeMirror 6</span>
+        <span class="tech-badge">Rust</span>
+        <span class="tech-badge">pulldown-cmark</span>
+        <span class="tech-badge">KaTeX</span>
+        <span class="tech-badge">Mermaid</span>
+        <span class="tech-badge">highlight.js</span>
+        <span class="tech-badge">Vite</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="shortcuts">
+    <div class="section-inner">
+      <span class="section-label">Reference</span>
+      <h2>Keyboard Shortcuts</h2>
+      <p class="lead">Everything at your fingertips. No mouse required.</p>
+
+      <div class="shortcuts-table">
+        <div class="shortcuts-table-row">
+          <span class="action">Open file</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Open folder / workspace</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>O</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">New file</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Save file</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Close active tab</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>W</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Toggle sidebar panel</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Find / Replace</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Git diff panel</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Zoom in</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>=</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Zoom out</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>-</kbd></span>
+        </div>
+        <div class="shortcuts-table-row">
+          <span class="action">Reset zoom</span>
+          <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>0</kbd></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section download-section" id="download">
+    <div class="section-inner">
+      <span class="section-label">Get MarkZ</span>
+      <h2>Download for your platform</h2>
+      <p class="lead">Free and open source. No sign-up required.</p>
+      <div class="download-grid">
+        <a href="https://github.com/tzero86/markz/releases/latest" class="download-card" target="_blank" rel="noopener">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          <span class="os">Windows</span>
+          <span class="ext">.exe installer</span>
+        </a>
+        <a href="https://github.com/tzero86/markz/releases/latest" class="download-card" target="_blank" rel="noopener">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span class="os">Linux</span>
+          <span class="ext">.deb package</span>
+        </a>
+        <a href="https://github.com/tzero86/markz#build-from-source" class="download-card" target="_blank" rel="noopener">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <span class="os">Build from Source</span>
+          <span class="ext">Rust + Node.js</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <ul class="footer-links">
+        <li><a href="https://github.com/tzero86/markz/releases" target="_blank" rel="noopener">Releases</a></li>
+        <li><a href="https://github.com/tzero86/markz/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="https://github.com/tzero86/markz/blob/master/ROADMAP.md" target="_blank" rel="noopener">Roadmap</a></li>
+        <li><a href="https://github.com/tzero86/markz/blob/master/LICENSE" target="_blank" rel="noopener">License</a></li>
+      </ul>
+      <p>Built by <a href="https://github.com/tzero86" target="_blank" rel="noopener" style="color: var(--text-secondary);">tzero86</a>. Licensed under MIT.</p>
+    </div>
+  </footer>
+
+</body>
+</html>
