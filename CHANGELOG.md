@@ -1,3 +1,17 @@
+## [0.8.0] - 2026-05-29
+
+### Added
+- **Workspace / folder mode** — Open any folder via the activity bar or `Ctrl+Shift+O`. Browse the recursive file tree, expand/collapse directories, and open markdown files. Project-wide search greps across all `.md` files with line-numbered results.
+- **VS Code-style activity bar** — Three icon buttons on the far left: Files, Outline, Links. Click to open a panel; click again to collapse. `Ctrl+B` toggles the entire panel.
+- **Sidebar decoupled from `show_outline` setting** — `show_outline` no longer hides the entire sidebar. The checkbox is removed from Settings; sidebar visibility is controlled via the activity bar.
+- **Distinct TitleBar icons** — Open File (`File`), Open Folder (`FolderOpen`), and New File (`FilePlus`) now use clearly different Lucide icons.
+
+### Changed
+- **Sidebar panels collapsed by default** — Activity bar is visible on launch, but no panel content is shown until the user clicks an icon.
+
+### Fixed
+- **Missing `viewMode` declaration** — `viewMode` $state was accidentally deleted during a cleanup edit, causing `ReferenceError` on app mount (splash screen freeze).
+
 # Changelog
 
 All notable changes to MarkZ are documented in this file.
