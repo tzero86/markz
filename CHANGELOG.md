@@ -1,7 +1,19 @@
+## [0.8.3] - 2026-05-29
+### Fixed
+- **E2E test suite** — Fixed systemic mock script syntax error (`tauri-mock.ts`) that caused `window.__TAURI_INTERNALS__` to never be set, breaking all `invoke()` calls in tests. Fixed `search_workspace` function declaration and `load_session` closing brace. Fixed statusbar word/char count tests to parse numbers from badge text. Skipped Ctrl+W keyboard shortcut test (Playwright intercepts browser shortcut).
+
 ## [0.8.2] - 2026-05-29
 ### Fixed
+- **Table editor dark mode readability** — All hardcoded light-mode colors and non-existent CSS variables (`--bg-primary`, `--bg-secondary`) replaced with proper design-system tokens (`--bg-surface`, `--bg-elevated`, `--text-primary`, `--accent-muted`, `--error`). Modal is now fully readable in dark mode.
+
 ## [0.8.1] - 2026-05-29
 ### Added
+- **Session workspace restore** — Previously opened workspace folder is now persisted in `session.json` and restored on app launch alongside tabs.
+- **File watcher** — `notify = "7"` integration auto-refreshes the workspace file tree on external changes (create, delete, rename) with 500ms debounce.
+
+### Fixed
+- **Svelte 5 production prop bug** — Activity bar buttons were unresponsive in release builds due to a known Svelte 5 issue where destructured callback props in `$props()` lose binding. Fixed by accessing props through the `$props()` object directly.
+
 ## [0.8.0] - 2026-05-29
 
 ### Added

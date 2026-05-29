@@ -17,17 +17,22 @@ test.describe("Status bar", () => {
 
   test("displays word count", async ({ page }) => {
     const badges = page.locator(".stat-badge");
-    // First badge is word count, second is char count
-    await expect(badges.first()).toBeVisible();
-    const wordCount = await badges.first().textContent();
-    expect(Number(wordCount)).toBeGreaterThanOrEqual(0);
+    // Skip git badge if present; target the badge with "words" text
+    const wordBadge = badges.filter({ hasText: /words/ });
+    await expect(wordBadge).toBeVisible();
+    const text = await wordBadge.textContent();
+    const match = text?.match(/(\d+)/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1])).toBeGreaterThanOrEqual(0);
   });
-
   test("displays char count", async ({ page }) => {
     const badges = page.locator(".stat-badge");
-    await expect(badges.nth(1)).toBeVisible();
-    const charCount = await badges.nth(1).textContent();
-    expect(Number(charCount)).toBeGreaterThan(0);
+    const charBadge = badges.filter({ hasText: /chars/ });
+    await expect(charBadge).toBeVisible();
+    const text = await charBadge.textContent();
+    const match = text?.match(/(\d+)/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1])).toBeGreaterThan(0);
   });
 
   test("save indicator shows Saved initially", async ({ page }) => {

@@ -589,15 +589,13 @@ export const tauriMockScriptString = `
         { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
       ];
     },
+    search_workspace: (args) => {
       const root = args?.root || "";
       const query = (args?.query || "").toLowerCase();
       if (!root || !query) return [];
       return [
         { path: root + "/notes.md", rel_path: "notes.md", line_number: 1, context: "Hello " + query + " world" },
       ];
-    },
-    read_file_text: (args) => {
-      return "# Test file\\n\\nHello world.";
     },
     pandoc_available: () => true,
     export_via_pandoc: (args) => {
@@ -638,6 +636,7 @@ export const tauriMockScriptString = `
       } catch {
         return null;
       }
+    },
     clear_session_disk: () => {
       localStorage.removeItem("markz-session");
       return null;

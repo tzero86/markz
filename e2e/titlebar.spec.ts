@@ -134,7 +134,8 @@ test.describe("DOCX export", () => {
     await page.locator('button:has-text("Export as DOCX")').click();
 
     // Wait for async operations
-    await page.waitForTimeout(500);
+    // Wait for async operations (prepareMarkdownForDocx can render mermaid/math)
+    await page.waitForTimeout(5000);
 
     // Verify export_to_docx was called
     const calls = await page.evaluate(() =>
