@@ -4,7 +4,7 @@
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { invoke } from "@tauri-apps/api/core";
-  let { viewMode, onSetViewMode }: { viewMode: "split" | "editor" | "preview"; onSetViewMode: (mode: "split" | "editor" | "preview") => void } = $props();
+  let { viewMode, onSetViewMode, onOpenGitDiff }: { viewMode: "split" | "editor" | "preview"; onSetViewMode: (mode: "split" | "editor" | "preview") => void; onOpenGitDiff?: () => void } = $props();
 
   let wordCount = $derived(
     $activeDocumentStore.content.trim() === ""
@@ -79,13 +79,17 @@
 
   <div class="status-right">
     {#if gitStatus?.is_repo}
-      <span class="stat-badge git-badge" title={gitStatus.is_modified ? "Modified" : "Clean"}>
+      <button
+        class="stat-badge git-badge"
+        title={gitStatus.is_modified ? "Modified — click to view diff" : "Clean — click to view diff"}
+        onclick={() => { if (onOpenGitDiff) onOpenGitDiff(); }}
+      >
         <GitBranch size={11} strokeWidth={2} />
         {gitStatus.branch ?? "detached"}
         {#if gitStatus.is_modified}
           <span class="git-modified-dot" aria-label="Modified"></span>
         {/if}
-      </span>
+      </button>
     {/if}
     <span class="stat-badge" title="{wordCount} words, {charCount} chars, ~{readingTimeMinutes} min read">
       <Text size={11} strokeWidth={2} />
@@ -271,7 +275,20 @@
   .git-badge {
     color: var(--accent-default);
     gap: 4px;
+    background: none;
+    border: none;
+    font: inherit;
+    padding: 0;
   }
+  .git-badge:disabled {
+    opacity: 1;
+    cursor: default;
+  }
+  .git-badge:hover {
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+  }
+
   .git-modified-dot {
     width: 6px;
     height: 6px;

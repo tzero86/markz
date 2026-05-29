@@ -126,7 +126,7 @@ test.describe("Help tab", () => {
     const helpTab = modal.locator('.tab').filter({ hasText: "Help" });
     await expect(helpTab).toHaveClass(/active/);
 
-    await expect(modal.locator(".shortcut-row")).toHaveCount(11);
+    await expect(modal.locator(".shortcut-row")).toHaveCount(12);
     await expect(modal.locator(".shortcut-row").first()).toBeVisible();
   });
 });

@@ -107,9 +107,13 @@ export function toggleSidebar() {
 export function initKeyboardShortcuts() {
   const handler = (e: KeyboardEvent) => {
     const mod = e.metaKey || e.ctrlKey;
-    if (!mod) return;
-
     const key = e.key.toLowerCase();
+    if (mod && e.shiftKey && key === "d") {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("markz:open-git-diff"));
+      return;
+    }
+    if (!mod) return;
     if (key === "s") {
       e.preventDefault();
       saveDocument();
@@ -136,7 +140,6 @@ export function initKeyboardShortcuts() {
       contentZoomStore.reset();
     }
   };
-
   window.addEventListener("keydown", handler);
   return () => window.removeEventListener("keydown", handler);
 }

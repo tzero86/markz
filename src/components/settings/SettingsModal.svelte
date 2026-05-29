@@ -71,6 +71,7 @@
     { keys: ["Ctrl", "B"], action: "Bold (in editor)", context: "editor" },
     { keys: ["Ctrl", "I"], action: "Italic (in editor)", context: "editor" },
     { keys: ["Esc"], action: "Close modal / dropdown" },
+    { keys: ["Ctrl", "Shift", "D"], action: "View Git diff" },
   ];
 
   $effect(() => {

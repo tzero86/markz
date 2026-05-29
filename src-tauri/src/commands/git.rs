@@ -81,3 +81,38 @@ pub async fn git_status(doc_path: String) -> Result<GitStatus, String> {
         ahead_behind,
     })
 }
+#[tauri::command]
+pub async fn git_diff(doc_path: String) -> Result<String, String> {
+    let path = std::path::Path::new(&doc_path);
+    let repo = match git2::Repository::discover(path) {
+        Ok(r) => r,
+        Err(_) => return Ok(String::new()),
+    };
+    let workdir = repo.workdir().ok_or("Repository has no workdir")?;
+    let rel_path = path
+        .strip_prefix(workdir)
+        .map_err(|_| "File is outside repository workdir")?
+        .to_str()
+        .ok_or("Path contains invalid UTF-8")?;
+    let mut diff_opts = git2::DiffOptions::new();
+    diff_opts.pathspec(rel_path);
+    diff_opts.include_untracked(true);
+    diff_opts.show_untracked_content(true);
+    // Diff HEAD tree vs working directory to show all changes since last commit
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let head_tree = head
+        .peel_to_tree()
+        .map_err(|e| e.to_string())?;
+    let diff = repo
+        .diff_tree_to_workdir_with_index(Some(&head_tree), Some(&mut diff_opts))
+        .map_err(|e| e.to_string())?;
+    let mut patch = Vec::new();
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        use std::io::Write;
+        let _ = patch.write_all(line.content());
+        true
+    })
+    .map_err(|e| e.to_string())?;
+    let diff_str = String::from_utf8_lossy(&patch).into_owned();
+    Ok(diff_str)
+}

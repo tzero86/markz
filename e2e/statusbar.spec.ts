@@ -128,3 +128,70 @@ test.describe("Git status indicator", () => {
     await expect(page.locator(".git-modified-dot")).not.toBeVisible();
   });
 });
+
+
+test.describe("Git diff panel", () => {
+  test("opens when clicking modified dot", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    const gitBadge = page.locator(".git-badge");
+    await expect(gitBadge).toBeVisible({ timeout: 5000 });
+    await gitBadge.click();
+
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    await expect(diffModal).toBeVisible();
+  });
+
+  test("shows diff content for modified file", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    await expect(page.locator(".git-badge")).toBeVisible({ timeout: 5000 });
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    await expect(diffModal).toBeVisible();
+
+    // Check that diff lines are rendered
+    await expect(diffModal.locator(".line-add").first()).toBeVisible();
+    await expect(diffModal.locator(".line-del").first()).toBeVisible();
+  });
+
+  test("shows empty state for clean file", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/clean.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    await expect(page.locator(".git-badge")).toBeVisible({ timeout: 5000 });
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    await expect(diffModal).toBeVisible();
+    await expect(diffModal.locator(".empty")).toHaveText("No changes — file is clean.");
+  });
+
+  test("closes on Escape", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    await expect(page.locator(".git-badge")).toBeVisible({ timeout: 5000 });
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    await expect(diffModal).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(diffModal).not.toBeVisible();
+  });
+
+  test("opens via Ctrl+Shift+D keyboard shortcut", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+
+    await page.keyboard.press("Control+Shift+d");
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    await expect(diffModal).toBeVisible();
+  });
+});

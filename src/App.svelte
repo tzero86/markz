@@ -6,6 +6,7 @@
   import TitleBar from "./components/layout/TitleBar.svelte";
   import TabBar from "./components/layout/TabBar.svelte";
   import StatusBar from "./components/layout/StatusBar.svelte";
+  import GitDiffModal from "./components/layout/GitDiffModal.svelte";
   import SplitPane from "./components/layout/SplitPane.svelte";
   import OutlineSidebar from "./components/layout/OutlineSidebar.svelte";
   import SettingsModal from "./components/settings/SettingsModal.svelte";
@@ -15,7 +16,7 @@
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
   import { ttsStore, type TtsEngine } from "./lib/ttsStore";
-  import { tabStore } from "./lib/tabStore";
+  import { tabStore, activeDocumentStore } from "./lib/tabStore";
   import { getSession } from "./lib/sessionStore";
 
   // Always start at 100% zoom — prevents stale localStorage values
@@ -26,6 +27,7 @@
   let settingsInitialTab = $state<"settings" | "help" | "about">("settings");
   let templateBrowserOpen = $state(false);
   let saveTemplateOpen = $state(false);
+  let gitDiffOpen = $state(false);
 
   let outlineVisible = $state(true);
   let viewMode = $state<"split" | "editor" | "preview">("split");
@@ -153,11 +155,17 @@
     };
     window.addEventListener("wheel", handleWheel, { passive: false });
 
+    const handleOpenGitDiff = () => {
+      gitDiffOpen = true;
+    };
+    window.addEventListener("markz:open-git-diff", handleOpenGitDiff);
+
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
       window.removeEventListener("markz:settings-changed", handleSettingsChanged);
       window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("markz:open-git-diff", handleOpenGitDiff);
     };
   });
 </script>
@@ -168,6 +176,7 @@
     onOpenTemplateBrowser={() => (templateBrowserOpen = true)}
     onOpenSaveTemplate={() => (saveTemplateOpen = true)}
     onOpenHelp={() => { settingsInitialTab = "help"; settingsOpen = true; }}
+    onOpenGitDiff={() => { gitDiffOpen = true; }}
   />
   <TabBar onNewTab={newDocument} />
   <div class="workspace">
@@ -191,7 +200,8 @@
       </div>
     {/if}
   </div>
-  <StatusBar {viewMode} onSetViewMode={(mode) => (viewMode = mode)} />
+  <StatusBar {viewMode} onSetViewMode={(mode) => (viewMode = mode)} onOpenGitDiff={() => { gitDiffOpen = true; }} />
+  <GitDiffModal bind:open={gitDiffOpen} docPath={$activeDocumentStore.path ?? ""} />
   <SettingsModal bind:open={settingsOpen} initialTab={settingsInitialTab} />
   <TemplateBrowser bind:open={templateBrowserOpen} />
   <SaveTemplateDialog bind:open={saveTemplateOpen} />

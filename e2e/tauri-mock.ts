@@ -555,6 +555,20 @@ export const tauriMockScriptString = `
         ahead_behind: path.includes("ahead") ? "2 ahead, 0 behind" : null,
       };
     },
+    git_diff: (args) => {
+      const path = args?.docPath || "";
+      if (!path || path.includes("no-git")) return "";
+      if (!path.includes("modified")) return "";
+      return "diff --git a/test.md b/test.md\\n" +
+        "index 1234..5678 100644\\n" +
+        "--- a/test.md\\n" +
+        "+++ b/test.md\\n" +
+        "@@ -1,2 +1,3 @@\\n" +
+        " # Test\\n" +
+        "-Hello world.\\n" +
+        "+Hello modified world.\\n" +
+        "+New line.\\n";
+    },
     pandoc_available: () => true,
     export_via_pandoc: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");

@@ -178,6 +178,8 @@ pub fn run() {
             commands::tts::tts_get_voices,
             commands::tts::tts_speak,
             commands::convert::export_to_docx,
+            commands::git::git_status,
+            commands::git::git_diff,
             commands::documents::compute_stats,
             commands::backlinks::get_backlinks,
             commands::backlinks::get_wikilinks,
@@ -193,7 +195,6 @@ pub fn run() {
             commands::pandoc::pandoc_available,
             commands::pandoc::export_via_pandoc,
             commands::session::clear_session_disk,
-            commands::git::git_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
