@@ -31,9 +31,7 @@
   let gitDiffOpen = $state(false);
 
   let activeActivity = $state<"files" | "outline" | "links">("outline");
-  let sidebarPanelVisible = $state(true);
-  let viewMode = $state<"split" | "editor" | "preview">("split");
-
+  let sidebarPanelVisible = $state(false);
   function applySettings(s: any) {
     activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
     viewMode = s.view_mode || s.viewMode || "split";

@@ -35,13 +35,14 @@ test.describe("Keyboard shortcuts", () => {
   });
 
   test("Ctrl+B toggles sidebar panel", async ({ page }) => {
-    await expect(page.locator(".sidebar")).toBeVisible();
-
-    await page.keyboard.press("Control+b");
+    // Panel is collapsed by default
     await expect(page.locator(".sidebar")).toHaveCount(0);
 
     await page.keyboard.press("Control+b");
     await expect(page.locator(".sidebar")).toBeVisible();
+
+    await page.keyboard.press("Control+b");
+    await expect(page.locator(".sidebar")).toHaveCount(0);
   });
 
   test("Ctrl++ zooms in", async ({ page }) => {

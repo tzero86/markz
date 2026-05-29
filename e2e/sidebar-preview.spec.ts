@@ -9,6 +9,8 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("Outline sidebar", () => {
   test("is visible by default and shows heading outline", async ({ page }) => {
+    // Panel is collapsed by default — click Outline to open
+    await page.click('.activity-btn[aria-label="Outline"]');
     const sidebar = page.locator(".sidebar");
     await expect(sidebar).toBeVisible();
 
@@ -17,6 +19,9 @@ test.describe("Outline sidebar", () => {
   });
 
   test("shows empty state when no headings", async ({ page }) => {
+    // Open Outline panel first
+    await page.click('.activity-btn[aria-label="Outline"]');
+
     // Replace editor content with plain text (no headings)
     await page.locator(".cm-content").click();
     await page.keyboard.press("Control+a");
@@ -27,13 +32,14 @@ test.describe("Outline sidebar", () => {
   });
 
   test("Ctrl+B collapses and expands sidebar panel", async ({ page }) => {
-    await expect(page.locator(".sidebar")).toBeVisible();
-
-    await page.keyboard.press("Control+b");
+    // Panel is collapsed by default
     await expect(page.locator(".sidebar")).toHaveCount(0);
 
     await page.keyboard.press("Control+b");
     await expect(page.locator(".sidebar")).toBeVisible();
+
+    await page.keyboard.press("Control+b");
+    await expect(page.locator(".sidebar")).toHaveCount(0);
   });
 });
 
