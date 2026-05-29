@@ -34,15 +34,14 @@ test.describe("Keyboard shortcuts", () => {
     await expect(page.locator(".app")).toBeVisible();
   });
 
-  test("Ctrl+B toggles outline sidebar", async ({ page }) => {
-    const sidebar = page.locator(".sidebar");
-    await expect(sidebar).not.toHaveClass(/collapsed/);
+  test("Ctrl+B toggles sidebar panel", async ({ page }) => {
+    await expect(page.locator(".sidebar")).toBeVisible();
 
     await page.keyboard.press("Control+b");
-    await expect(sidebar).toHaveClass(/collapsed/);
+    await expect(page.locator(".sidebar")).toHaveCount(0);
 
     await page.keyboard.press("Control+b");
-    await expect(sidebar).not.toHaveClass(/collapsed/);
+    await expect(page.locator(".sidebar")).toBeVisible();
   });
 
   test("Ctrl++ zooms in", async ({ page }) => {

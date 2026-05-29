@@ -10,8 +10,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("Outline sidebar", () => {
   test("is visible by default and shows heading outline", async ({ page }) => {
     const sidebar = page.locator(".sidebar");
-    await expect(sidebar).not.toHaveClass(/collapsed/);
-    await expect(sidebar.locator('text=Outline')).toBeVisible();
+    await expect(sidebar).toBeVisible();
 
     // Default content has "What Makes MarkZ Different" heading
     await expect(sidebar.locator('.toc-link:has-text("What Makes MarkZ Different")')).toBeVisible();
@@ -27,15 +26,14 @@ test.describe("Outline sidebar", () => {
     await expect(sidebar.locator('.empty:has-text("No headings")')).toBeVisible({ timeout: 3000 });
   });
 
-  test("toggle button collapses and expands sidebar", async ({ page }) => {
-    const sidebar = page.locator(".sidebar");
-    await expect(sidebar).not.toHaveClass(/collapsed/);
+  test("Ctrl+B collapses and expands sidebar panel", async ({ page }) => {
+    await expect(page.locator(".sidebar")).toBeVisible();
 
-    await sidebar.locator('button[aria-label="Collapse outline"]').click();
-    await expect(sidebar).toHaveClass(/collapsed/);
+    await page.keyboard.press("Control+b");
+    await expect(page.locator(".sidebar")).toHaveCount(0);
 
-    await sidebar.locator('button[aria-label="Expand outline"]').click();
-    await expect(sidebar).not.toHaveClass(/collapsed/);
+    await page.keyboard.press("Control+b");
+    await expect(page.locator(".sidebar")).toBeVisible();
   });
 });
 

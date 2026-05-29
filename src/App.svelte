@@ -9,6 +9,7 @@
   import GitDiffModal from "./components/layout/GitDiffModal.svelte";
   import SplitPane from "./components/layout/SplitPane.svelte";
   import OutlineSidebar from "./components/layout/OutlineSidebar.svelte";
+  import ActivityBar from "./components/layout/ActivityBar.svelte";
   import SettingsModal from "./components/settings/SettingsModal.svelte";
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
@@ -20,7 +21,7 @@
   import { getSession } from "./lib/sessionStore";
 
   // Always start at 100% zoom — prevents stale localStorage values
-  // (e.g., 160% left over from a previous session) from persisting.
+  // (e.g.: 160% left over from a previous session) from persisting.
   contentZoomStore.reset();
 
   let settingsOpen = $state(false);
@@ -29,11 +30,12 @@
   let saveTemplateOpen = $state(false);
   let gitDiffOpen = $state(false);
 
-  let outlineVisible = $state(true);
+  let activeActivity = $state<"files" | "outline" | "links">("outline");
+  let sidebarPanelVisible = $state(true);
   let viewMode = $state<"split" | "editor" | "preview">("split");
 
   function applySettings(s: any) {
-    outlineVisible = s.show_outline ?? s.showOutline ?? true;
+    activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
     viewMode = s.view_mode || s.viewMode || "split";
     document.documentElement.setAttribute("data-reduced-motion", String(s.reduced_motion ?? s.reducedMotion ?? false));
     document.documentElement.style.setProperty("--ui-font-size", `${s.ui_font_size ?? s.uiFontSize ?? 14}px`);
@@ -82,8 +84,8 @@
   let userToggledSidebar = $state(false);
   let autoCollapseSidebar = $derived(windowWidth > 0 && windowWidth < 1200);
   $effect(() => {
-    if (autoCollapseSidebar && !userToggledSidebar && outlineVisible) {
-      outlineVisible = false;
+    if (autoCollapseSidebar && !userToggledSidebar && sidebarPanelVisible) {
+      sidebarPanelVisible = false;
     }
     if (!autoCollapseSidebar) {
       userToggledSidebar = false;
@@ -94,6 +96,15 @@
   let effectiveViewMode = $derived(
     forceSinglePane ? "editor" : viewMode
   );
+
+  function handleSelectActivity(activity: "files" | "outline" | "links") {
+    if (activeActivity === activity && sidebarPanelVisible) {
+      sidebarPanelVisible = false;
+    } else {
+      activeActivity = activity;
+      sidebarPanelVisible = true;
+    }
+  }
 
   onMount(() => {
     startupCheckpoint("App mounted");
@@ -130,7 +141,7 @@
 
     const handleToggleSidebar = () => {
       userToggledSidebar = true;
-      outlineVisible = !outlineVisible;
+      sidebarPanelVisible = !sidebarPanelVisible;
     };
     window.addEventListener("markz:toggle-sidebar", handleToggleSidebar);
 
@@ -180,7 +191,14 @@
   />
   <TabBar onNewTab={newDocument} />
   <div class="workspace">
-    <OutlineSidebar visible={outlineVisible} />
+    <ActivityBar
+      {activeActivity}
+      visible={sidebarPanelVisible}
+      onSelectActivity={handleSelectActivity}
+    />
+    {#if sidebarPanelVisible}
+      <OutlineSidebar activity={activeActivity} />
+    {/if}
     {#if effectiveViewMode === "split"}
       <SplitPane>
         {#snippet left()}

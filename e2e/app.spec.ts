@@ -336,21 +336,17 @@ test("Settings button opens modal on Settings tab", async ({ page }) => {
   await expect(modal).not.toBeVisible();
 });
 
-test("outline panel can be toggled with Ctrl+B", async ({ page }) => {
-  const sidebar = page.locator(".sidebar");
-
+test("sidebar panel can be toggled with Ctrl+B", async ({ page }) => {
   // Initially visible (mock has show_outline: true)
-  await expect(sidebar).not.toHaveClass(/collapsed/);
-  await expect(sidebar.locator("text=Outline")).toBeVisible();
+  await expect(page.locator(".sidebar")).toBeVisible();
 
-  // Toggle with Ctrl+B
+  // Toggle with Ctrl+B — panel disappears from DOM
   await page.keyboard.press("Control+b");
-  await expect(sidebar).toHaveClass(/collapsed/);
+  await expect(page.locator(".sidebar")).toHaveCount(0);
 
   // Toggle back
   await page.keyboard.press("Control+b");
-  await expect(sidebar).not.toHaveClass(/collapsed/);
-  await expect(sidebar.locator("text=Outline")).toBeVisible();
+  await expect(page.locator(".sidebar")).toBeVisible();
 });
 
 test("view mode buttons switch between split, editor, and preview", async ({ page }) => {

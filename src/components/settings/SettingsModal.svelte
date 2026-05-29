@@ -120,7 +120,6 @@
             fontFamily: settings.editor_font_family,
             fontSize: settings.editor_font_size,
             lineHeight: settings.line_height,
-            showOutline: settings.show_outline,
             viewMode: settings.view_mode,
             previewFontSize: settings.preview_font_size,
             reducedMotion: settings.reduced_motion,
@@ -131,6 +130,9 @@
             ttsVoiceId: settings.tts_voice_id,
             ttsRate: settings.tts_rate,
             customCss: settings.custom_css,
+            pandocPath: settings.pandoc_path,
+            embedRemoteImages: settings.embed_remote_images,
+            theme: settings.theme,
           },
         })
       );
@@ -139,19 +141,16 @@
       console.error("Failed to save settings:", e);
     }
   }
-
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       open = false;
     }
   }
-
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       open = false;
     }
   }
-
   onMount(() => {
     getVersion().then((v) => (appVersion = v)).catch(() => (appVersion = ""));
   });
@@ -306,13 +305,6 @@
             <!-- Layout -->
             <div class="settings-section">
               <h3>Layout</h3>
-              <label class="toggle-row">
-                <span class="toggle-label">
-                  Show outline panel
-                  <span class="toggle-hint">Display the document outline sidebar by default</span>
-                </span>
-                <input type="checkbox" bind:checked={settings.show_outline} />
-              </label>
               <div class="field-row">
                 <label class="field-label" for="view-mode">Default view mode</label>
                 <select id="view-mode" bind:value={settings.view_mode}>
@@ -322,7 +314,6 @@
                 </select>
               </div>
             </div>
-
             <!-- Accessibility -->
             <div class="settings-section">
               <h3>Accessibility</h3>

@@ -59,12 +59,9 @@ test.describe("Settings modal", () => {
     await expect(showLineNumbers).toBeChecked();
     await expect(showMinimap).not.toBeChecked();
   });
-
   test("layout fields have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
     await expect(modal.locator('select#view-mode')).toHaveValue("split");
-    const showOutline = modal.locator('input[type="checkbox"]').filter({ has: page.locator('xpath=..//*[contains(text(), "Show outline panel")]') });
-    await expect(showOutline).toBeChecked();
   });
 
   test("accessibility fields have correct initial values", async ({ page }) => {

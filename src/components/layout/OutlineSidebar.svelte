@@ -3,12 +3,11 @@
   import { activeDocumentStore } from "../../lib/tabStore";
   import { openDocumentByPath } from "../../lib/keyboard";
   import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
-  import { ChevronLeft, Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight } from "@lucide/svelte";
+  import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
 
-  let { visible }: { visible: boolean } = $props();
+  let { activity }: { activity: "files" | "outline" | "links" } = $props();
 
-  let activeTab = $state<"outline" | "backlinks" | "files">("outline");
   let toc = $state<TocEntry[]>([]);
   let activeAnchor = $state<string | null>(null);
   let searchInput = $state("");
@@ -65,10 +64,6 @@
     }
   }
 
-  function toggle() {
-    window.dispatchEvent(new CustomEvent("markz:toggle-sidebar"));
-  }
-
   async function handleOpenLink(path: string) {
     await openDocumentByPath(path);
   }
@@ -113,179 +108,136 @@
   }
 </script>
 
-<div class="sidebar" class:collapsed={!visible}>
-  <button
-    class="toggle-btn"
-    onclick={toggle}
-    aria-label={visible ? "Collapse outline" : "Expand outline"}
-    title={visible ? "Collapse outline" : "Expand outline"}
-  >
-    <span class="toggle-icon" class:rotated={!visible}>
-      <ChevronLeft size={16} strokeWidth={1.5} />
-    </span>
-  </button>
-
-  {#if visible}
-    <div class="sidebar-tabs">
-      <button
-        class="sidebar-tab"
-        class:active={activeTab === "outline"}
-        onclick={() => (activeTab = "outline")}
-        aria-pressed={activeTab === "outline"}
-      >
-        Outline
-      </button>
-      <button
-        class="sidebar-tab"
-        class:active={activeTab === "backlinks"}
-        onclick={() => (activeTab = "backlinks")}
-        aria-pressed={activeTab === "backlinks"}
-      >
-        Links
-        {#if backlinks.length > 0}
-          <span class="tab-badge">{backlinks.length}</span>
-        {/if}
-      </button>
-      <button
-        class="sidebar-tab"
-        class:active={activeTab === "files"}
-        onclick={() => (activeTab = "files")}
-        aria-pressed={activeTab === "files"}
-      >
-        Files
-      </button>
+<div class="sidebar">
+  {#if activity === "outline"}
+    <div class="toc-scroller">
+      {#if toc.length === 0}
+        <div class="empty">No headings</div>
+      {:else}
+        <ul class="toc-list">
+          {#each toc as entry (entry.anchor)}
+            <li class="toc-item" style="padding-left: {(entry.level - 1) * 12}px">
+              <button
+                class="toc-link"
+                class:active={activeAnchor === entry.anchor}
+                onclick={() => scrollToAnchor(entry.anchor)}
+              >
+                {entry.text}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </div>
-
-    {#if activeTab === "outline"}
-      <div class="toc-scroller">
-        {#if toc.length === 0}
-          <div class="empty">No headings</div>
-        {:else}
-          <ul class="toc-list">
-            {#each toc as entry (entry.anchor)}
-              <li class="toc-item" style="padding-left: {(entry.level - 1) * 12}px">
-                <button
-                  class="toc-link"
-                  class:active={activeAnchor === entry.anchor}
-                  onclick={() => scrollToAnchor(entry.anchor)}
-                >
-                  {entry.text}
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {:else if activeTab === "backlinks"}
-      <div class="toc-scroller">
-        {#if linksLoading}
-          <div class="empty">Loading links…</div>
-        {:else if linksError}
-          <div class="empty error">{linksError}</div>
-        {:else if !$activeDocumentStore.path}
-          <div class="empty">Save the document to see links.</div>
-        {:else}
-          {#if outgoingLinks.length > 0}
-            <div class="link-section">
-              <div class="link-section-header">
-                <ArrowRight size={12} />
-                Outgoing ({outgoingLinks.length})
-              </div>
-              <ul class="link-list">
-                {#each outgoingLinks as target (target)}
-                  <li>
-                    <button class="link-btn" onclick={() => handleResolveOutgoing(target)}>
-                      <Link2 size={12} />
-                      <span class="link-text">{target}</span>
-                    </button>
-                  </li>
-                {/each}
-              </ul>
+  {:else if activity === "links"}
+    <div class="toc-scroller">
+      {#if linksLoading}
+        <div class="empty">Loading links…</div>
+      {:else if linksError}
+        <div class="empty error">{linksError}</div>
+      {:else if !$activeDocumentStore.path}
+        <div class="empty">Save the document to see links.</div>
+      {:else}
+        {#if outgoingLinks.length > 0}
+          <div class="link-section">
+            <div class="link-section-header">
+              <ArrowRight size={12} />
+              Outgoing ({outgoingLinks.length})
             </div>
-          {/if}
-
-          {#if backlinks.length > 0}
-            <div class="link-section">
-              <div class="link-section-header">
-                <ArrowLeft size={12} />
-                Backlinks ({backlinks.length})
-              </div>
-              <ul class="link-list">
-                {#each backlinks as doc (doc.path)}
-                  <li>
-                    <button class="link-btn" onclick={() => handleOpenLink(doc.path)}>
-                      <Link2 size={12} />
-                      <span class="link-text">{doc.title}</span>
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {:else if outgoingLinks.length === 0}
-            <div class="empty">No links found.</div>
-          {/if}
-        {/if}
-      </div>
-    {:else}
-      <div class="toc-scroller file-tree-scroller">
-        {#if !$workspaceStore.rootPath}
-          <div class="empty">
-            <FolderOpen size={32} strokeWidth={1.5} style="opacity: 0.4; margin-bottom: 8px;" />
-            <div>No folder open</div>
-            <button class="open-folder-btn" onclick={() => workspaceStore.openWorkspace()}>
-              Open Folder
-            </button>
-          </div>
-        {:else}
-          <div class="file-tree-header">
-            <span class="file-tree-root" title={$workspaceStore.rootPath}>
-              {$workspaceStore.rootPath.split(/[\\/]/).pop() || "Workspace"}
-            </span>
-            <button class="refresh-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
-              <span style="font-size: 11px;">↻</span>
-            </button>
-          </div>
-
-          <div class="search-box">
-            <Search size={12} strokeWidth={2} />
-            <input
-              type="text"
-              placeholder="Search files…"
-              value={searchInput}
-              oninput={(e) => handleSearchInput(e.currentTarget.value)}
-            />
-          </div>
-
-          {#if $workspaceStore.searchLoading}
-            <div class="empty">Searching…</div>
-          {:else if $workspaceStore.searchResults.length > 0}
-            <ul class="link-list search-results">
-              {#each $workspaceStore.searchResults as result (result.path + ":" + result.line_number)}
+            <ul class="link-list">
+              {#each outgoingLinks as target (target)}
                 <li>
-                  <button class="link-btn search-result-btn" onclick={() => handleOpenFile(result.path)}>
-                    <FileText size={12} />
-                    <div class="search-result-text">
-                      <div class="search-result-path">{result.rel_path}:{result.line_number}</div>
-                      <div class="search-result-context">{result.context}</div>
-                    </div>
+                  <button class="link-btn" onclick={() => handleResolveOutgoing(target)}>
+                    <Link2 size={12} />
+                    <span class="link-text">{target}</span>
                   </button>
                 </li>
               {/each}
             </ul>
-          {:else if searchInput.trim()}
-            <div class="empty">No matches</div>
-          {:else if $workspaceStore.fileTree.length === 0}
-            <div class="empty">No markdown files found.</div>
-          {:else}
-            <ul class="file-tree">
-              {#each $workspaceStore.fileTree as node (node.path)}
-                {@render fileTreeNode(node, 0)}
+          </div>
+        {/if}
+
+        {#if backlinks.length > 0}
+          <div class="link-section">
+            <div class="link-section-header">
+              <ArrowLeft size={12} />
+              Backlinks ({backlinks.length})
+            </div>
+            <ul class="link-list">
+              {#each backlinks as doc (doc.path)}
+                <li>
+                  <button class="link-btn" onclick={() => handleOpenLink(doc.path)}>
+                    <Link2 size={12} />
+                    <span class="link-text">{doc.title}</span>
+                  </button>
+                </li>
               {/each}
             </ul>
-          {/if}
+          </div>
+        {:else if outgoingLinks.length === 0}
+          <div class="empty">No links found.</div>
         {/if}
-      </div>
-    {/if}
+      {/if}
+    </div>
+  {:else}
+    <div class="toc-scroller file-tree-scroller">
+      {#if !$workspaceStore.rootPath}
+        <div class="empty">
+          <FolderOpen size={32} strokeWidth={1.5} style="opacity: 0.4; margin-bottom: 8px;" />
+          <div>No folder open</div>
+          <button class="open-folder-btn" onclick={() => workspaceStore.openWorkspace()}>
+            Open Folder
+          </button>
+        </div>
+      {:else}
+        <div class="file-tree-header">
+          <span class="file-tree-root" title={$workspaceStore.rootPath}>
+            {$workspaceStore.rootPath.split(/[\\/]/).pop() || "Workspace"}
+          </span>
+          <button class="refresh-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
+            <span style="font-size: 11px;">↻</span>
+          </button>
+        </div>
+
+        <div class="search-box">
+          <Search size={12} strokeWidth={2} />
+          <input
+            type="text"
+            placeholder="Search files…"
+            value={searchInput}
+            oninput={(e) => handleSearchInput(e.currentTarget.value)}
+          />
+        </div>
+
+        {#if $workspaceStore.searchLoading}
+          <div class="empty">Searching…</div>
+        {:else if $workspaceStore.searchResults.length > 0}
+          <ul class="link-list search-results">
+            {#each $workspaceStore.searchResults as result (result.path + ":" + result.line_number)}
+              <li>
+                <button class="link-btn search-result-btn" onclick={() => handleOpenFile(result.path)}>
+                  <FileText size={12} />
+                  <div class="search-result-text">
+                    <div class="search-result-path">{result.rel_path}:{result.line_number}</div>
+                    <div class="search-result-context">{result.context}</div>
+                  </div>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {:else if searchInput.trim()}
+          <div class="empty">No matches</div>
+        {:else if $workspaceStore.fileTree.length === 0}
+          <div class="empty">No markdown files found.</div>
+        {:else}
+          <ul class="file-tree">
+            {#each $workspaceStore.fileTree as node (node.path)}
+              {@render fileTreeNode(node, 0)}
+            {/each}
+          </ul>
+        {/if}
+      {/if}
+    </div>
   {/if}
 </div>
 
@@ -328,7 +280,6 @@
 
 <style>
   .sidebar {
-    position: relative;
     display: flex;
     flex-direction: column;
     width: 220px;
@@ -336,90 +287,7 @@
     background: var(--bg-surface);
     border-right: 1px solid var(--border-default);
     overflow: hidden;
-    transition: width 200ms ease, min-width 200ms ease, border-color 200ms ease;
     flex-shrink: 0;
-  }
-  .sidebar.collapsed {
-    width: 0;
-    min-width: 0;
-    border-right-color: transparent;
-    background: transparent;
-    overflow: visible;
-  }
-  .toggle-btn {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-tertiary);
-    cursor: pointer;
-    transition: background 150ms ease, color 150ms ease, right 200ms ease, left 200ms ease;
-    z-index: 2;
-  }
-  .sidebar.collapsed .toggle-btn {
-    right: auto;
-    left: 6px;
-  }
-  .toggle-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
-  .toggle-icon {
-    display: inline-flex;
-    transition: transform 200ms ease;
-  }
-  .toggle-icon.rotated {
-    transform: rotate(180deg);
-  }
-
-  .sidebar-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-default);
-    flex-shrink: 0;
-  }
-  .sidebar-tab {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: var(--space-2) var(--space-3);
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
-  }
-  .sidebar-tab:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-  }
-  .sidebar-tab.active {
-    color: var(--accent-default);
-    border-bottom-color: var(--accent-default);
-  }
-  .tab-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    background: var(--accent-muted);
-    color: var(--accent-default);
-    font-size: 10px;
-    font-weight: 600;
-    border-radius: 999px;
   }
 
   .toc-scroller {

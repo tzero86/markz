@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("Workspace file tree", () => {
   test("shows open folder prompt initially", async ({ page }) => {
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     await expect(page.locator(".file-tree-scroller .empty")).toContainText("No folder open");
     await expect(page.locator(".open-folder-btn")).toBeVisible();
   });
@@ -21,7 +21,7 @@ test.describe("Workspace file tree", () => {
     });
     
     // Open Files tab
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     
     // Click Open Folder
     await page.click(".open-folder-btn");
@@ -38,7 +38,7 @@ test.describe("Workspace file tree", () => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     await page.click(".open-folder-btn");
     await page.waitForSelector(".tree-dir", { timeout: 5000 });
 
@@ -55,7 +55,7 @@ test.describe("Workspace file tree", () => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     await page.click(".open-folder-btn");
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
@@ -68,7 +68,7 @@ test.describe("Workspace file tree", () => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     await page.click(".open-folder-btn");
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
@@ -84,7 +84,7 @@ test.describe("Workspace file tree", () => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     await page.click(".open-folder-btn");
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
@@ -104,7 +104,7 @@ test.describe("Open folder keyboard shortcut", () => {
     await page.keyboard.press("Control+Shift+o");
     await page.waitForTimeout(500);
 
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     await expect(page.locator(".tree-file").first()).toBeVisible();
   });
 });
@@ -119,7 +119,7 @@ test.describe("TitleBar open folder button", () => {
     await btn.click();
     await page.waitForTimeout(500);
 
-    await page.click('.sidebar-tab:has-text("Files")');
+    await page.click('.activity-btn[aria-label="Files"]');
     await expect(page.locator(".tree-file").first()).toBeVisible();
   });
 });
