@@ -60,19 +60,20 @@
   ];
 
   const shortcuts = [
-    { keys: ["Ctrl", "T"], action: "New file" },
-    { keys: ["Ctrl", "W"], action: "Close tab" },
-    { keys: ["Ctrl", "O"], action: "Open file" },
-    { keys: ["Ctrl", "S"], action: "Save file" },
-    { keys: ["Ctrl", "B"], action: "Toggle outline sidebar" },
-    { keys: ["Ctrl", "+"], action: "Zoom in" },
-    { keys: ["Ctrl", "-"], action: "Zoom out" },
-    { keys: ["Ctrl", "0"], action: "Reset zoom" },
-    { keys: ["Ctrl", "B"], action: "Bold (in editor)", context: "editor" },
-    { keys: ["Ctrl", "I"], action: "Italic (in editor)", context: "editor" },
-    { keys: ["Esc"], action: "Close modal / dropdown" },
-    { keys: ["Ctrl", "Shift", "D"], action: "View Git diff" },
-    { keys: ["Ctrl", "Shift", "O"], action: "Open folder" },
+    { keys: ["Ctrl", "O"], action: "Open file", category: "File" },
+    { keys: ["Ctrl", "Shift", "O"], action: "Open folder / workspace", category: "File" },
+    { keys: ["Ctrl", "T"], action: "New file", category: "File" },
+    { keys: ["Ctrl", "S"], action: "Save file", category: "File" },
+    { keys: ["Ctrl", "W"], action: "Close active tab", category: "File" },
+    { keys: ["Ctrl", "Shift", "P"], action: "Command palette", category: "Navigation" },
+    { keys: ["Ctrl", "P"], action: "Quick open files", category: "Navigation" },
+    { keys: ["Ctrl", "B"], action: "Toggle sidebar panel", category: "View" },
+    { keys: ["Ctrl", "F"], action: "Find / Replace", category: "Edit" },
+    { keys: ["Ctrl", "Shift", "D"], action: "Git diff panel", category: "View" },
+    { keys: ["Ctrl", "="], action: "Zoom in", category: "View" },
+    { keys: ["Ctrl", "-"], action: "Zoom out", category: "View" },
+    { keys: ["Ctrl", "0"], action: "Reset zoom", category: "View" },
+    { keys: ["Esc"], action: "Close modal / dropdown", category: "Navigation" },
   ];
 
   $effect(() => {
@@ -90,7 +91,6 @@
     try {
       settings = await invoke("get_settings");
       if (!settings) return;
-      // Pre-load TTS voices so the dropdown is ready
       const engine = (settings.tts_engine ?? "online") as TtsEngine;
       if (get(ttsStore).voices.length === 0) {
         ttsStore.loadVoices(engine);
@@ -104,16 +104,13 @@
 
   async function save() {
     if (!settings) return;
-    // Sync TTS runtime state into settings before persisting
     const ttsState = get(ttsStore);
     settings.tts_engine = ttsState.engine;
     settings.tts_voice_id = ttsState.voice?.id ?? "";
     settings.tts_rate = ttsState.rate;
     try {
       await invoke("update_settings", { settings });
-      // Apply theme immediately
       themeStore.set(settings.theme as Theme);
-      // Notify app to reload settings
       window.dispatchEvent(
         new CustomEvent("markz:settings-changed", {
           detail: {
@@ -164,22 +161,14 @@
 
   function statusLabel(status: string): string {
     switch (status) {
-      case "idle":
-        return "Idle";
-      case "checking":
-        return "Checking for updates…";
-      case "available":
-        return "Update available";
-      case "downloading":
-        return "Downloading update…";
-      case "ready":
-        return "Update ready — restart to apply";
-      case "up-to-date":
-        return "You're on the latest version";
-      case "error":
-        return "Update check failed";
-      default:
-        return status;
+      case "idle": return "Idle";
+      case "checking": return "Checking for updates…";
+      case "available": return "Update available";
+      case "downloading": return "Downloading update…";
+      case "ready": return "Update ready — restart to apply";
+      case "up-to-date": return "You're on the latest version";
+      case "error": return "Update check failed";
+      default: return status;
     }
   }
 </script>
@@ -229,7 +218,6 @@
           {#if loading}
             <div class="loading">Loading…</div>
           {:else if settings}
-            <!-- Appearance -->
             <div class="settings-section">
               <h3>Appearance</h3>
               <div class="field-row">
@@ -276,7 +264,6 @@
               </div>
             </div>
 
-            <!-- Editor -->
             <div class="settings-section">
               <h3>Editor</h3>
               <label class="toggle-row">
@@ -302,7 +289,6 @@
               </label>
             </div>
 
-            <!-- Layout -->
             <div class="settings-section">
               <h3>Layout</h3>
               <div class="field-row">
@@ -314,7 +300,7 @@
                 </select>
               </div>
             </div>
-            <!-- Accessibility -->
+
             <div class="settings-section">
               <h3>Accessibility</h3>
               <div class="field-row">
@@ -352,7 +338,6 @@
               </label>
             </div>
 
-            <!-- Custom CSS -->
             <div class="settings-section">
               <h3>Custom CSS</h3>
               <p class="field-hint">Override CSS variables or add custom styles. Applied globally.</p>
@@ -364,7 +349,6 @@
               ></textarea>
             </div>
 
-            <!-- Text to Speech -->
             <div class="settings-section">
               <h3>Text to Speech</h3>
               <div class="field-row">
@@ -442,7 +426,6 @@
               </div>
             </div>
 
-            <!-- Auto Save -->
             <div class="settings-section">
               <h3>Auto Save</h3>
               <label class="toggle-row">
@@ -468,7 +451,7 @@
                 </div>
               {/if}
             </div>
-            <!-- Export -->
+
             <div class="settings-section">
               <h3>Export</h3>
               <label class="toggle-row">
@@ -496,15 +479,25 @@
           {/if}
         {:else if activeTab === "help"}
           <div class="shortcuts-list">
-            {#each shortcuts as shortcut}
-              <div class="shortcut-row">
-                <span class="shortcut-action">{shortcut.action}</span>
-                <span class="shortcut-keys">
-                  {#each shortcut.keys as key, i}
-                    <kbd>{key}</kbd>
-                    {#if i < shortcut.keys.length - 1}<span class="plus">+</span>{/if}
-                  {/each}
-                </span>
+            {#each [
+              { name: "File", items: shortcuts.filter(s => s.category === "File") },
+              { name: "Edit", items: shortcuts.filter(s => s.category === "Edit") },
+              { name: "View", items: shortcuts.filter(s => s.category === "View") },
+              { name: "Navigation", items: shortcuts.filter(s => s.category === "Navigation") },
+            ] as category}
+              <div class="shortcut-category">
+                <h4 class="shortcut-category-name">{category.name}</h4>
+                {#each category.items as shortcut}
+                  <div class="shortcut-row">
+                    <span class="shortcut-action">{shortcut.action}</span>
+                    <span class="shortcut-keys">
+                      {#each shortcut.keys as key, i}
+                        <kbd>{key}</kbd>
+                        {#if i < shortcut.keys.length - 1}<span class="plus">+</span>{/if}
+                      {/each}
+                    </span>
+                  </div>
+                {/each}
               </div>
             {/each}
           </div>
@@ -619,7 +612,7 @@
     border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
-    width: 560px;
+    width: 600px;
     max-width: 90vw;
     height: 640px;
     max-height: 85vh;
@@ -696,10 +689,14 @@
   }
 
   .settings-section {
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-default);
   }
-  .settings-section:last-child {
+  .settings-section:last-of-type {
     margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
   }
   .settings-section h3 {
     font-size: var(--text-xs);
@@ -710,9 +707,9 @@
     margin: 0 0 var(--space-3) 0;
   }
   .field-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 180px;
     align-items: center;
-    justify-content: space-between;
     gap: var(--space-4);
     padding: var(--space-2) 0;
   }
@@ -724,6 +721,17 @@
     color: var(--text-primary);
   }
   .field-row select,
+  .field-row input[type="text"] {
+    padding: var(--space-1) var(--space-2);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
   .field-row input[type="number"] {
     padding: var(--space-1) var(--space-2);
     background: var(--bg-surface);
@@ -732,26 +740,50 @@
     color: var(--text-primary);
     font-size: var(--text-sm);
     outline: none;
-    min-width: 120px;
+    width: 72px;
+    box-sizing: border-box;
   }
   .field-row select:focus,
   .field-row input:focus {
     border-color: var(--accent-default);
   }
   .input-group {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--space-1);
   }
   .input-suffix {
     font-size: var(--text-xs);
     color: var(--text-muted);
   }
+  .field-hint {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin: 0 0 var(--space-2) 0;
+    line-height: 1.5;
+  }
+  .custom-css-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    resize: vertical;
+    outline: none;
+  }
+  .custom-css-input:focus {
+    border-color: var(--accent-default);
+  }
 
   .toggle-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: flex-start;
-    justify-content: space-between;
     gap: var(--space-4);
     padding: var(--space-2) 0;
     cursor: pointer;
@@ -840,7 +872,20 @@
   .shortcuts-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-4);
+  }
+  .shortcut-category {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .shortcut-category-name {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-1) 0;
   }
   .shortcut-row {
     display: flex;
@@ -886,7 +931,7 @@
   .about-content {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
   }
   .about-logo {
     display: flex;
@@ -1084,21 +1129,11 @@
   }
 
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 </style>

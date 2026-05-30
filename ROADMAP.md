@@ -179,5 +179,6 @@ Features that make MarkZ feel like a serious IDE for markdown.
 
 | Date | Change |
 |------|--------|
-| 2026-05-30 | Rewrote roadmap to reflect completed Phases 0–3. Added Phase 4 (Command Palette, Quick Open, Vim mode) and Phase 5 (Draggable tabs, Split editor, Plugins). |
+| 2026-05-30 | Settings/Help/About modal redesign — CSS grid field layout, consistent input widths, categorized shortcuts, removed unused HelpModal.svelte. |
+| 2026-05-30 | Command Palette (`Ctrl+Shift+P`) and Quick Open (`Ctrl+P`) shipped. |
 | 2026-05-28 | Initial roadmap created after codebase audit. |
