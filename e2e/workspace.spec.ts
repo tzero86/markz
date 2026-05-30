@@ -101,6 +101,7 @@ test.describe("Open folder keyboard shortcut", () => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
+    await page.click('.app');
     await page.keyboard.press("Control+Shift+o");
     await page.waitForTimeout(500);
 

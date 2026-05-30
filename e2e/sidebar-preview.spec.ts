@@ -34,65 +34,50 @@ test.describe("Outline sidebar", () => {
   test("Ctrl+B collapses and expands sidebar panel", async ({ page }) => {
     // Panel is collapsed by default
     await expect(page.locator(".sidebar")).toHaveCount(0);
-
+    await page.click('.app');
     await page.keyboard.press("Control+b");
     await expect(page.locator(".sidebar")).toBeVisible();
-
+    await page.click('.app');
     await page.keyboard.press("Control+b");
     await expect(page.locator(".sidebar")).toHaveCount(0);
   });
 });
 
-test.describe("Preview pane format tabs", () => {
-  test("default format is HTML", async ({ page }) => {
-    const htmlTab = page.locator('.format-tab').filter({ hasText: "HTML" });
-    await expect(htmlTab).toHaveClass(/active/);
+test.describe("Preview pane Copy dropdown", () => {
+  test("preview renders HTML by default", async ({ page }) => {
+    const previewContent = page.locator(".preview-content");
+    await expect(previewContent).toBeVisible();
+    await expect(previewContent.locator("h1").first()).toContainText("Welcome to MarkZ");
   });
 
-  test("switching to JIRA shows escaped output", async ({ page }) => {
-    await page.locator('.format-tab').filter({ hasText: "JIRA" }).click();
-    const jiraTab = page.locator('.format-tab').filter({ hasText: "JIRA" });
-    await expect(jiraTab).toHaveClass(/active/);
-
-    const preview = page.locator(".preview-scroller");
-    await expect(preview.locator(".text-format code").first()).toContainText("h1. Welcome to MarkZ");
-  });
-
-  test("switching to Confluence shows escaped output", async ({ page }) => {
-    await page.locator('.format-tab').filter({ hasText: "Confluence" }).click();
-    const tab = page.locator('.format-tab').filter({ hasText: "Confluence" });
-    await expect(tab).toHaveClass(/active/);
-
-    const preview = page.locator(".preview-scroller");
-    await expect(preview.locator(".text-format code").first()).toContainText("Welcome to MarkZ");
-  });
-
-  test("switching to Slack shows escaped output", async ({ page }) => {
-    await page.locator('.format-tab').filter({ hasText: "Slack" }).click();
-    const tab = page.locator('.format-tab').filter({ hasText: "Slack" });
-    await expect(tab).toHaveClass(/active/);
-
-    const preview = page.locator(".preview-scroller");
-    await expect(preview.locator(".text-format code").first()).toContainText("*Welcome to MarkZ*");
-  });
-
-  test("switching to GitHub shows markdown output", async ({ page }) => {
-    await page.locator('.format-tab').filter({ hasText: "GitHub" }).click();
-    const tab = page.locator('.format-tab').filter({ hasText: "GitHub" });
-    await expect(tab).toHaveClass(/active/);
-
-    const preview = page.locator(".preview-scroller");
-    await expect(preview.locator(".text-format code").first()).toContainText("Welcome to MarkZ");
-  });
-
-  test("copy output button shows feedback", async ({ page }) => {
-    const copyBtn = page.locator('button[aria-label="Copy output"]');
+  test("copy dropdown opens and shows format options", async ({ page }) => {
+    const copyBtn = page.locator('button[aria-label="Copy"]');
     await expect(copyBtn).toBeVisible();
     await copyBtn.click();
 
+    const dropdown = page.locator(".copy-dropdown-menu");
+    await expect(dropdown).toBeVisible();
+
+    await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as HTML")')).toBeVisible();
+    await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as JIRA")')).toBeVisible();
+    await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as Confluence")')).toBeVisible();
+    await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as Slack")')).toBeVisible();
+    await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as GitHub")')).toBeVisible();
+  });
+
+  test("copy button shows feedback after clicking", async ({ page }) => {
+    const copyBtn = page.locator('button[aria-label="Copy"]');
+    await expect(copyBtn).toBeVisible();
+    await copyBtn.click();
+
+    const dropdown = page.locator(".copy-dropdown-menu");
+    await expect(dropdown).toBeVisible();
+
+    // Click the first format option (HTML)
+    await dropdown.locator(".copy-dropdown-item").first().click();
+
     // Button should show success state
-    await page.waitForTimeout(100);
-    await expect(page.locator('button[aria-label="Copied!"]')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.action-btn.success')).toBeVisible();
+    await expect(page.locator(".action-btn.success")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.action-btn .action-label:has-text("Copied")')).toBeVisible();
   });
 });

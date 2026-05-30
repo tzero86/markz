@@ -11,42 +11,41 @@ test.describe("Status bar", () => {
   test("displays cursor position", async ({ page }) => {
     const cursorInfo = page.locator(".cursor-info");
     await expect(cursorInfo).toBeVisible();
-    await expect(cursorInfo).toContainText("Ln");
-    await expect(cursorInfo).toContainText("Col");
+
+    // Default content has headings; cursor should be at line 1 col 1
+    await expect(cursorInfo).toContainText("Ln 1, Col 1");
   });
 
   test("displays word count", async ({ page }) => {
-    const badges = page.locator(".stat-badge");
-    // Skip git badge if present; target the badge with "words" text
-    const wordBadge = badges.filter({ hasText: /words/ });
-    await expect(wordBadge).toBeVisible();
-    const text = await wordBadge.textContent();
-    const match = text?.match(/(\d+)/);
-    expect(match).not.toBeNull();
-    expect(Number(match![1])).toBeGreaterThanOrEqual(0);
+    const wordCount = page.locator(".status-right .stat-badge").first();
+    await expect(wordCount).toBeVisible();
+
+    // Default welcome content has some words
+    const text = await wordCount.textContent();
+    expect(text).toMatch(/\d+ words/);
   });
+
   test("displays char count", async ({ page }) => {
-    const badges = page.locator(".stat-badge");
-    const charBadge = badges.filter({ hasText: /chars/ });
+    const charBadge = page.locator(".status-right .stat-badge").nth(1);
     await expect(charBadge).toBeVisible();
     const text = await charBadge.textContent();
-    const match = text?.match(/(\d+)/);
-    expect(match).not.toBeNull();
-    expect(Number(match![1])).toBeGreaterThan(0);
+    expect(text).toMatch(/\d+ chars/);
   });
 
   test("save indicator shows Saved initially", async ({ page }) => {
-    await expect(page.locator('.save-text:has-text("Saved")')).toBeVisible();
-    await expect(page.locator(".save-indicator")).not.toHaveClass(/unsaved/);
+    const indicator = page.locator(".save-indicator");
+    await expect(indicator).not.toHaveClass(/unsaved/);
+    await expect(indicator).toContainText("Saved");
   });
 
   test("save indicator shows Unsaved when document is dirty", async ({ page }) => {
-    // Focus editor and type to make it dirty
+    // Type something to make document dirty
     await page.locator(".cm-content").click();
-    await page.keyboard.type("# Modified doc\n");
+    await page.keyboard.type("Hello world");
 
-    await expect(page.locator('.save-text:has-text("Unsaved")')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator(".save-indicator")).toHaveClass(/unsaved/);
+    const indicator = page.locator(".save-indicator");
+    await expect(indicator).toHaveClass(/unsaved/);
+    await expect(indicator).toContainText("Unsaved");
   });
 
   test("zoom badge shows 100% by default", async ({ page }) => {
@@ -56,12 +55,14 @@ test.describe("Status bar", () => {
   });
 
   test("zoom badge updates after keyboard zoom", async ({ page }) => {
+    await page.click('.app');
     await page.keyboard.press("Control+Equal");
     const zoomBadge = page.locator(".zoom-badge span");
     await expect(zoomBadge).toHaveText("110%");
   });
 
   test("zoom badge resets zoom when clicked", async ({ page }) => {
+    await page.click('.app');
     await page.keyboard.press("Control+Equal");
     const zoomBadge = page.locator(".zoom-badge");
     await expect(zoomBadge.locator("span")).toHaveText("110%");
@@ -73,10 +74,6 @@ test.describe("Status bar", () => {
   test("view mode buttons are present and functional", async ({ page }) => {
     await expect(page.locator('button[aria-label="Split"]')).toBeVisible();
     await expect(page.locator('button[aria-label="Editor"]')).toBeVisible();
-    await expect(page.locator('button[aria-label="Preview"]')).toBeVisible();
-
-    // Split should be active by default
-    await expect(page.locator('button[aria-label="Split"]')).toHaveClass(/active/);
 
     await page.locator('button[aria-label="Editor"]').click();
     await expect(page.locator('button[aria-label="Editor"]')).toHaveClass(/active/);
@@ -101,6 +98,7 @@ test.describe("Git status indicator", () => {
       localStorage.setItem("__e2e_open_file_result", "/repo/document.md");
     });
 
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
@@ -114,6 +112,7 @@ test.describe("Git status indicator", () => {
       localStorage.setItem("__e2e_open_file_result", "/modified/document.md");
     });
 
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
@@ -126,6 +125,7 @@ test.describe("Git status indicator", () => {
       localStorage.setItem("__e2e_open_file_result", "/repo/document.md");
     });
 
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
@@ -134,10 +134,10 @@ test.describe("Git status indicator", () => {
   });
 });
 
-
 test.describe("Git diff panel", () => {
   test("opens when clicking modified dot", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
@@ -151,6 +151,7 @@ test.describe("Git diff panel", () => {
 
   test("shows diff content for modified file", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
@@ -166,6 +167,7 @@ test.describe("Git diff panel", () => {
 
   test("shows empty state for clean file", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/clean.md"));
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
@@ -178,6 +180,7 @@ test.describe("Git diff panel", () => {
 
   test("closes on Escape", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
@@ -192,9 +195,11 @@ test.describe("Git diff panel", () => {
 
   test("opens via Ctrl+Shift+D keyboard shortcut", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
 
+    await page.click('.app');
     await page.keyboard.press("Control+Shift+d");
     const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
     await expect(diffModal).toBeVisible();

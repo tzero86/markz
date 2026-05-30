@@ -247,30 +247,35 @@ test("reduced motion setting applies data attribute to html", async ({ page }) =
 });
 
 test("zoom in and out with keyboard shortcuts", async ({ page }) => {
-  const zoomIndicator = page.locator(".zoom-badge");
+  const zoomIndicator = page.locator(".zoom-badge span");
   await expect(zoomIndicator).toHaveText("100%");
 
   // Zoom in
+  await page.click('.app');
   await page.keyboard.press("Control+Equal");
   await expect(zoomIndicator).toHaveText("110%");
 
   // Zoom in again
+  await page.click('.app');
   await page.keyboard.press("Control+Equal");
   await expect(zoomIndicator).toHaveText("120%");
 
   // Zoom out
+  await page.click('.app');
   await page.keyboard.press("Control+Minus");
   await expect(zoomIndicator).toHaveText("110%");
 
   // Reset
+  await page.click('.app');
   await page.keyboard.press("Control+0");
   await expect(zoomIndicator).toHaveText("100%");
 });
 
 test("zoom indicator resets zoom when clicked", async ({ page }) => {
-  const zoomIndicator = page.locator(".zoom-badge");
+  const zoomIndicator = page.locator(".zoom-badge span");
 
   // Zoom in first
+  await page.click('.app');
   await page.keyboard.press("Control+Equal");
   await expect(zoomIndicator).toHaveText("110%");
 
@@ -341,10 +346,12 @@ test("sidebar panel can be toggled with Ctrl+B", async ({ page }) => {
   await expect(page.locator(".sidebar")).toHaveCount(0);
 
   // Toggle with Ctrl+B — panel opens
+  await page.click('.app');
   await page.keyboard.press("Control+b");
   await expect(page.locator(".sidebar")).toBeVisible();
 
   // Toggle back — panel closes
+  await page.click('.app');
   await page.keyboard.press("Control+b");
   await expect(page.locator(".sidebar")).toHaveCount(0);
 });

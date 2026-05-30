@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("Keyboard shortcuts", () => {
   test("Ctrl+T creates a new tab", async ({ page }) => {
     await expect(page.locator(".tab-bar .tab")).toHaveCount(1);
+    await page.click('.app');
     await page.keyboard.press("Control+t");
     await expect(page.locator(".tab-bar .tab")).toHaveCount(2, { timeout: 3000 });
   });
@@ -27,12 +28,14 @@ test.describe("Keyboard shortcuts", () => {
   });
 
   test("Ctrl+O triggers open file", async ({ page }) => {
+    await page.click('.app');
     await page.keyboard.press("Control+o");
     // Should not crash; app remains stable
     await expect(page.locator(".app")).toBeVisible();
   });
 
   test("Ctrl+S triggers save", async ({ page }) => {
+    await page.click('.app');
     await page.keyboard.press("Control+s");
     await expect(page.locator(".app")).toBeVisible();
   });
@@ -41,9 +44,11 @@ test.describe("Keyboard shortcuts", () => {
     // Panel is collapsed by default
     await expect(page.locator(".sidebar")).toHaveCount(0);
 
+    await page.click('.app');
     await page.keyboard.press("Control+b");
     await expect(page.locator(".sidebar")).toBeVisible();
 
+    await page.click('.app');
     await page.keyboard.press("Control+b");
     await expect(page.locator(".sidebar")).toHaveCount(0);
   });
@@ -52,26 +57,32 @@ test.describe("Keyboard shortcuts", () => {
     const zoomBadge = page.locator(".zoom-badge span");
     await expect(zoomBadge).toHaveText("100%");
 
+    await page.click('.app');
     await page.keyboard.press("Control+Equal");
     await expect(zoomBadge).toHaveText("110%");
   });
 
   test("Ctrl+- zooms out", async ({ page }) => {
     // Zoom in first
+    await page.click('.app');
     await page.keyboard.press("Control+Equal");
+    await page.click('.app');
     await page.keyboard.press("Control+Equal");
     const zoomBadge = page.locator(".zoom-badge span");
     await expect(zoomBadge).toHaveText("120%");
 
+    await page.click('.app');
     await page.keyboard.press("Control+Minus");
     await expect(zoomBadge).toHaveText("110%");
   });
 
   test("Ctrl+0 resets zoom", async ({ page }) => {
+    await page.click('.app');
     await page.keyboard.press("Control+Equal");
     const zoomBadge = page.locator(".zoom-badge span");
     await expect(zoomBadge).toHaveText("110%");
 
+    await page.click('.app');
     await page.keyboard.press("Control+0");
     await expect(zoomBadge).toHaveText("100%");
   });
