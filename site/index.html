@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MarkZ — A Markdown Editor for Engineers</title>
-  <meta name="description" content="MarkZ is a fast, offline-first dual-pane Markdown editor for engineers. Live preview, multi-format export, engineering templates, and more.">
+  <meta name="description" content="MarkZ is a fast, offline-first dual-pane Markdown editor for engineers. Live preview, multi-format export, engineering templates, workspace mode, and more.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -28,13 +28,10 @@
       --radius-md: 10px;
       --radius-lg: 14px;
       --radius-xl: 20px;
+      --radius-full: 9999px;
     }
 
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     html {
       scroll-behavior: smooth;
@@ -50,7 +47,6 @@
       overflow-x: hidden;
     }
 
-    /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; }
@@ -59,9 +55,7 @@
     /* Navigation */
     .nav {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       z-index: 100;
       background: rgba(13, 13, 13, 0.85);
       backdrop-filter: blur(16px);
@@ -87,10 +81,7 @@
       color: var(--text-primary);
       text-decoration: none;
     }
-    .nav-logo svg {
-      width: 28px;
-      height: 28px;
-    }
+    .nav-logo svg { width: 28px; height: 28px; }
     .nav-links {
       display: flex;
       gap: 32px;
@@ -103,9 +94,7 @@
       font-weight: 500;
       transition: color 0.2s ease;
     }
-    .nav-links a:hover {
-      color: var(--text-primary);
-    }
+    .nav-links a:hover { color: var(--text-primary); }
     .nav-cta {
       display: inline-flex;
       align-items: center;
@@ -127,7 +116,7 @@
     /* Hero */
     .hero {
       position: relative;
-      padding: 160px 24px 100px;
+      padding: 160px 24px 80px;
       overflow: hidden;
     }
     .hero-bg {
@@ -175,8 +164,7 @@
       margin-bottom: 28px;
     }
     .hero-badge .dot {
-      width: 6px;
-      height: 6px;
+      width: 6px; height: 6px;
       background: var(--accent);
       border-radius: 50%;
       animation: pulse 2s ease-in-out infinite;
@@ -192,13 +180,11 @@
       line-height: 1.1;
       margin-bottom: 24px;
     }
-    .hero h1 .accent {
-      color: var(--accent);
-    }
+    .hero h1 .accent { color: var(--accent); }
     .hero p {
       font-size: clamp(1rem, 2vw, 1.25rem);
       color: var(--text-secondary);
-      max-width: 600px;
+      max-width: 640px;
       margin: 0 auto 40px;
       line-height: 1.7;
     }
@@ -207,6 +193,7 @@
       gap: 16px;
       justify-content: center;
       flex-wrap: wrap;
+      margin-bottom: 60px;
     }
     .btn-primary {
       display: inline-flex;
@@ -246,160 +233,75 @@
       border-color: var(--border-default);
     }
 
-    /* App Preview */
-    .app-preview {
-      position: relative;
+    /* Hero Screenshot */
+    .hero-screenshot {
       max-width: 1100px;
       margin: 0 auto;
       padding: 0 24px;
     }
-    .app-frame {
-      position: relative;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-default);
+    .hero-screenshot img {
+      width: 100%;
+      height: auto;
       border-radius: var(--radius-xl);
-      overflow: hidden;
+      border: 1px solid var(--border-default);
       box-shadow:
         0 0 0 1px rgba(61, 214, 141, 0.05),
-        0 24px 80px rgba(0, 0, 0, 0.4);
+        0 24px 80px rgba(0, 0, 0, 0.5);
     }
-    .app-frame-header {
+
+    /* Screenshot Gallery */
+    .gallery-section {
+      padding: 60px 24px;
+    }
+    .gallery-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .gallery-tabs {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 18px;
-      background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border-default);
-    }
-    .app-frame-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--text-tertiary);
-    }
-    .app-frame-dot:nth-child(1) { background: #ff5f56; }
-    .app-frame-dot:nth-child(2) { background: #ffbd2e; }
-    .app-frame-dot:nth-child(3) { background: #27c93f; }
-    .app-frame-body {
-      display: grid;
-      grid-template-columns: 44px 240px 1fr 1fr;
-      min-height: 520px;
-    }
-    @media (max-width: 900px) {
-      .app-frame-body {
-        grid-template-columns: 44px 180px 1fr 1fr;
-        min-height: 380px;
-      }
-    }
-    @media (max-width: 640px) {
-      .app-frame-body {
-        grid-template-columns: 36px 0 1fr 0;
-        min-height: 300px;
-      }
-    }
-    .app-activity {
-      background: var(--bg-base);
-      border-right: 1px solid var(--border-subtle);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px 0;
-      gap: 8px;
-    }
-    .app-activity-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
       justify-content: center;
-    }
-    .app-activity-icon.active {
-      background: var(--accent-dim);
-      color: var(--accent);
-    }
-    .app-sidebar {
-      background: var(--bg-surface);
-      border-right: 1px solid var(--border-subtle);
-      padding: 16px;
-    }
-    .app-sidebar h4 {
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-tertiary);
-      margin-bottom: 12px;
-    }
-    .app-sidebar-item {
-      display: flex;
-      align-items: center;
       gap: 8px;
-      padding: 5px 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .gallery-tab {
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid var(--border-default);
       border-radius: var(--radius-sm);
-      font-size: 0.8125rem;
       color: var(--text-secondary);
-      margin-bottom: 2px;
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
-    .app-sidebar-item.active {
-      background: var(--accent-dim);
-      color: var(--accent);
-    }
-    .app-editor, .app-preview-pane {
-      padding: 20px;
-      font-family: var(--font-mono);
-      font-size: 0.8125rem;
-      line-height: 1.7;
-      overflow: hidden;
-    }
-    .app-editor {
-      background: var(--bg-base);
-      border-right: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-    }
-    .app-editor .line { display: block; }
-    .app-editor .line .sym { color: var(--accent); }
-    .app-editor .line .heading { color: var(--text-primary); font-weight: 600; }
-    .app-editor .line .code { color: #e6a23c; }
-    .app-editor .line .str { color: #7ec699; }
-    .app-editor .line .comment { color: var(--text-tertiary); }
-    .app-preview-pane {
-      background: var(--bg-surface);
+    .gallery-tab:hover {
+      background: var(--bg-elevated);
       color: var(--text-primary);
     }
-    .app-preview-pane h2 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-      letter-spacing: -0.02em;
+    .gallery-tab.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: var(--accent-dim);
     }
-    .app-preview-pane p {
-      color: var(--text-secondary);
-      margin-bottom: 12px;
-      font-family: var(--font-sans);
-      font-size: 0.875rem;
-      line-height: 1.7;
-    }
-    .app-preview-pane ul {
-      padding-left: 20px;
-      margin-bottom: 12px;
-      font-family: var(--font-sans);
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-    .app-preview-pane li { margin-bottom: 4px; }
-    .app-preview-pane pre {
-      background: var(--bg-base);
-      padding: 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
-      border: 1px solid var(--border-subtle);
-      margin-bottom: 12px;
+    .gallery-frame {
+      position: relative;
+      border-radius: var(--radius-xl);
       overflow: hidden;
+      border: 1px solid var(--border-default);
+      background: var(--bg-surface);
     }
-    .app-preview-pane code {
-      font-family: var(--font-mono);
-      color: #e6a23c;
+    .gallery-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .gallery-caption {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
     }
 
     /* Sections */
@@ -430,12 +332,12 @@
       color: var(--text-secondary);
       max-width: 560px;
       line-height: 1.7;
+      margin: 0 auto;
     }
-
     /* Features Grid */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 20px;
       margin-top: 56px;
     }
@@ -489,19 +391,15 @@
       border-bottom: 1px solid var(--border-subtle);
       font-size: 0.9375rem;
     }
-    .shortcuts-table-row:last-child {
-      border-bottom: none;
-    }
-    .shortcuts-table-row:hover {
-      background: var(--bg-elevated);
-    }
-    .shortcuts-table-row .action {
-      color: var(--text-primary);
-    }
+    .shortcuts-table-row:last-child { border-bottom: none; }
+    .shortcuts-table-row:hover { background: var(--bg-elevated); }
+    .shortcuts-table-row .action { color: var(--text-primary); }
     .shortcuts-table-row .keys {
       display: flex;
       gap: 4px;
       align-items: center;
+      flex-shrink: 0;
+      margin-left: 16px;
     }
     kbd {
       display: inline-flex;
@@ -516,6 +414,7 @@
       font-weight: 500;
       color: var(--text-secondary);
       min-width: 28px;
+      white-space: nowrap;
     }
     .plus {
       color: var(--text-tertiary);
@@ -524,9 +423,7 @@
     }
 
     /* Tech Stack */
-    .tech-section {
-      text-align: center;
-    }
+    .tech-section { text-align: center; }
     .tech-badges {
       display: flex;
       flex-wrap: wrap;
@@ -577,18 +474,12 @@
       border-radius: var(--radius-lg);
       min-width: 200px;
       transition: border-color 0.2s ease;
+      color: var(--text-primary);
+      text-decoration: none;
     }
-    .download-card:hover {
-      border-color: var(--accent-dim);
-    }
-    .download-card .os {
-      font-size: 1.125rem;
-      font-weight: 600;
-    }
-    .download-card .ext {
-      font-size: 0.8125rem;
-      color: var(--text-tertiary);
-    }
+    .download-card:hover { border-color: var(--accent-dim); color: var(--text-primary); }
+    .download-card .os { font-size: 1.125rem; font-weight: 600; }
+    .download-card .ext { font-size: 0.8125rem; color: var(--text-tertiary); }
 
     /* Footer */
     .footer {
@@ -616,11 +507,9 @@
       font-size: 0.875rem;
       transition: color 0.2s ease;
     }
-    .footer-links a:hover {
-      color: var(--accent);
-    }
+    .footer-links a:hover { color: var(--accent); }
 
-    /* Mobile nav */
+    /* Mobile */
     @media (max-width: 640px) {
       .nav-links { display: none; }
       .hero { padding: 120px 20px 60px; }
@@ -631,6 +520,9 @@
         align-items: flex-start;
         gap: 8px;
       }
+      .shortcuts-table-row .keys { margin-left: 0; }
+      .gallery-tabs { gap: 6px; }
+      .gallery-tab { padding: 6px 12px; font-size: 0.8125rem; }
     }
   </style>
 </head>
@@ -663,7 +555,7 @@
     <div class="hero-inner">
       <div class="hero-badge">
         <span class="dot"></span>
-        v0.8.2 — Now with Workspace Mode
+        v0.8.4 — Now with Workspace Mode
       </div>
       <h1>A Markdown Editor<br>for <span class="accent">Engineers</span></h1>
       <p>Fast, offline-first, and purpose-built for technical writing. Live preview, multi-format export, engineering templates, and a VS Code-style workspace. No cloud, no telemetry, no distractions.</p>
@@ -680,66 +572,24 @@
     </div>
   </header>
 
-  <div class="app-preview">
-    <div class="app-frame">
-      <div class="app-frame-header">
-        <div class="app-frame-dot"></div>
-        <div class="app-frame-dot"></div>
-        <div class="app-frame-dot"></div>
-      </div>
-      <div class="app-frame-body">
-        <div class="app-activity">
-          <div class="app-activity-icon active">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          </div>
-          <div class="app-activity-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          </div>
-          <div class="app-activity-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          </div>
-        </div>
-        <div class="app-sidebar">
-          <h4>Workspace</h4>
-          <div class="app-sidebar-item active">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            README.md
-          </div>
-          <div class="app-sidebar-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            ROADMAP.md
-          </div>
-          <div class="app-sidebar-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            docs/
-          </div>
-        </div>
-        <div class="app-editor">
-          <span class="line"><span class="sym">#</span> <span class="heading">Project Overview</span></span>
-          <span class="line"></span>
-          <span class="line">This is a <span class="code">markdown</span> file.</span>
-          <span class="line"></span>
-          <span class="line"><span class="sym">-</span> Live preview</span>
-          <span class="line"><span class="sym">-</span> KaTeX math: <span class="code">$E=mc^2$</span></span>
-          <span class="line"><span class="sym">-</span> Mermaid diagrams</span>
-          <span class="line"></span>
-          <span class="line"><span class="comment">&lt;!-- comment --&gt;</span></span>
-        </div>
-        <div class="app-preview-pane">
-          <h2>Project Overview</h2>
-          <p>This is a <code>markdown</code> file.</p>
-          <ul>
-            <li>Live preview</li>
-            <li>KaTeX math: <em>E = mc²</em></li>
-            <li>Mermaid diagrams</li>
-          </ul>
-          <pre><code>fn main() {
-    println!("Hello");
-}</code></pre>
-        </div>
-      </div>
-    </div>
+  <div class="hero-screenshot">
+    <img src="screenshots/hero-split-view.png" alt="MarkZ split-pane editor with live preview, dark theme, syntax highlighting, and KaTeX math rendering">
   </div>
+
+  <section class="section gallery-section">
+    <div class="gallery-inner">
+      <div class="gallery-tabs" id="gallery-tabs">
+        <button class="gallery-tab active" data-img="workspace-mode.png">Workspace</button>
+        <button class="gallery-tab" data-img="table-editor.png">Table Editor</button>
+        <button class="gallery-tab" data-img="git-diff.png">Git Diff</button>
+        <button class="gallery-tab" data-img="outline-panel.png">Outline</button>
+      </div>
+      <div class="gallery-frame">
+        <img id="gallery-img" src="screenshots/workspace-mode.png" alt="MarkZ workspace mode showing file tree sidebar">
+      </div>
+      <p class="gallery-caption" id="gallery-caption">Open any folder and browse the recursive file tree with project-wide search.</p>
+    </div>
+  </section>
 
   <section class="section" id="features">
     <div class="section-inner">
@@ -753,14 +603,14 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </div>
           <h3>Live Preview</h3>
-          <p>Side-by-side editor and rendered preview with instant updates. KaTeX math, Mermaid diagrams, syntax highlighting, and scroll sync.</p>
+          <p>Side-by-side editor and rendered preview with instant updates. KaTeX math, Mermaid diagrams, syntax highlighting, and heading-based scroll sync.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           </div>
           <h3>Multi-Format Export</h3>
-          <p>Copy or export to JIRA, Confluence, Slack, GitHub, HTML, and DOCX. AST-first conversion ensures consistent, reliable output every time.</p>
+          <p>Copy or export to JIRA, Confluence, Slack, GitHub, HTML, and DOCX. Pandoc integration for Word, PDF, and EPUB. AST-first conversion ensures consistent output.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -780,7 +630,7 @@
           <div class="feature-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           </div>
-          <h3>WikiLinks & Backlinks</h3>
+          <h3>WikiLinks &amp; Backlinks</h3>
           <p>Link documents with <code>[[Target]]</code> or <code>[[Target|Display]]</code> syntax. Automatic backlink discovery shows incoming references across your workspace.</p>
         </div>
         <div class="feature-card">
@@ -794,7 +644,7 @@
           <div class="feature-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
-          <h3>Offline-First & Zero Telemetry</h3>
+          <h3>Offline-First &amp; Zero Telemetry</h3>
           <p>Everything runs locally. No accounts, no cloud sync, no data collection. Your documents stay on your machine, period.</p>
         </div>
         <div class="feature-card">
@@ -802,14 +652,63 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
           </div>
           <h3>Git Integration</h3>
-          <p>Status bar shows branch and modification status. One-click git diff panel with unified diff view. Pandoc integration for advanced export pipelines.</p>
+          <p>Status bar shows branch and modification status. One-click git diff panel with unified diff view. Full version control awareness without leaving the editor.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           </div>
-          <h3>Snippets & Auto-Save</h3>
-          <p>Tab-triggered text snippets with placeholders (<code>$1</code>, <code>${1:default}</code>). Configurable auto-save with per-interval debouncing. Full session restore on launch.</p>
+          <h3>Snippets &amp; Auto-Save</h3>
+          <p>Tab-triggered text snippets with placeholders (<code>$1</code>, <code>${1:default}</code>). Configurable auto-save with debouncing. Full session restore on launch.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M8 18v-1"/><path d="M16 18v-3"/></svg>
+          </div>
+          <h3>Document Statistics</h3>
+          <p>Real-time word count, character count, sentences, paragraphs, reading time, Flesch Reading Ease, and Flesch-Kincaid Grade Level — powered by Rust.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </div>
+          <h3>Text to Speech</h3>
+          <p>Read-aloud with 322 Edge voices or local Windows SAPI5. Streaming playback starts instantly while prefetching chunks in the background.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><path d="M21 12c.552 0 1-.448 1-1V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M15 12h6"/></svg>
+          </div>
+          <h3>Markdown Lint &amp; Spellcheck</h3>
+          <p>CodeMirror linter checks for trailing whitespace, empty links, missing alt text, unclosed code blocks, heading jumps, and duplicates. Native browser spellcheck enabled.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <h3>Find &amp; Replace</h3>
+          <p>CodeMirror's built-in search panel with regex support, case sensitivity, and replace-all. Bound to <code>Ctrl+F</code> for instant access.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+          </div>
+          <h3>Footnotes &amp; Frontmatter</h3>
+          <p>Full footnote support across all converters and preview. YAML and TOML frontmatter parsed into structured metadata for document organization.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.68 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <h3>Custom Themes &amp; Zoom</h3>
+          <p>Dark, light, and system themes with custom CSS injection. Independent content zoom (50–300%) with persistent state. Word wrap, minimap, and line numbers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </div>
+          <h3>Print to PDF</h3>
+          <p>Print only the preview content via a hidden iframe, excluding all app UI chrome. Forces light-theme colors for readable output with proper pagination.</p>
         </div>
       </div>
     </div>
@@ -927,6 +826,28 @@
     </div>
   </footer>
 
+  <script>
+    // Gallery tab switching
+    const tabs = document.querySelectorAll('.gallery-tab');
+    const img = document.getElementById('gallery-img');
+    const caption = document.getElementById('gallery-caption');
+    const captions = {
+      'workspace-mode.png': 'Open any folder and browse the recursive file tree with project-wide search.',
+      'table-editor.png': 'Double-click any table to edit rows, columns, and alignment inline.',
+      'git-diff.png': 'One-click git diff panel with unified diff view for tracked files.',
+      'outline-panel.png': 'Document outline with heading navigation and WikiLinks backlink discovery.',
+    };
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const src = 'screenshots/' + tab.dataset.img;
+        img.src = src;
+        img.alt = captions[tab.dataset.img] || 'MarkZ screenshot';
+        caption.textContent = captions[tab.dataset.img] || '';
+      });
+    });
+  </script>
+
 </body>
 </html>
-
