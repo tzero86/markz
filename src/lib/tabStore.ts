@@ -284,7 +284,16 @@ const defaultContent = [
   "",
   "*Welcome to MarkZ*",
 ].join("\n");
-
+function makeEmptyTab(): Tab {
+  return {
+    id: genId(),
+    content: "",
+    path: null,
+    title: "Untitled",
+    isDirty: false,
+    isLoading: false,
+  };
+}
 function makeDefaultTab(): Tab {
   return {
     id: genId(),
@@ -295,7 +304,6 @@ function makeDefaultTab(): Tab {
     isLoading: false,
   };
 }
-
 function createTabStore() {
   const defaultTab = makeDefaultTab();
   const { subscribe, set, update } = writable<TabState>({
@@ -477,7 +485,7 @@ function createTabStore() {
     update((s) => {
       const newTabs = s.tabs.filter((t) => t.id !== id);
       if (newTabs.length === 0) {
-        const fresh = makeDefaultTab();
+        const fresh = makeEmptyTab();
         return { tabs: [fresh], activeTabId: fresh.id };
       }
       if (!isActive) {
