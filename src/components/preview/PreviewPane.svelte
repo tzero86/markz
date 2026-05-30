@@ -9,15 +9,15 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import { Copy, Check, Play, Pause, Square } from "@lucide/svelte";
+  import { Copy, Check, Play, Pause, Square, ChevronDown } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
   import { onMount } from "svelte";
 import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
 
-  type PreviewFormat = "html" | "jira" | "confluence" | "slack" | "github";
+  type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github";
 
-  /** Cache of content+format → rendered HTML to avoid redundant re-renders.
+  /** Cache of content → rendered HTML to avoid redundant re-renders.
    *  Implemented as an LRU (least-recently-used) Map with a max size. */
   const renderCache = new Map<string, string>();
   const MAX_CACHE_SIZE = 10;
@@ -26,7 +26,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   let isRendering = $state(false);
   let previewDiv: HTMLDivElement;
   let contentDiv: HTMLDivElement | undefined = $state();
-  let activeFormat = $state<PreviewFormat>("html");
+  let copyDropdownOpen = $state(false);
   let settings = $state<{ embed_remote_images: boolean; preview_font_size: number } | null>(null);
   let copyFeedback = $state(false);
   let renderProgress = $state(0);
@@ -35,12 +35,12 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   let tableEditorIndex = $state(0);
   let syncFeedback = $state(false);
 
-  const formats: { id: PreviewFormat; label: string; icon: string }[] = [
-    { id: "html", label: "HTML", icon: FORMAT_ICONS.html_sm },
-    { id: "jira", label: "JIRA", icon: FORMAT_ICONS.jira_sm },
-    { id: "confluence", label: "Confluence", icon: FORMAT_ICONS.confluence_sm },
-    { id: "slack", label: "Slack", icon: FORMAT_ICONS.slack_sm },
-    { id: "github", label: "GitHub", icon: FORMAT_ICONS.github_sm },
+  const copyFormats: { id: CopyFormat; label: string }[] = [
+    { id: "html", label: "Copy as HTML" },
+    { id: "jira", label: "Copy as JIRA" },
+    { id: "confluence", label: "Copy as Confluence" },
+    { id: "slack", label: "Copy as Slack" },
+    { id: "github", label: "Copy as GitHub" },
   ];
 
   invoke("get_settings")
@@ -52,7 +52,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   let lastCacheKey = "";
   $effect(() => {
     const content = $activeDocumentStore.content;
-    const cacheKey = content + "\n###FORMAT###\n" + activeFormat;
+    const cacheKey = content;
     // Skip re-render if content hasn't actually changed
     if (cacheKey === lastCacheKey && htmlContent !== "<p>Loading preview...</p>") {
       return;
@@ -67,7 +67,6 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       return;
     }
 
-    const format = activeFormat;
     clearTimeout(timeout);
     isRendering = true;
     renderProgress = 0;
@@ -78,19 +77,9 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       try {
         clearInterval(progressInterval);
         renderProgress = 90;
-        let result: string;
-        if (format === "html") {
-          result = await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path });
-          // Sanitize HTML to prevent XSS from untrusted markdown content
-          result = DOMPurify.sanitize(result);
-        } else {
-          const command = `convert_to_${format}`;
-          result = await invoke<string>(command, {
-            markdown: content,
-            docPath: $activeDocumentStore.path,
-          });
-          result = escapeHtml(result);
-        }
+        const result = DOMPurify.sanitize(
+          await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path })
+        );
         htmlContent = result;
         // LRU insertion: delete old key first to bump to most-recent position
         renderCache.delete(cacheKey);
@@ -208,13 +197,13 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     e.preventDefault();
   }
 
-  async function copyOutput() {
+  async function copyOutput(format: CopyFormat = "html") {
     try {
-      const plainText = activeFormat === "html"
+      const plainText = format === "html"
         ? htmlContent.replace(/<[^>]+>/g, "")
         : htmlContent.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
 
-      if (activeFormat === "html") {
+      if (format === "html") {
         await navigator.clipboard.writeText(plainText);
       } else {
         // For non-HTML formats, also fetch the rendered HTML so rich editors
@@ -255,7 +244,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
    *  transform:scale() — this scales the entire rendering tree uniformly
    *  without fighting viewBox / width / height interactions. */
   function scaleMermaidDiagrams() {
-    if (!contentDiv || activeFormat !== "html") return;
+    if (!contentDiv) return;
     const zoom = $contentZoomStore;
 
     contentDiv.querySelectorAll(".mermaid-diagram").forEach((divEl) => {
@@ -314,7 +303,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     const _content = htmlContent;
     if (!contentDiv) return;
 
-    if (activeFormat === "html") {
+    if (format === "html") {
       addHeadingAnchors(contentDiv);
       renderMathBlocks(contentDiv);
       renderMermaidBlocks(contentDiv)
@@ -451,18 +440,35 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     <div class="render-progress-bar" style="--progress: {renderProgress}%"></div>
   {/if}
   <div class="preview-toolbar">
-    <div class="format-tabs">
-      {#each formats as fmt}
-        <button
-          class="format-tab"
-          class:active={activeFormat === fmt.id}
-          onclick={() => (activeFormat = fmt.id)}
-          aria-pressed={activeFormat === fmt.id}
-        >
-          <span class="format-icon">{@html fmt.icon}</span>
-          <span class="format-label">{fmt.label}</span>
-        </button>
-      {/each}
+    <div class="copy-dropdown">
+      <button
+        class="action-btn"
+        class:success={copyFeedback}
+        onclick={() => { copyDropdownOpen = !copyDropdownOpen; }}
+        aria-label="Copy"
+        aria-expanded={copyDropdownOpen}
+      >
+        {#if copyFeedback}
+          <Check size={14} strokeWidth={2.5} />
+        {:else}
+          <Copy size={14} strokeWidth={2} />
+        {/if}
+        <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
+        <ChevronDown size={12} />
+      </button>
+      {#if copyDropdownOpen}
+        <div class="copy-dropdown-menu" role="menu">
+          {#each copyFormats as fmt}
+            <button
+              class="copy-dropdown-item"
+              role="menuitem"
+              onclick={() => { copyOutput(fmt.id); copyDropdownOpen = false; }}
+            >
+              {fmt.label}
+            </button>
+          {/each}
+        </div>
+      {/if}
     </div>
     <div class="toolbar-actions">
       <!-- Bi-directional editing hidden for now — needs more testing -->
@@ -472,8 +478,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       <!--   </button> -->
       <!--   {#if previewEditing} ... sync button ... {/if} -->
       <!-- {/if} -->
-      {#if activeFormat === "html"}
-        <div class="tts-controls">
+      <div class="tts-controls">
           {#if $ttsStore.state === "loading"}
             <button class="action-btn" disabled aria-label="Loading">
               <span class="tts-spinner"></span>
@@ -522,42 +527,22 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
             </button>
           {/if}
         </div>
-      {/if}
-      <button
-        class="action-btn"
-        class:success={copyFeedback}
-        onclick={copyOutput}
-        aria-label={copyFeedback ? "Copied!" : "Copy output"}
-        data-tooltip={copyFeedback ? "Copied!" : "Copy output"}
-      >
-        {#if copyFeedback}
-          <Check size={14} strokeWidth={2.5} />
-        {:else}
-          <Copy size={14} strokeWidth={2} />
-        {/if}
-        <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
-      </button>
+
     </div>
   </div>
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     {#key htmlContent}
-      {#if activeFormat === "html"}
-        <div
-          class="preview-content"
-          class:editing={previewEditing}
-          bind:this={contentDiv}
-          contenteditable={previewEditing}
-          ondblclick={handleTableDblClick}
-          role="presentation"
-          style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
-        >
-          {@html htmlContent}
-        </div>
-      {:else}
-        <div class="preview-content text-format" bind:this={contentDiv} style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px">
-          <pre><code>{@html htmlContent}</code></pre>
-        </div>
-      {/if}
+      <div
+        class="preview-content"
+        class:editing={previewEditing}
+        bind:this={contentDiv}
+        contenteditable={previewEditing}
+        ondblclick={handleTableDblClick}
+        role="presentation"
+        style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
+      >
+        {@html htmlContent}
+      </div>
     {/key}
   <TableEditorModal
     open={tableEditorOpen}
@@ -626,52 +611,37 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
                 border-color 300ms var(--ease-in-out);
   }
 
-  .format-tabs {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    background: var(--bg-base);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-xs);
-  }
-  .format-tab {
+  .copy-dropdown {
+    position: relative;
     display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
+  }
+  .copy-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 160px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+    z-index: 10;
+  }
+  .copy-dropdown-item {
+    padding: 6px 10px;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
-    color: var(--text-tertiary);
-    font-size: var(--text-xs);
-    font-weight: 500;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    text-align: left;
     cursor: pointer;
-    transition: all 150ms var(--ease-out);
-    white-space: nowrap;
+    transition: background 150ms ease;
   }
-  .format-tab:hover {
+  .copy-dropdown-item:hover {
     background: var(--bg-hover);
-    color: var(--text-secondary);
-  }
-  .format-tab.active {
-    background: var(--bg-active);
-    color: var(--accent-default);
-    font-weight: 600;
-    box-shadow: var(--shadow-xs);
-  }
-  .format-icon {
-    display: inline-flex;
-    align-items: center;
-    opacity: 0.7;
-    transition: opacity 150ms ease;
-  }
-  .format-tab:hover .format-icon,
-  .format-tab.active .format-icon {
-    opacity: 1;
-  }
-  .format-label {
-    transition: color 150ms ease;
   }
 
   /* Toolbar actions */
