@@ -18,6 +18,8 @@
   import { contentZoomStore } from "./lib/contentZoomStore";
   import { ttsStore, type TtsEngine } from "./lib/ttsStore";
   import { tabStore, activeDocumentStore } from "./lib/tabStore";
+  import CommandPalette from "./components/ui/CommandPalette.svelte";
+  import type { PaletteMode } from "./lib/commandPalette";
   import { getSession } from "./lib/sessionStore";
   import { workspaceStore } from "./lib/workspaceStore";
 
@@ -30,6 +32,8 @@
   let templateBrowserOpen = $state(false);
   let saveTemplateOpen = $state(false);
   let gitDiffOpen = $state(false);
+  let paletteOpen = $state(false);
+  let paletteMode = $state<PaletteMode>("commands");
 
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
@@ -184,6 +188,38 @@
     };
     window.addEventListener("markz:workspace-changed", handleWorkspaceChanged);
 
+    const handleSetActivity = (e: Event) => {
+      activeActivity = (e as CustomEvent).detail;
+      sidebarPanelVisible = true;
+    };
+    window.addEventListener("markz:set-activity", handleSetActivity);
+    const handleSetViewMode = (e: Event) => {
+      viewMode = (e as CustomEvent).detail;
+    };
+    window.addEventListener("markz:set-view-mode", handleSetViewMode);
+    const handleOpenSettings = () => {
+      settingsInitialTab = "settings";
+      settingsOpen = true;
+    };
+    window.addEventListener("markz:open-settings", handleOpenSettings);
+    const handleOpenHelp = () => {
+      settingsInitialTab = "help";
+      settingsOpen = true;
+    };
+    window.addEventListener("markz:open-help", handleOpenHelp);
+    const handleExportDocx = () => {
+      window.dispatchEvent(new CustomEvent("markz:trigger-export", { detail: "docx" }));
+    };
+    window.addEventListener("markz:export-docx", handleExportDocx);
+    const handlePrintPdf = () => {
+      window.dispatchEvent(new CustomEvent("markz:trigger-print"));
+    };
+    const handleOpenPalette = (e: Event) => {
+      paletteMode = (e as CustomEvent).detail;
+      paletteOpen = true;
+    };
+    window.addEventListener("markz:open-palette", handleOpenPalette);
+    window.addEventListener("markz:print-pdf", handlePrintPdf);
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
@@ -191,10 +227,16 @@
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("markz:open-git-diff", handleOpenGitDiff);
       window.removeEventListener("markz:workspace-changed", handleWorkspaceChanged);
+      window.removeEventListener("markz:set-activity", handleSetActivity);
+      window.removeEventListener("markz:set-view-mode", handleSetViewMode);
+      window.removeEventListener("markz:open-settings", handleOpenSettings);
+      window.removeEventListener("markz:open-help", handleOpenHelp);
+      window.removeEventListener("markz:export-docx", handleExportDocx);
+      window.removeEventListener("markz:open-palette", handleOpenPalette);
+      window.removeEventListener("markz:print-pdf", handlePrintPdf);
     };
   });
 </script>
-
 <div class="app">
   <TitleBar
     onOpenSettings={() => { settingsInitialTab = "settings"; settingsOpen = true; }}
@@ -203,7 +245,6 @@
     onOpenHelp={() => { settingsInitialTab = "help"; settingsOpen = true; }}
     onOpenGitDiff={() => { gitDiffOpen = true; }}
   />
-  <TabBar onNewTab={newDocument} />
   <div class="workspace">
     <ActivityBar
       {activeActivity}
@@ -236,6 +277,7 @@
   <GitDiffModal bind:open={gitDiffOpen} docPath={$activeDocumentStore.path ?? ""} />
   <SettingsModal bind:open={settingsOpen} initialTab={settingsInitialTab} />
   <TemplateBrowser bind:open={templateBrowserOpen} />
+  <CommandPalette bind:open={paletteOpen} mode={paletteMode} onClose={() => (paletteOpen = false)} />
   <SaveTemplateDialog bind:open={saveTemplateOpen} />
 </div>
 

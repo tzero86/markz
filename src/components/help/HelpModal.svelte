@@ -20,6 +20,8 @@
     { keys: ["Ctrl", "O"], action: "Open file" },
     { keys: ["Ctrl", "Shift", "O"], action: "Open folder / workspace" },
     { keys: ["Ctrl", "T"], action: "New file" },
+    { keys: ["Ctrl", "Shift", "P"], action: "Command palette" },
+    { keys: ["Ctrl", "P"], action: "Quick open files" },
     { keys: ["Ctrl", "S"], action: "Save file" },
     { keys: ["Ctrl", "W"], action: "Close active tab" },
     { keys: ["Ctrl", "B"], action: "Toggle sidebar panel" },

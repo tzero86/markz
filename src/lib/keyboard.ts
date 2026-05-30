@@ -113,8 +113,23 @@ export function toggleSidebar() {
 
 export function initKeyboardShortcuts() {
   const handler = (e: KeyboardEvent) => {
+    // Ignore when typing in inputs, textareas, or the CodeMirror editor
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.closest(".cm-editor"))) {
+      // Still allow global shortcuts even when editor is focused
+    }
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
+    if (mod && e.shiftKey && key === "p") {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("markz:open-palette", { detail: "commands" }));
+      return;
+    }
+    if (mod && !e.shiftKey && key === "p") {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("markz:open-palette", { detail: "files" }));
+      return;
+    }
     if (mod && e.shiftKey && key === "d") {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent("markz:open-git-diff"));

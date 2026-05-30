@@ -1,8 +1,9 @@
 # MarkZ Engineering Roadmap
 
-> This document tracks planned refactors, features, and bugfixes across all phases. Each item has a status, priority, effort estimate, and owner. Update this file as work progresses.
+> This document tracks planned refactors, features, and bugfixes. Update as work progresses.
 >
-> Last updated: 2026-05-28
+> **Current version:** v0.8.4
+> **Last updated:** 2026-05-30
 
 ---
 
@@ -25,247 +26,151 @@
 
 ---
 
-## Phase 0: Stability (This Week)
+## Completed Phases
 
-Quick wins and bug fixes that improve reliability without architectural changes.
+### Phase 0: Foundation (v0.1.0 – v0.3.0)
+- [x] Tauri + Svelte 5 scaffold
+- [x] CodeMirror 6 integration with syntax highlighting
+- [x] Live preview with `pulldown-cmark`
+- [x] Dark/light theme system
+- [x] Basic file open/save via Tauri dialog
+- [x] KaTeX math rendering
+- [x] Mermaid diagram support
+- [x] DOCX export (native converter)
+- [x] Image paste/drop with base64 embedding
+- [x] Settings persistence
+- [x] Auto-save (setting + timer)
+- [x] Content zoom (50–300%)
+- [x] Word wrap toggle
+- [x] Line numbers & minimap
+- [x] Outline panel (`Ctrl+B`)
+- [x] View mode toggle (split/editor/preview)
+- [x] Template gallery (RFC, ADR, etc.)
+- [x] Text to Speech (Edge + Windows SAPI5)
+- [x] Session restore (tabs + workspace)
 
-### P0 — Fix `replaceAll` `$` interpolation across the frontend
-- **Status:** `[x]` Done (PR #8)
-- **File:** `src/lib/docxPrep.ts`
-- **Problem:** `String.prototype.replaceAll` treats `$$`, `$&`, `$'`, `` $` `` as special replacement tokens. Any `replaceAll(placeholder, userContent)` call is vulnerable.
-- **Fix:** Use callback form: `replaceAll(placeholder, () => userContent)`.
-- **Owner:** —
-- **Notes:** Audit all `replaceAll` calls in `src/` and fix the pattern wherever user content flows into replacement strings.
+### Phase 1: Core UX (v0.4.0 – v0.5.2)
+- [x] Eliminate `documentStore` — `tabStore` as single source of truth
+- [x] Find & Replace (`Ctrl+H` / `Ctrl+F`)
+- [x] Frontmatter parsing (YAML/TOML)
+- [x] Document statistics (words, chars, reading time, Flesch scores)
+- [x] Custom CSS themes injection
+- [x] LRU preview cache
+- [x] `lib.rs` split into 8 focused command modules
+- [x] E2E test suite (Playwright)
+- [x] CI E2E job (`xvfb-run`)
+- [x] Fix `replaceAll` `$` interpolation vulnerability
+- [x] Fix DOCX export code-block corruption
 
-### P1 — Implement auto-save (setting exists but is a no-op)
-- **Status:** `[ ]`
-- **Files:** `src/lib/documentStore.ts`, `src/components/editor/EditorPane.svelte`, `crates/markz-config/src/lib.rs`
-- **Problem:** `Settings` has `auto_save: bool` and `auto_save_interval_seconds: u16`, but no timer ever reads these values or triggers saves.
-- **Fix:** Add a debounced auto-save timer in the editor/document layer. Save to the existing `doc.path` if set; do nothing for untitled tabs.
-- **Owner:** —
-- **Effort:** Small (½ day)
-- **Notes:** Should respect `isDirty` flag. Cancel timer on manual save.
+### Phase 2: Engineering Differentiation (v0.6.0)
+- [x] WikiLinks `[[Target]]` + `[[Target|Display]]`
+- [x] Backlinks panel (incoming/outgoing references)
+- [x] Full footnote support (AST + all 5 converters + preview)
+- [x] Auto-save with debounce + interval setting
+- [x] Text snippets / expansion (`rfc`, `adr`, `todo`, etc.)
+- [x] Heading-anchor scroll sync (replaces ratio-based)
+- [x] Inline table editing (double-click → grid editor)
+- [x] Markdown lint + spellcheck (CodeMirror diagnostics)
+- [x] Print to PDF (hidden iframe, light-theme forced)
 
-### P1 — Add `ENABLE_FOOTNOTES` to pulldown-cmark parser options
-- **Status:** `[ ]`
-- **File:** `crates/markz-core/src/parser.rs`
-- **Problem:** Footnotes are standard in GitHub Flavored Markdown and academic writing, but disabled.
-- **Fix:** Add `Options::ENABLE_FOOTNOTES` to the default parser options. This is step 0 — full footnote AST support comes in Phase 2.
-- **Owner:** —
-- **Effort:** Small (1 hour)
-
-### P1 — Fix scroll sync to use heading anchors instead of scroll ratio
-- **Status:** `[ ]`
-- **File:** `src/lib/scrollSync.ts`
-- **Problem:** Ratio-based sync breaks when editor and preview have different vertical proportions (e.g., a code block expands the preview more than the editor).
-- **Fix:** Map editor scroll position to the nearest heading above the cursor. Scroll the preview to the corresponding heading's `id` anchor.
-- **Owner:** —
-- **Effort:** Medium (1–2 days)
-- **Notes:** Requires exposing heading line numbers from CodeMirror and mapping to preview DOM elements.
-
----
-
-## Phase 1: Core UX (Next 2 Weeks)
-
-Structural improvements and missing features that users expect from any serious editor.
-
-### P0 — Single source of truth refactor: eliminate `documentStore`
-- **Status:** `[ ]`
-- **Files:** `src/lib/tabStore.ts`, `src/lib/documentStore.ts`, `src/App.svelte`, `src/components/editor/EditorPane.svelte`, `src/components/preview/PreviewPane.svelte`, `src/lib/keyboard.ts`, `src/lib/sessionStore.ts`
-- **Problem:** `tabStore` and `documentStore` have a bidirectional sync loop with a `syncing` guard flag. Fragile, bypassable, causes dropped state during rapid tab switching.
-- **Fix:** Make `tabStore` the single source of truth. Derive current document via `$derived(tabStore.activeTab)` in components. Remove `documentStore` entirely.
-- **Owner:** —
-- **Effort:** Medium (2–3 days)
-- **Notes:** This is the most invasive refactor. Test thoroughly: tab switching, session restore, new/close/save flows.
-
-### P1 — Find & Replace (`Ctrl+H`)
-- **Status:** `[ ]`
-- **File:** `src/components/editor/codemirror.ts`
-- **Problem:** CodeMirror 6 has `@codemirror/search` with `replaceKeymap`, but it's not wired into the editor.
-- **Fix:** Add `keymap.of([...defaultSearchKeymap, ...replaceKeymap])` to the editor extensions. Style the find/replace panel to match MarkZ's UI.
-- **Owner:** —
-- **Effort:** Small (½ day)
-
-### P1 — Parse frontmatter into structured data
-- **Status:** `[ ]`
-- **Files:** `crates/markz-core/src/frontmatter.rs`, `crates/markz-core/src/ast.rs`
-- **Problem:** Frontmatter is extracted as raw strings but never parsed. No access to `title`, `date`, `tags`, `author`, etc.
-- **Fix:** Add `serde_yaml` and `toml` dependencies. Parse YAML/TOML frontmatter into a `metadata: HashMap<String, serde_json::Value>` field on `Frontmatter`. Expose to frontend via a Tauri command or include in the document state.
-- **Owner:** —
-- **Effort:** Medium (1–2 days)
-- **Notes:** Use this to auto-populate document title in the tab bar, show tags in sidebar, etc.
-
-### P2 — Document statistics panel
-- **Status:** `[ ]`
-- **Files:** `crates/markz-core/src/` (new `stats.rs`), `src/components/layout/StatusBar.svelte` or sidebar
-- **Problem:** Only word count is shown. No reading time, sentence count, readability scores.
-- **Fix:** New Rust module `markz_core::stats` computing: words, characters (with/without spaces), sentences, paragraphs, reading time (200 WPM), Flesch Reading Ease, Flesch-Kincaid Grade Level. Expose via Tauri command. Add a stats panel (sidebar or modal).
-- **Owner:** —
-- **Effort:** Small (1 day)
-
-### P2 — Custom CSS themes
-- **Status:** `[ ]`
-- **Files:** `src/lib/themeStore.ts`, `src/styles/`, `src/components/settings/SettingsModal.svelte`
-- **Problem:** Only hardcoded light/dark themes. Users can't match corporate branding or personal preferences.
-- **Fix:** Add a `themes/` directory in the config folder. Allow `.css` files that override CSS variables. Add a theme picker in Settings. Allow custom `preview.css` globally or per-document.
-- **Owner:** —
-- **Effort:** Small (1 day)
-
-### P2 — Replace preview content hash cache with an LRU
-- **Status:** `[ ]`
-- **File:** `src/components/preview/PreviewPane.svelte`
-- **Problem:** `renderCache` is a `Map` with a hard cap of 10 entries but no eviction logic. The hash function (`hash()`) is a 32-bit FNV-like hash with collision risk.
-- **Fix:** Replace with an actual LRU (using `Map` as LRU, or a tiny dependency). Use SHA-256 or a cryptographic hash for cache keys.
-- **Owner:** —
-- **Effort:** Small (½ day)
+### Phase 3: Power User Features (v0.7.0 – v0.8.4)
+- [x] Git status indicator (branch, modified dot in status bar)
+- [x] Git diff panel (`Ctrl+Shift+D`)
+- [x] Pandoc integration (auto-detect, Word/PDF/HTML/EPUB export)
+- [x] Workspace / folder mode (`Ctrl+Shift+O`)
+- [x] Recursive file tree sidebar with search
+- [x] VS Code-style activity bar (Files, Outline, Links)
+- [x] File watcher auto-refresh (`notify` crate)
+- [x] Session workspace restore
+- [x] Fix Svelte 5 production prop destructuring bug
+- [x] Table editor dark mode fix
+- [x] GitHub Pages marketing site + README overhaul
 
 ---
 
-## Phase 2: Engineering Differentiation (Next Month)
+## Phase 4: Editor Power Tools (Current)
 
-Features that differentiate MarkZ from Typora, Zettlr, and Mark Text in the engineering-documentation niche.
+Features that make MarkZ feel like a serious IDE for markdown.
 
-### P1 — WikiLinks (`[[Internal Links]]`) + Backlinks panel
-- **Status:** `[ ]`
-- **Files:** `crates/markz-core/src/ast.rs`, `crates/markz-core/src/parser.rs`, `crates/markz-core/src/html.rs`, `src/components/layout/OutlineSidebar.svelte`
-- **Problem:** Engineers writing RFCs/ADRs constantly reference other docs. No way to link or discover related documents.
-- **Fix:**
-  1. Add `Inline::WikiLink { target, display }` to AST.
-  2. Detect `[[...]]` syntax in parser (opt-in via settings).
-  3. Resolve `[[target]]` to `{doc_dir}/{target}.md` in HTML renderer.
-  4. Add a "Backlinks" panel that scans all `.md` files in the document directory for `[[CurrentDoc]]` references.
-- **Owner:** —
-- **Effort:** Large (1 week)
-- **Notes:** This is the biggest differentiator vs. open-source competitors.
-
-### P1 — Full footnote support (AST + all renderers + DOCX)
-- **Status:** `[ ]`
-- **Files:** `crates/markz-core/src/ast.rs`, `crates/markz-core/src/parser.rs`, `crates/markz-core/src/html.rs`, `crates/markz-convert/src/docx.rs`, `crates/markz-convert/src/jira.rs`, `crates/markz-convert/src/confluence.rs`, `crates/markz-convert/src/slack.rs`, `crates/markz-convert/src/github.rs`
-- **Problem:** Footnotes are standard in technical writing but completely unsupported.
-- **Fix:**
-  1. Add `Block::Footnote { label, blocks }` and `Inline::FootnoteReference(label)` to AST.
-  2. Enable `ENABLE_FOOTNOTES` in parser (Phase 0 pre-work).
-  3. Update HTML renderer: `<sup><a href="#fn-1">1</a></sup>` + `<div class="footnote">`.
-  4. Update DOCX converter to use `docx-rs` footnote API.
-  5. Text converters: render as parenthetical or endnote.
-- **Owner:** —
-- **Effort:** Medium (3–4 days)
-
-### P2 — Snippets / text expansion
-- **Status:** `[ ]`
-- **Files:** New `crates/markz-snippets/`, `src/components/editor/`, `src/components/settings/SettingsModal.svelte`
-- **Problem:** Engineers write repetitive structures: RFC headers, ADR templates, API doc blocks.
-- **Fix:**
-  1. Add a `snippets/` directory in config folder.
-  2. JSON format: `{ "trigger": "rfc", "description": "RFC header", "body": ["# RFC-{NUMBER}: {TITLE}", ""] }`.
-  3. CodeMirror: detect trigger word + `Tab`, expand with tab stops (`$1`, `$2`, `${3:default}`).
-- **Owner:** —
-- **Effort:** Medium (2–3 days)
-
-### P2 — Inline table editing (WYSIWYG-style)
-- **Status:** `[ ]`
-- **Files:** `src/components/preview/PreviewPane.svelte`, `src/components/editor/editorCommands.ts`
-- **Problem:** Markdown tables are painful to edit by hand. MarkZ has insert-table but no mutation after creation.
-- **Fix:** Add a context menu on preview tables: add/remove row/column, delete row/column. Trigger edits to the markdown source via CodeMirror transactions.
-- **Owner:** —
-- **Effort:** Medium (2–3 days)
-
-### P2 — Spell check / markdown lint
-- **Status:** `[ ]`
-- **Files:** `src/components/editor/codemirror.ts`, `src-tauri/src/lib.rs` (new commands)
-- **Problem:** No spell checking or markdown-specific linting.
-- **Fix:**
-  - Spell check: integrate `hunspell`/`aspell` via Rust (tauri plugin or custom command), or use a WebAssembly spell checker with CodeMirror lint extension.
-  - Markdown lint: implement `markdownlint`-style rules (inconsistent heading levels, missing alt text, trailing spaces, duplicate headings) as CodeMirror diagnostics.
-- **Owner:** —
-- **Effort:** Medium–Large (3–5 days)
-- **Notes:** Start with spell check. Markdown lint can be a follow-up.
-
-### P2 — Split `lib.rs` into command modules
-- **Status:** `[ ]`
-- **Files:** `src-tauri/src/lib.rs` → `src-tauri/src/commands/*.rs`
-- **Problem:** `lib.rs` is 567 lines with 20+ commands mixed with helpers and types. Becoming a god file.
-- **Fix:** Move commands into submodules: `commands/docx.rs`, `commands/convert.rs`, `commands/tts.rs`, `commands/session.rs`. Register in `lib.rs`.
-- **Owner:** —
+### P1 — Command Palette (`Ctrl+Shift+P`)
+- **Status:** `[x]` Done
+- **Files:** New `src/components/ui/CommandPalette.svelte`, `src/lib/commandPalette.ts`
+- **Scope:** Fuzzy search across all app commands (new file, open file, open folder, save, export formats, toggle sidebar, switch view mode, git diff, apply template, etc.).
 - **Effort:** Small (1 day)
+
+### P1 — Quick Open / Recent Files (`Ctrl+P`)
+- **Status:** `[x]` Done
+- **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`
+- **Scope:** Fuzzy search across recent files (from session) + workspace files (from `list_workspace_files`). Arrow keys to navigate, Enter to open, Escape to close.
+- **Effort:** Small (½ day)
+
+### P2 — Vim keybindings option
+- **Status:** `[ ]`
+- **Files:** `src/components/editor/codemirror.ts`
+- **Scope:** Integrate `@replit/codemirror-vim` as an optional extension. Toggle in Settings.
+- **Effort:** Small (½ day)
+- **Notes:** CodeMirror 6 vim plugin is mature. Mostly wiring + state persistence.
+
+### P2 — Global find/replace across workspace
+- **Status:** `[ ]`
+- **Files:** `src-tauri/src/commands/workspace.rs`, new UI component
+- **Scope:** Multi-file grep + replace using existing `search_workspace` command. Results panel with file:line previews. Click to jump.
+- **Effort:** Medium (2–3 days)
+
+### P2 — Pin tabs
+- **Status:** `[ ]`
+- **Files:** `src/lib/tabStore.ts`, `src/components/layout/TabBar.svelte`
+- **Scope:** Right-click → "Pin Tab". Pinned tabs stay at the left, show only icon or shortened title, don't close with `Ctrl+W` unless explicitly unpinned.
+- **Effort:** Small (½ day)
 
 ---
 
-## Phase 3: Power User Features (Following Month)
+## Phase 5: Polish & Ecosystem
 
-Advanced features for users who live in MarkZ daily.
-
-### P2 — Pandoc integration for advanced export
+### P2 — Draggable tabs
 - **Status:** `[ ]`
-- **Files:** `src-tauri/src/commands/`, `src/components/layout/TitleBar.svelte`
-- **Problem:** Native DOCX converter handles basics well but falls short on footnotes, citations, cross-references, and custom templates.
-- **Fix:** Detect if `pandoc` is installed. Add "Export via Pandoc" option. Allow YAML frontmatter to configure Pandoc options (reference doc, bibliography, CSL). Fallback to native converter if Pandoc unavailable.
-- **Owner:** —
-- **Effort:** Medium (2–3 days)
+- **Files:** `src/components/layout/TabBar.svelte`
+- **Scope:** Reorder tabs via drag-and-drop. Persist order in session.
+- **Effort:** Small (½ day)
 
-### P2 — Print to PDF
+### P2 — Split editor (two editor panes)
 - **Status:** `[ ]`
-- **Files:** `src/components/preview/PreviewPane.svelte`, `src-tauri/src/commands/`
-- **Problem:** No way to generate a PDF. PDF is the most common sharing format for finalized documents.
-- **Fix:** Use WebView `window.print()` with a print-specific CSS stylesheet. Or integrate `paged.js` for paginated output with headers/footers.
-- **Owner:** —
+- **Files:** `src/App.svelte`, `src/components/editor/EditorPane.svelte`
+- **Scope:** Horizontal split: two editor panes side by side, or editor + preview + editor. Useful for comparing docs.
 - **Effort:** Medium (2 days)
 
-### P3 — Git integration (status, diff, blame)
+### P2 — Plugin architecture (internal only)
 - **Status:** `[ ]`
-- **Files:** New `crates/markz-git/`, `src/components/editor/`, `src/components/layout/StatusBar.svelte`
-- **Problem:** No visibility into whether the current file is modified, who last edited a line, or what changed.
-- **Fix:**
-  1. Use `git2` crate to read git status of the current file. Show "modified" indicator in status bar.
-  2. "View Diff" command: side-by-side or inline diff view.
-  3. "Git Blame" for current line (author/date in gutter tooltip).
-- **Owner:** —
+- **Files:** New `crates/markz-plugin/` or `src/lib/plugins/`
+- **Scope:** Not user-facing plugins yet. Internal refactoring to make converters, templates, and snippets load from a well-defined plugin interface. Prepares ground for future external plugins.
 - **Effort:** Large (1 week)
-- **Notes:** Start with status indicator only. Diff and blame are follow-ups.
+
+### P3 — Collaborative editing (Git-based)
+- **Status:** `[ ]`
+- **Scope:** Not real-time OT. Instead: merge conflict visualization when opening a file with Git conflicts. Side-by-side conflict resolution UI.
+- **Effort:** Large (1 week)
 
 ---
 
-## Test & CI Gaps
+## Known Bugs / Follow-ups
 
-These are cross-cutting and should be addressed alongside the phases above.
-
-### P1 — Unit tests for `docxPrep.ts` extraction logic
-- **Status:** `[ ]`
-- **File:** `src/lib/docxPrep.ts`
-- **Problem:** The bug fixed in PR #8 had zero test coverage. The extraction/round-trip logic is pure string processing and testable.
-- **Fix:** Extract the placeholder replacement logic into a pure function. Add `vitest` tests covering: code blocks with `$$`, inline code with `$var$`, multi-line content, valid math preservation.
-- **Owner:** —
-- **Effort:** Small (½ day)
-
-### P1 — E2E test for DOCX export
-- **Status:** `[ ]`
-- **Files:** `e2e/titlebar.spec.ts`
-- **Problem:** The mock for `export_to_docx` is a no-op: `export_to_docx: () => null`.
-- **Fix:** Add an E2E test that triggers export and verifies the file is created (or at minimum that the command completes without throwing).
-- **Owner:** —
-- **Effort:** Small (½ day)
-
-### P1 — Add E2E tests to CI
-- **Status:** `[ ]`
-- **File:** `.github/workflows/ci.yml`
-- **Problem:** CI builds the app but never runs Playwright tests.
-- **Fix:** Add an E2E job that installs Playwright browsers and runs `npm run test:e2e`.
-- **Owner:** —
-- **Effort:** Small (½ day)
-- **Notes:** May need to run headless or with a virtual display on Linux (`xvfb-run`).
+| Issue | Status | Notes |
+|-------|--------|-------|
+| Activity bar unresponsive in production (v0.8.2) | `[!]` Blocked | Fix applied in `5baee85` (Svelte 5 prop destructuring workaround). **Awaiting user confirmation** from work machine. |
+| E2E `Ctrl+W` keyboard test | `[x]` Skipped | Playwright Chromium intercepts browser shortcut. Close-tab logic covered in `tabs.spec.ts`. |
+| Settings button lacks `data-testid` | `[ ]` | `screenshot-capture.spec.ts` uses `.locator('[data-testid="settings-button"]')` which fails; currently falls through silently. |
+| `documentStore` ↔ `tabStore` circular sync guard | `[x]` Done | `syncing` boolean removed when `documentStore` was eliminated. No longer an issue. |
 
 ---
 
 ## What NOT to Do
 
-These are explicitly out of scope. They don't align with MarkZ's target user or would introduce disproportionate complexity.
-
 | Feature | Reason |
 |---------|--------|
-| Plugin system | Architecture not ready; user base too small. Obsidian's took years. |
+| Plugin system (user-facing) | Architecture not ready; user base too small. Obsidian's took years. |
 | Cloud sync | Antithetical to offline-first, zero-telemetry brand. Users can use Dropbox/OneDrive on markdown files. |
-| Real-time collaboration | Engineers collaborate via Git, not operational transforms. |
-| Replace native DOCX with Pandoc | Native converter is a differentiator for users without Pandoc. Add Pandoc as an *option*, not a replacement. |
+| Real-time collaboration (OT) | Engineers collaborate via Git, not operational transforms. |
+| Replace native DOCX with Pandoc | Native converter is a differentiator for users without Pandoc. Pandoc is an *option*, not a replacement. |
 | Mobile app | Out of scope for a desktop engineering tool. |
 
 ---
@@ -274,5 +179,5 @@ These are explicitly out of scope. They don't align with MarkZ's target user or 
 
 | Date | Change |
 |------|--------|
-| 2026-05-28 | Initial roadmap created after codebase audit and competitive analysis. |
-
+| 2026-05-30 | Rewrote roadmap to reflect completed Phases 0–3. Added Phase 4 (Command Palette, Quick Open, Vim mode) and Phase 5 (Draggable tabs, Split editor, Plugins). |
+| 2026-05-28 | Initial roadmap created after codebase audit. |
