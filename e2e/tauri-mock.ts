@@ -647,6 +647,7 @@ export const tauriMockScriptString = `
   };
   // Mock dialog plugin commands used by @tauri-apps/plugin-dialog
   responses["plugin:dialog|confirm"] = () => true;
+  responses["plugin:dialog|message"] = () => "Ok";
   responses["plugin:dialog|open"] = () => null;
   responses["plugin:dialog|save"] = () => null;
   window.__TAURI_INTERNALS__ = {

@@ -497,7 +497,42 @@ function createTabStore() {
     persistSession();
     return true;
   }
-
+  async function closeAllExcept(keepId: string): Promise<void> {
+    const state = get({ subscribe });
+    const toClose = state.tabs.filter((t) => t.id !== keepId);
+    for (const tab of toClose) {
+      if (tab.isDirty) {
+        const proceed = await confirm(
+          `"${tab.title}" has unsaved changes. Close without saving?`,
+          { title: "Unsaved Changes", kind: "warning" }
+        );
+        if (!proceed) continue;
+      }
+    }
+    update((s) => {
+      const keepTab = s.tabs.find((t) => t.id === keepId);
+      if (!keepTab) return s;
+      return { tabs: [keepTab], activeTabId: keepTab.id };
+    });
+    persistSession();
+  }
+  async function closeAll(): Promise<void> {
+    const state = get({ subscribe });
+    for (const tab of state.tabs) {
+      if (tab.isDirty) {
+        const proceed = await confirm(
+          `"${tab.title}" has unsaved changes. Close without saving?`,
+          { title: "Unsaved Changes", kind: "warning" }
+        );
+        if (!proceed) return;
+      }
+    }
+    update(() => {
+      const fresh = makeEmptyTab();
+      return { tabs: [fresh], activeTabId: fresh.id };
+    });
+    persistSession();
+  }
   function switchTab(id: string) {
     update((state) => {
       if (state.activeTabId === id) return state;
@@ -565,6 +600,8 @@ function createTabStore() {
     subscribe,
     newTab,
     closeTab,
+    closeAllExcept,
+    closeAll,
     switchTab,
     getActiveTab,
     hasDirtyTabs,

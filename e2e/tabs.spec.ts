@@ -80,4 +80,56 @@ test.describe("Tab management", () => {
 
     await expect(dirtyDot).toBeVisible({ timeout: 3000 });
   });
+
+  test("tab context menu opens with Close, Close Others, Close All", async ({ page }) => {
+    const tab = page.locator(".tab-bar .tab").first();
+    await tab.click({ button: "right" });
+
+    const menu = page.locator(".tab-context-menu");
+    await expect(menu).toBeVisible();
+
+    const items = menu.locator(".ctx-item");
+    await expect(items).toHaveCount(3);
+    await expect(items.nth(0)).toContainText("Close");
+    await expect(items.nth(1)).toContainText("Close Others");
+    await expect(items.nth(2)).toContainText("Close All");
+  });
+
+  test("context menu Close closes the tab", async ({ page }) => {
+    // Create a second tab
+    await page.locator('button[aria-label="New tab"]').click();
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(2, { timeout: 3000 });
+
+    // Right-click first tab and select Close
+    await page.locator(".tab-bar .tab").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Close", exact: true }).click();
+
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(1, { timeout: 3000 });
+  });
+
+  test("context menu Close Others keeps only clicked tab", async ({ page }) => {
+    // Create two more tabs (3 total)
+    await page.locator('button[aria-label="New tab"]').click();
+    await page.locator('button[aria-label="New tab"]').click();
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(3, { timeout: 3000 });
+
+    // Right-click first tab and select Close Others
+    await page.locator(".tab-bar .tab").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Close Others" }).click();
+
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(1, { timeout: 3000 });
+    await expect(page.locator(".tab-bar .tab").first()).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("context menu Close All leaves a fresh untitled tab", async ({ page }) => {
+    // Create a second tab
+    await page.locator('button[aria-label="New tab"]').click();
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(2, { timeout: 3000 });
+    // Right-click any tab and select Close All
+    await page.locator(".tab-bar .tab").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Close All" }).click();
+    await page.waitForTimeout(300);
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(1, { timeout: 3000 });
+    await expect(page.locator(".tab-bar .tab").first()).toContainText("Untitled");
+  });
 });

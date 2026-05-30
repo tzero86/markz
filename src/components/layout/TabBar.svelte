@@ -4,6 +4,11 @@
 
   let { onNewTab }: { onNewTab?: () => void } = $props();
 
+  let ctxMenuOpen = $state(false);
+  let ctxMenuX = $state(0);
+  let ctxMenuY = $state(0);
+  let ctxTab: Tab | null = $state(null);
+
   function handleSwitch(tab: Tab) {
     tabStore.switchTab(tab.id);
   }
@@ -24,7 +29,37 @@
       handleClose(e as unknown as MouseEvent, tab);
     }
   }
+
+  function handleContextMenu(e: MouseEvent, tab: Tab) {
+    e.preventDefault();
+    ctxTab = tab;
+    ctxMenuX = e.clientX;
+    ctxMenuY = e.clientY;
+    ctxMenuOpen = true;
+  }
+
+  function closeCtxMenu() {
+    ctxMenuOpen = false;
+    ctxTab = null;
+  }
+
+  async function ctxCloseTab() {
+    if (ctxTab) await tabStore.closeTab(ctxTab.id);
+    closeCtxMenu();
+  }
+
+  async function ctxCloseOthers() {
+    if (ctxTab) await tabStore.closeAllExcept(ctxTab.id);
+    closeCtxMenu();
+  }
+
+  async function ctxCloseAll() {
+    await tabStore.closeAll();
+    closeCtxMenu();
+  }
 </script>
+
+<svelte:window onclick={() => { if (ctxMenuOpen) closeCtxMenu(); }} />
 
 <div class="tab-bar">
   <div class="tab-scroll">
@@ -34,6 +69,7 @@
         class:active={tab.id === $tabStore.activeTabId}
         onclick={() => handleSwitch(tab)}
         onkeydown={(e) => handleKeydown(e, tab)}
+        oncontextmenu={(e) => handleContextMenu(e, tab)}
         role="tab"
         tabindex="0"
         aria-selected={tab.id === $tabStore.activeTabId}
@@ -71,6 +107,24 @@
     <Plus size={14} strokeWidth={2.5} />
   </button>
 </div>
+
+{#if ctxMenuOpen && ctxTab}
+  <div
+    class="tab-context-menu"
+    style="left: {ctxMenuX}px; top: {ctxMenuY}px;"
+    role="menu"
+  >
+    <button class="ctx-item" role="menuitem" onclick={ctxCloseTab}>
+      Close
+    </button>
+    <button class="ctx-item" role="menuitem" onclick={ctxCloseOthers}>
+      Close Others
+    </button>
+    <button class="ctx-item" role="menuitem" onclick={ctxCloseAll}>
+      Close All
+    </button>
+  </div>
+{/if}
 
 <style>
   .tab-bar {
@@ -207,5 +261,33 @@
   .new-tab-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+
+  /* Context menu */
+  .tab-context-menu {
+    position: fixed;
+    z-index: 100;
+    min-width: 140px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+  }
+  .ctx-item {
+    padding: 6px 10px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+  .ctx-item:hover {
+    background: var(--bg-hover);
   }
 </style>
