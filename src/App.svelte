@@ -245,6 +245,7 @@
     onOpenHelp={() => { settingsInitialTab = "help"; settingsOpen = true; }}
     onOpenGitDiff={() => { gitDiffOpen = true; }}
   />
+  <TabBar onNewTab={newDocument} />
   <div class="workspace">
     <ActivityBar
       {activeActivity}
