@@ -7,6 +7,7 @@
   import TabBar from "./components/layout/TabBar.svelte";
   import StatusBar from "./components/layout/StatusBar.svelte";
   import GitDiffModal from "./components/layout/GitDiffModal.svelte";
+  import PresentationMode from "./components/preview/PresentationMode.svelte";
   import SplitPane from "./components/layout/SplitPane.svelte";
   import OutlineSidebar from "./components/layout/OutlineSidebar.svelte";
   import ActivityBar from "./components/layout/ActivityBar.svelte";
@@ -34,6 +35,8 @@
   let gitDiffOpen = $state(false);
   let paletteOpen = $state(false);
   let paletteMode = $state<PaletteMode>("commands");
+  let presentationOpen = $state(false);
+  let slideDeck = $state<any>(null);
 
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
@@ -220,6 +223,21 @@
     };
     window.addEventListener("markz:open-palette", handleOpenPalette);
     window.addEventListener("markz:print-pdf", handlePrintPdf);
+    const handleStartPresentation = async () => {
+      const doc = tabStore.getActiveTab();
+      if (!doc) return;
+      try {
+        const deck = await invoke<any>("render_slides", {
+          markdown: doc.content,
+          docPath: doc.path,
+        });
+        slideDeck = deck;
+        presentationOpen = true;
+      } catch (e) {
+        console.error("Failed to render slides:", e);
+      }
+    };
+    window.addEventListener("markz:start-presentation", handleStartPresentation);
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
@@ -234,9 +252,11 @@
       window.removeEventListener("markz:export-docx", handleExportDocx);
       window.removeEventListener("markz:open-palette", handleOpenPalette);
       window.removeEventListener("markz:print-pdf", handlePrintPdf);
+      window.removeEventListener("markz:start-presentation", handleStartPresentation);
     };
   });
 </script>
+
 <div class="app">
   <TitleBar
     onOpenSettings={() => { settingsInitialTab = "settings"; settingsOpen = true; }}
@@ -280,6 +300,9 @@
   <TemplateBrowser bind:open={templateBrowserOpen} />
   <CommandPalette bind:open={paletteOpen} mode={paletteMode} onClose={() => (paletteOpen = false)} />
   <SaveTemplateDialog bind:open={saveTemplateOpen} />
+  {#if presentationOpen}
+    <PresentationMode deck={slideDeck} onClose={() => { presentationOpen = false; slideDeck = null; }} />
+  {/if}
 </div>
 
 <style>

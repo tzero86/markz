@@ -5,6 +5,7 @@ pub mod logging;
 pub mod session;
 pub mod settings;
 pub mod templates;
+pub mod presentation;
 pub mod pandoc;
 pub mod tts;
 pub mod git;

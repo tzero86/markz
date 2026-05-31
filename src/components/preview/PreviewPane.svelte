@@ -298,19 +298,15 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       }
     });
   }
-
   $effect(() => {
     const _content = htmlContent;
     if (!contentDiv) return;
-
-    if (format === "html") {
-      addHeadingAnchors(contentDiv);
-      renderMathBlocks(contentDiv);
-      renderMermaidBlocks(contentDiv)
-        .then(() => scaleMermaidDiagrams())
-        .catch(console.error);
-      highlightCodeBlocks(contentDiv);
-    }
+    addHeadingAnchors(contentDiv);
+    renderMathBlocks(contentDiv);
+    renderMermaidBlocks(contentDiv)
+      .then(() => scaleMermaidDiagrams())
+      .catch(console.error);
+    highlightCodeBlocks(contentDiv);
   });
 
   // Re-scale mermaid when zoom changes (content already rendered)

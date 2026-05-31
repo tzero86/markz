@@ -140,6 +140,12 @@ export function initKeyboardShortcuts() {
       openFolder();
       return;
     }
+    // F5 — start presentation mode
+    if (e.key === "F5") {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("markz:start-presentation"));
+      return;
+    }
     if (!mod) return;
     if (key === "s") {
       e.preventDefault();

@@ -202,6 +202,7 @@ pub fn run() {
             commands::workspace::read_file_text,
             commands::watcher::watch_workspace,
             commands::watcher::unwatch_workspace,
+            commands::presentation::render_slides,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
