@@ -4,8 +4,11 @@
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { invoke } from "@tauri-apps/api/core";
-  let { viewMode, onSetViewMode, onOpenGitDiff }: { viewMode: "split" | "editor" | "preview"; onSetViewMode: (mode: "split" | "editor" | "preview") => void; onOpenGitDiff?: () => void } = $props();
-
+  let props: {
+    viewMode: "split" | "editor" | "preview";
+    onSetViewMode: (mode: "split" | "editor" | "preview") => void;
+    onOpenGitDiff?: () => void;
+  } = $props();
   let wordCount = $derived(
     $activeDocumentStore.content.trim() === ""
       ? 0
@@ -13,9 +16,7 @@
   );
   let charCount = $derived($activeDocumentStore.content.length);
   let readingTimeMinutes = $derived(Math.max(1, Math.ceil(wordCount / 200)));
-
   let gitStatus = $state<{ is_repo: boolean; branch: string | null; is_modified: boolean } | null>(null);
-
   $effect(() => {
     const path = $activeDocumentStore.path;
     if (!path) {
@@ -59,8 +60,8 @@
       {#each modes as { mode, label }}
         <button
           class="view-btn"
-          class:active={viewMode === mode}
-          onclick={() => onSetViewMode(mode)}
+          class:active={props.viewMode === mode}
+          onclick={() => props.onSetViewMode(mode)}
           aria-label={label}
           title={label}
         >
@@ -82,7 +83,7 @@
       <button
         class="stat-badge git-badge"
         title={gitStatus.is_modified ? "Modified — click to view diff" : "Clean — click to view diff"}
-        onclick={() => { if (onOpenGitDiff) onOpenGitDiff(); }}
+        onclick={() => { if (props.onOpenGitDiff) props.onOpenGitDiff(); }}
       >
         <GitBranch size={11} strokeWidth={2} />
         {gitStatus.branch ?? "detached"}

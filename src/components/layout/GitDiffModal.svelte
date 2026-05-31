@@ -293,19 +293,25 @@
   }
 
   .line-add {
-    background: rgba(35, 197, 94, 0.08);
+    background: rgba(35, 197, 94, 0.10);
   }
   .line-add .line-marker {
     color: var(--syntax-inserted);
+    font-weight: 600;
   }
-
+  .line-add .line-text {
+    color: #1a7a3a;
+  }
   .line-del {
-    background: rgba(239, 68, 68, 0.08);
+    background: rgba(239, 68, 68, 0.10);
   }
   .line-del .line-marker {
     color: var(--syntax-deleted);
+    font-weight: 600;
   }
-
+  .line-del .line-text {
+    color: #c21d2a;
+  }
   .line-hunk {
     background: var(--bg-elevated);
     color: var(--syntax-meta);
@@ -313,26 +319,28 @@
   .line-hunk .line-num {
     color: var(--syntax-meta);
   }
-
   .line-header {
     background: var(--bg-elevated);
     color: var(--text-primary);
     font-weight: 500;
   }
-
   .line-meta {
     color: var(--text-tertiary);
   }
-
   .line-context {
     background: transparent;
   }
-
   /* Dark-theme overrides */
   :global([data-theme="dark"]) .line-add {
-    background: rgba(35, 197, 94, 0.12);
+    background: rgba(35, 197, 94, 0.15);
+  }
+  :global([data-theme="dark"]) .line-add .line-text {
+    color: #4ade80;
   }
   :global([data-theme="dark"]) .line-del {
-    background: rgba(239, 68, 68, 0.12);
+    background: rgba(239, 68, 68, 0.15);
+  }
+  :global([data-theme="dark"]) .line-del .line-text {
+    color: #f87171;
   }
 </style>
