@@ -15,18 +15,6 @@ test.describe("Keyboard shortcuts", () => {
     await expect(page.locator(".tab-bar .tab")).toHaveCount(2, { timeout: 3000 });
   });
 
-  test.fixme("Ctrl+W closes the active tab", async ({ page }) => {
-    // FIXME: Playwright's Chromium intercepts Ctrl+W (browser close tab).
-    // The close-tab logic is thoroughly tested in tabs.spec.ts.
-    // Create two tabs via the New tab button
-    await page.locator('button[aria-label="New tab"]').click();
-    await expect(page.locator(".tab-bar .tab")).toHaveCount(2, { timeout: 3000 });
-    const activeTab = page.locator(".tab-bar .tab").last();
-    await activeTab.hover();
-    await activeTab.locator('button[aria-label^="Close"]').click();
-    await expect(page.locator(".tab-bar .tab")).toHaveCount(1, { timeout: 3000 });
-  });
-
   test("Ctrl+O triggers open file", async ({ page }) => {
     await page.click('.app');
     await page.keyboard.press("Control+o");

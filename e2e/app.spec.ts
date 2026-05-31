@@ -95,25 +95,6 @@ test("formatting-test template renders all elements correctly", async ({ page })
   expect(hrCount).toBeGreaterThanOrEqual(4);
 });
 
-test.fixme("typing in editor updates preview", async ({ page }) => {
-  // Use page.evaluate to directly set CodeMirror content (more reliable than keyboard typing)
-  await page.locator(".cm-content").evaluate((el) => {
-    const view = (el as any).cmView?.view;
-    if (view) {
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: "# Hello E2E\n\nThis is a test." },
-      });
-    } else {
-      // Fallback: simulate input events
-      el.textContent = "# Hello E2E\n\nThis is a test.";
-      el.dispatchEvent(new InputEvent("input", { bubbles: true }));
-    }
-  });
-
-  const preview = page.locator(".preview-scroller");
-  await expect(preview.locator("h1")).toHaveText("Hello E2E", { timeout: 5000 });
-  await expect(preview.locator("p")).toHaveText("This is a test.");
-});
 
 test("New file button creates a new tab", async ({ page }) => {
   const newBtn = page.locator('button[aria-label="New file"]');
