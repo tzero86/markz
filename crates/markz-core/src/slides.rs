@@ -108,7 +108,10 @@ pub fn parse_slides(markdown: &str) -> SlideDeck {
             if !current.is_empty() {
                 slide_blocks.push(std::mem::take(&mut current));
             }
-            current.push(block.clone());
+            // Thematic breaks are pure slide separators — don't include them.
+            if !matches!(block, Block::ThematicBreak) {
+                current.push(block.clone());
+            }
         } else {
             current.push(block.clone());
         }
@@ -116,11 +119,26 @@ pub fn parse_slides(markdown: &str) -> SlideDeck {
     if !current.is_empty() {
         slide_blocks.push(current);
     }
-
+    // Strip any stray thematic breaks and remove empty slides.
+    slide_blocks.retain(|blocks| {
+        let meaningful: Vec<Block> = blocks
+            .iter()
+            .filter(|b| !matches!(b, Block::ThematicBreak))
+            .cloned()
+            .collect();
+        !meaningful.is_empty()
+    });
     // If there are no headings at all, the whole doc becomes one title slide.
     if slide_blocks.is_empty() && !doc.blocks.is_empty() {
-        slide_blocks.push(doc.blocks.clone());
+        slide_blocks.push(
+            doc.blocks
+                .iter()
+                .filter(|b| !matches!(b, Block::ThematicBreak))
+                .cloned()
+                .collect(),
+        );
     }
+
 
     for (idx, blocks) in slide_blocks.iter().enumerate() {
         let (kind, title, level) = determine_slide_meta(blocks, idx, &deck.title);
@@ -280,6 +298,20 @@ mod tests {
         assert!(matches!(deck.slides[1].kind, SlideKind::Code));
     }
 
+    #[test]
+    fn test_consecutive_thematic_breaks_no_empty_slides() {
+        let md = "# Title\n\n---\n\n---\n\nContent\n\n---\n\n---\n\nMore content\n";
+        let deck = parse_slides(md);
+        assert_eq!(deck.slides.len(), 3);
+        assert!(matches!(deck.slides[0].kind, SlideKind::Title));
+        assert_eq!(deck.slides[0].title.as_deref(), Some("Title"));
+        assert!(matches!(deck.slides[1].kind, SlideKind::Content));
+        assert!(matches!(deck.slides[2].kind, SlideKind::Content));
+        // No slide should contain a bare <hr> (thematic break stripped)
+        for slide in &deck.slides {
+            assert!(!slide.content.contains("<hr>"), "slide {} should not contain hr", slide.index);
+        }
+    }
     #[test]
     fn test_section_slide() {
         let md = "# Title\n\n## Part A\n\nContent\n\n# Part B\n\nMore content\n";

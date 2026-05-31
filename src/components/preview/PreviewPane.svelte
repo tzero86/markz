@@ -9,7 +9,7 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import { Copy, Check, Play, Pause, Square, ChevronDown } from "@lucide/svelte";
+  import { Copy, Check, Play, Pause, Square, ChevronDown, Presentation } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
   import { onMount } from "svelte";
 import TableEditorModal from "../editor/TableEditorModal.svelte";
@@ -185,7 +185,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
         try {
           range.surroundContents(mark);
         } catch {
-          // Range crosses element boundary — skip
+          // Range crosses element boundary ï¿½ skip
         }
         total++;
         idx = lowerText.indexOf(lowerQuery, idx + previewSearchQuery.length);
@@ -635,7 +635,14 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
             </button>
           {/if}
         </div>
-
+      <button
+        class="action-btn"
+        onclick={() => window.dispatchEvent(new CustomEvent("markz:start-presentation"))}
+        aria-label="Start presentation"
+        data-tooltip="Start presentation"
+      >
+        <Presentation size={14} strokeWidth={2} />
+      </button>
     </div>
   </div>
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
