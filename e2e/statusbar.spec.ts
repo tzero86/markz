@@ -140,65 +140,116 @@ test.describe("Git diff panel", () => {
     await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
-
     const gitBadge = page.locator(".git-badge");
     await expect(gitBadge).toBeVisible({ timeout: 5000 });
     await gitBadge.click();
-
     const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
     await expect(diffModal).toBeVisible();
   });
-
   test("shows diff content for modified file", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
     await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
-
     await expect(page.locator(".git-badge")).toBeVisible({ timeout: 5000 });
     await page.locator(".git-badge").click();
     const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
     await expect(diffModal).toBeVisible();
-
     // Check that diff lines are rendered
-    await expect(diffModal.locator(".line-add").first()).toBeVisible();
-    await expect(diffModal.locator(".line-del").first()).toBeVisible();
+    await expect(diffModal.locator(".line-add")).toHaveCount(2);
+    await expect(diffModal.locator(".line-del")).toHaveCount(1);
   });
-
+  test("added lines are green with plus marker", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    // First added line: "Hello modified world."
+    const firstAdd = diffModal.locator(".line-add").nth(0);
+    await expect(firstAdd).toBeVisible();
+    await expect(firstAdd.locator(".line-marker")).toHaveText("+");
+    // Second added line: "New line."
+    const secondAdd = diffModal.locator(".line-add").nth(1);
+    await expect(secondAdd).toBeVisible();
+    await expect(secondAdd.locator(".line-marker")).toHaveText("+");
+  });
+  test("deleted lines are red with minus marker", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    const delLine = diffModal.locator(".line-del").first();
+    await expect(delLine).toBeVisible();
+    await expect(delLine.locator(".line-marker")).toHaveText("-");
+    await expect(delLine.locator(".line-text")).toContainText("Hello world.");
+  });
+  test("context lines have both line numbers", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    // Context line "# Test" should have old=1, new=1
+    const contextLine = diffModal.locator(".line-context").first();
+    await expect(contextLine).toBeVisible();
+    await expect(contextLine.locator(".line-num.old")).toHaveText("1");
+    await expect(contextLine.locator(".line-num.new")).toHaveText("1");
+  });
+  test("added lines only have new line number", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    const addLine = diffModal.locator(".line-add").first();
+    await expect(addLine.locator(".line-num.old")).toHaveText("");
+    await expect(addLine.locator(".line-num.new")).toHaveText("2");
+  });
+  test("deleted lines only have old line number", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
+    await page.click('.app');
+    await page.keyboard.press("Control+o");
+    await page.waitForTimeout(500);
+    await page.locator(".git-badge").click();
+    const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
+    const delLine = diffModal.locator(".line-del").first();
+    await expect(delLine.locator(".line-num.old")).toHaveText("2");
+    await expect(delLine.locator(".line-num.new")).toHaveText("");
+  });
   test("shows empty state for clean file", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/clean.md"));
     await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
-
     await expect(page.locator(".git-badge")).toBeVisible({ timeout: 5000 });
     await page.locator(".git-badge").click();
     const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
     await expect(diffModal).toBeVisible();
     await expect(diffModal.locator(".empty")).toHaveText("No changes — file is clean.");
   });
-
   test("closes on Escape", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
     await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
-
     await expect(page.locator(".git-badge")).toBeVisible({ timeout: 5000 });
     await page.locator(".git-badge").click();
     const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');
     await expect(diffModal).toBeVisible();
-
     await page.keyboard.press("Escape");
     await expect(diffModal).not.toBeVisible();
   });
-
   test("opens via Ctrl+Shift+D keyboard shortcut", async ({ page }) => {
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/repo/modified.md"));
     await page.click('.app');
     await page.keyboard.press("Control+o");
     await page.waitForTimeout(500);
-
     await page.click('.app');
     await page.keyboard.press("Control+Shift+d");
     const diffModal = page.locator('[role="dialog"][aria-label="Git diff"]');

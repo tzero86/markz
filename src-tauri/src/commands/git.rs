@@ -109,7 +109,20 @@ pub async fn git_diff(doc_path: String) -> Result<String, String> {
     let mut patch = Vec::new();
     diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
         use std::io::Write;
-        let _ = patch.write_all(line.content());
+        let origin = line.origin();
+        let content = line.content();
+        // git2's content() for Patch format inconsistently includes the origin
+        // prefix depending on line type and libgit2 version. We ensure hunk
+        // content lines (context/add/del/eof) always have their origin prefix.
+        match origin {
+            ' ' | '+' | '-' | '\\' | '>' | '<' | '=' => {
+                if content.is_empty() || content[0] as char != origin {
+                    let _ = patch.write_all(&[origin as u8]);
+                }
+            }
+            _ => {}
+        }
+        let _ = patch.write_all(content);
         true
     })
     .map_err(|e| e.to_string())?;

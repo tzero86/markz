@@ -21,7 +21,9 @@
 |----------|---------|
 | P0 | Critical — blocks users or causes data loss |
 | P1 | High — significant UX improvement or bug fix |
+77777
 | P2 | Medium — nice-to-have, competitive parity |
+
 | P3 | Low — exploratory or future consideration |
 
 ---
