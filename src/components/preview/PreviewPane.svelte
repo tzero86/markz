@@ -643,6 +643,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       >
         <Presentation size={14} strokeWidth={2} />
       </button>
+    </div>
   </div>
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     <div
@@ -667,7 +668,6 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     }}
     onClose={() => (tableEditorOpen = false)}
   />
-  </div>
 </div>
 
 <style>
