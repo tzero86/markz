@@ -1,365 +1,392 @@
 # Rebrand Impact Assessment: MarkZ → {NEW_NAME}
 
-> **Prepared:** 2026-05-31
-> **Scope:** Complete audit of all `MarkZ` / `markz` references across codebase, infrastructure, user data, and external presence.
-> **Assumption:** New name is lowercase-safe for identifiers (e.g., `nova`, `scribe`, `forge`).
+> **Date:** 2026-05-31
+> **Scope:** Exhaustive audit of every `MarkZ` / `markz` reference in the codebase, build system, infrastructure, user data paths, and external presence.
+> **Assumption:** New name is identifier-safe in lowercase (e.g., `nova`, `scribe`).
 
 ---
 
 ## Executive Summary
 
-A full rebrand touches **~70 files** across **9 categories**. The work splits into three tiers:
+A full rebrand touches **~75 files** across **10 categories**. The work splits into three tiers:
 
-| Tier | Effort | Description |
-|------|--------|-------------|
-| **Must-have (P0)** | 1 day | Code identifiers, config paths, Tauri app ID, window titles, localStorage keys. Without these the app breaks or loses user data. |
-| **User-facing (P1)** | 1–2 days | README, site, docs, logos, about dialog, splash screen, release names. |
-| **Infrastructure (P2)** | 2–3 days | GitHub repo rename, Pages URL, CI workflows, release artifacts, social links. |
+| Tier | Effort | What Breaks If Skipped |
+|------|--------|----------------------|
+| **P0 — Critical** | 1–2 days | App won't build, user data is lost, OS treats it as a different app |
+| **P1 — User-facing** | 1–2 days | Users see old branding, docs are wrong, marketing site is stale |
+| **P2 — Infrastructure** | 2–3 days | Releases fail, updater breaks, GitHub links 404 |
 
-**Total estimated effort:** 3–5 days of focused work, plus coordination with GitHub/repo admin.
+**Total estimated effort:** 3–6 days of focused work, plus GitHub admin coordination.
 
 ---
 
-## 1. Code & Build System (CRITICAL — P0)
+## 1. Rust Workspace — Crate Names & Imports (P0)
 
-### 1.1 Rust Workspace Crate Names
+Six crates use the `markz_` prefix. Every crate name, directory name, `use` statement, and `Cargo.toml` dependency path must change.
 
-| Current | Files | Impact |
-|---------|-------|--------|
-| `markz` (app crate) | `src-tauri/Cargo.toml`, `src-tauri/src/main.rs` | Binary name, Tauri bundle identifier. Changing breaks updater signatures. |
-| `markz-core` | `crates/markz-core/Cargo.toml` | 15+ `use markz_core::…` across Rust source. |
-| `markz-convert` | `crates/markz-convert/Cargo.toml` | 5+ import sites. |
-| `markz-config` | `crates/markz-config/Cargo.toml` | 4+ import sites, also config dir path. |
-| `markz-images` | `crates/markz-images/Cargo.toml` | 3+ import sites. |
-| `markz-templates` | `crates/markz-templates/Cargo.toml` | 3+ import sites. |
+| Current Crate | Directory | Files with `use` / `path` deps |
+|--------------|-----------|-------------------------------|
+| `markz` (app) | `src-tauri/` | `src-tauri/src/main.rs` (calls `markz_lib::run()`) |
+| `markz-core` | `crates/markz-core/` | 15+ files: all converters, parser, renderer, stats, slides |
+| `markz-convert` | `crates/markz-convert/` | `src-tauri/src/commands/convert.rs` |
+| `markz-config` | `crates/markz-config/` | `src-tauri/src/commands/settings.rs`, `src-tauri/src/lib.rs` |
+| `markz-images` | `crates/markz-images/` | `src-tauri/src/commands/documents.rs` |
+| `markz-templates` | `crates/markz-templates/` | `src-tauri/src/commands/templates.rs` |
 
-**Action:** Rename crate directories and update all `Cargo.toml` name fields + all `use markz_*::` statements + all `path = "…"` deps.
+**Files requiring edits:**
+- `Cargo.toml` (workspace root) — `authors`, `repository`
+- `src-tauri/Cargo.toml` — `[package] name`, `description`, `[lib] name`, all `markz-*` deps
+- `crates/*/Cargo.toml` — 6 files: `[package] name`, `markz-core` dependency
+- `crates/markz-convert/src/*.rs` — `use markz_core::ast::*` in confluence, docx, github, jira, slack
+- `crates/markz-templates/src/lib.rs` — `use markz_core::ast::*` (comment only, but still)
+- `src-tauri/src/commands/*.rs` — convert, documents, presentation, settings, templates
+- `src-tauri/src/lib.rs` — `use markz_core::…`, `use markz_convert::…`, `use markz_config::…`
+- `src-tauri/src/main.rs` — `markz_lib::run()`
+- `Cargo.lock` — auto-regenerates after `cargo update -w`
 
-**Risk:** `Cargo.lock` will churn heavily. A `cargo update -w` is required. Any external crates referencing these (none currently) would break.
+**Risk:** After renaming, `cargo check` will fail until every import is fixed. A global find-replace `markz_` → `nova_` (or equivalent) handles 90% of it.
 
-### 1.2 Tauri Configuration
+---
 
-| File | Lines | Current | Impact |
-|------|-------|---------|--------|
-| `src-tauri/tauri.conf.json` | 3 | `"productName": "MarkZ"` | Window title bar, OS menu bar, installer name. |
-| | 5 | `"identifier": "dev.markz.app"` | **CRITICAL:** macOS bundle ID, Windows registry, Linux .desktop file. Changing this makes the OS treat it as a *different app* — existing user settings in OS keychain / notification permissions are lost. |
-| | 15 | `"title": "MarkZ"` | Window title. |
-| | 33 | `"description": "Default capabilities for MarkZ"` | Tauri capabilities description. |
-| | 62 | `"https://github.com/tzero86/markz/releases/latest/download/latest.json"` | Updater endpoint URL. |
+## 2. Tauri Application Configuration (P0)
 
-**Action:** Update all fields. The `identifier` change is the most destructive — it forces a clean install on all users.
+`src-tauri/tauri.conf.json` is the single most dangerous file to change. The `identifier` field determines how the OS tracks the app.
 
-**Mitigation:** Keep the old identifier if user data migration is prioritized, OR accept the loss and document it in release notes.
+| Field | Current | Impact of Change |
+|-------|---------|-----------------|
+| `productName` | `"MarkZ"` | Window title bar, OS app menu, installer filename |
+| `identifier` | `"dev.markz.app"` | **CRITICAL:** macOS bundle ID, Windows registry key, Linux `.desktop` file. Changing this makes the OS treat it as a *completely different application*. Existing users lose OS-level permissions (notifications, file associations, keychain entries). |
+| `windows.title` | `"MarkZ"` | Default window title |
+| `capabilities.description` | `"Default capabilities for MarkZ"` | Tauri security manifest text |
+| `updater.endpoints` | `"https://github.com/tzero86/markz/releases/latest/download/latest.json"` | Auto-updater will 404 until the new release is published at the new URL |
 
-### 1.3 npm / Node.js
+**Mitigation for `identifier`:** Either (a) accept the OS-level reset and document it in release notes, or (b) keep the old identifier to preserve user data and permissions. Recommendation: **change it** — a rebrand without a new bundle ID is confusing, and users can re-grant permissions once.
 
-| File | Lines | Current | Impact |
-|------|-------|---------|--------|
-| `package.json` | 2 | `"name": "markz"` | Published package name (not published to npm, but used locally). |
-| `package-lock.json` | 2, 8 | `"name": "markz"` | Will auto-regenerate on `npm install`. |
+---
 
-### 1.4 Rust Source Code References
+## 3. User Data & Config Paths (P0)
 
-**Crate imports (~45 occurrences):**
-- `use markz_core::…` — 12+ files
-- `use markz_convert::…` — 6 files
-- `use markz_config::…` — 4 files
-- `use markz_images::…` — 3 files
-- `use markz_templates::…` — 3 files
-- `markz_lib::run()` in `src-tauri/src/main.rs`
+These paths are hardcoded in Rust. Changing them **without a migration deletes all user data**.
 
-**Internal strings:**
-- `crates/markz-images/src/lib.rs:32` — `"MarkZ/assets"` (fallback documents dir)
-- `crates/markz-images/src/lib.rs:63` — docs comment references `MarkZ/assets`
-- `crates/markz-config/src/lib.rs:76` — `dirs::config_dir().map(|d| d.join("markz"))`
+| OS | Current Config Dir | Contents |
+|----|-------------------|----------|
+| macOS | `~/Library/Application Support/markz/` | settings.json, session.json, templates/, logs/ |
+| Windows | `%APPDATA%\markz\` | same |
+| Linux | `~/.config/markz/` | same |
+| All | `~/Documents/MarkZ/assets/` | Default image paste fallback dir (when doc has no path) |
+
+**Hardcoded locations:**
+- `crates/markz-config/src/lib.rs:80` — `dirs::config_dir().map(|d| d.join("markz"))`
 - `crates/markz-templates/src/lib.rs:38` — `dirs::config_dir().map(|d| d.join("markz").join("templates"))`
+- `crates/markz-images/src/lib.rs:72` — `dirs::document_dir().map(|p| p.join("MarkZ"))`
 - `src-tauri/src/lib.rs:134` — `dirs::config_dir()?.push("markz")` (session path)
-- `src-tauri/src/lib.rs:152` — `tauri_plugin_log` file name `"markz"`
-- `src-tauri/src/commands/pandoc.rs:47` — temp file prefix `markz-pandoc-`
-- `src-tauri/src/commands/watcher.rs:9,32` — event name `markz:workspace-changed` (comment + emit)
+- `src-tauri/src/lib.rs:152` — `tauri_plugin_log` file_name: `"markz"`
+- `src-tauri/src/commands/pandoc.rs:47` — temp file prefix `markz-pandoc-{uuid}.md`
 
-### 1.5 Frontend Custom Event Namespace
+**localStorage keys (WebView):**
+- `markz-session` — `src/lib/sessionStore.ts` (not hardcoded there, but E2E tests set it directly)
+- `markz-recent-files` — `src/lib/recentFiles.ts:1`
+- `markz-theme` — `src/lib/themeStore.ts:23,34`
+- `markz-content-zoom` — `src/lib/contentZoomStore.ts:3`
 
-All app-wide events use the `markz:` prefix. These are internal-only and safe to rename:
-
-```
-markz:toggle-sidebar      markz:settings-changed     markz:open-git-diff
-markz:workspace-changed   markz:set-activity          markz:set-view-mode
-markz:open-settings       markz:open-help             markz:trigger-export
-markz:trigger-print       markz:open-palette          markz:export-docx
-markz:print-pdf           markz:start-presentation    markz:print
-```
-
-**Files affected:** `src/App.svelte`, `src/lib/keyboard.ts`, `src/components/layout/TitleBar.svelte`, `src/components/preview/PreviewPane.svelte`, `src/components/editor/EditorPane.svelte`, `src/components/settings/SettingsModal.svelte`, `src/components/ui/CommandPalette.svelte`, `src/components/templates/TemplateBrowser.svelte`, `src-tauri/src/commands/watcher.rs`, and E2E tests.
-
-**Count:** ~60 event string occurrences.
-
-### 1.6 Global Window Properties (E2E / Debug)
-
-| Current | File | Purpose |
-|---------|------|---------|
-| `window.__markz_editorCommands` | `src/components/editor/editorCommands.ts` | E2E test access to editor commands |
-| `window.__markz_editorView` | `src/components/editor/EditorPane.svelte` | E2E access to CM6 instance |
-| `window.__markz_sessionRestored` | `src/lib/sessionStore.ts` | E2E signal |
+**DOM element ID:**
+- `markz-custom-css` — `src/App.svelte:51,56` (style tag ID for custom CSS injection)
 
 ---
 
-## 2. User Data & Config Paths (CRITICAL — P0)
+## 4. Frontend Custom Event Namespace (P0)
 
-These paths determine where user settings, sessions, templates, and logs live. **Changing them without migration loses all user data.**
+All app-wide communication uses `markz:` prefix. ~60 occurrences across ~15 files.
 
-| OS | Current Path | Contents |
-|----|-------------|----------|
-| macOS | `~/Library/Application Support/markz/` | Session, settings, templates, logs |
-| Windows | `%APPDATA%/markz/` | Same |
-| Linux | `~/.config/markz/` | Same |
-| All | `~/Documents/MarkZ/assets/` | Default image paste directory (when doc has no path) |
+**Event names:**
+```
+markz:toggle-sidebar        markz:settings-changed       markz:open-git-diff
+markz:workspace-changed     markz:set-activity            markz:set-view-mode
+markz:open-settings         markz:open-help               markz:trigger-export
+markz:trigger-print         markz:open-palette            markz:export-docx
+markz:print-pdf             markz:start-presentation      markz:print
+```
 
-### 2.1 LocalStorage Keys (Browser/WebView)
+**Files affected:**
+- `src/App.svelte` — 20 event listeners
+- `src/lib/keyboard.ts` — 6 event dispatches
+- `src/components/editor/EditorPane.svelte` — 1 listener
+- `src/components/layout/TitleBar.svelte` — 1 dispatch
+- `src/components/preview/PreviewPane.svelte` — 1 listener
+- `src/components/settings/SettingsModal.svelte` — 1 dispatch
+- `src/components/ui/CommandPalette.svelte` — 9 dispatches
+- `src/components/templates/TemplateBrowser.svelte` — likely references
+- `src-tauri/src/commands/watcher.rs` — 1 emit (`markz:workspace-changed`)
+- `e2e/titlebar.spec.ts` — 1 listener test
 
-| Key | File | Data |
-|-----|------|------|
-| `markz-session` | `src/lib/sessionStore.ts`, E2E | Open tabs, active tab |
-| `markz-recent-files` | `src/lib/recentFiles.ts` | Recent file paths |
-| `markz-theme` | `src/lib/themeStore.ts` | Dark/light/system preference |
-| `markz-content-zoom` | `src/lib/contentZoomStore.ts` | Preview zoom level |
-
-### 2.2 Custom CSS Style ID
-
-| Current | File | Element ID in DOM |
-|---------|------|-------------------|
-| `markz-custom-css` | `src/App.svelte` | `<style id="markz-custom-css">` |
+**Scope:** Internal-only. Safe to bulk-rename with no external impact.
 
 ---
 
-## 3. User-Facing Branding (HIGH — P1)
+## 5. Window Global Properties (P1)
 
-### 3.1 Visual Identity
+Used for E2E test access and debug:
 
-| Asset | File | Description |
-|-------|------|-------------|
-| Logo | `src/assets/logo.png` | 96×96 app icon (also referenced in README, Settings About) |
-| Icons | `src-tauri/icons/*.png` | macOS .icns, Windows .ico, iOS/Android sizes |
-| Icon source | `src-tauri/icons/icon-source.png` | Source asset for regenerating icons |
-| Favicon | `site/index.html` | No dedicated favicon; uses inline SVG |
+| Property | File | Purpose |
+|----------|------|---------|
+| `window.__markz_editorCommands` | `src/components/editor/editorCommands.ts:248` | E2E access to editor toolbar actions |
+| `window.__markz_editorView` | `src/components/editor/EditorPane.svelte` | E2E access to CodeMirror instance |
+| `window.__markz_sessionRestored` | `src/lib/sessionStore.ts` | E2E signal that session restore completed |
 
-**Action required:** Generate new logo → run `tauri icon` to regenerate all platform icon sets.
+---
 
-### 3.2 In-App Text
+## 6. In-App User-Facing Text (P1)
 
-| Location | File | Current Text |
-|----------|------|-------------|
-| Window title | `index.html` | `<title>MarkZ</title>` |
-| Splash screen | `index.html` | `<span class="app-name">MarkZ</span>` |
-| Title bar | `src/components/layout/TitleBar.svelte:249` | `<span class="app-name">MarkZ</span>` |
-| About dialog | `src/components/settings/SettingsModal.svelte:507-508` | Logo alt text + `<span class="logo-text">MarkZ</span>` |
-| Settings test | `e2e/settings.spec.ts:139` | Expects `.logo-text:has-text("MarkZ")` |
-| Preview font | `src/components/preview/PreviewPane.svelte:557,728` | Font-family `"MarkZEmoji"` (internal name, harmless to keep or change) |
-| Default welcome content | `src/lib/tabStore.ts` | 25+ "MarkZ" mentions in default tab text |
-| Template content | `crates/markz-templates/src/lib.rs` | 15+ "MarkZ" mentions in built-in template |
-| E2E mock HTML | `e2e/tauri-mock.ts` | 20+ "MarkZ" mentions in mock HTML/MD |
-
-### 3.3 Console / Debug Output
+### 6.1 Window / Splash / Title Bar
 
 | Location | File | Text |
 |----------|------|------|
-| Startup log | `src/lib/debug.ts:26` | `=== MarkZ startup ===` |
+| Browser tab title | `index.html:7` | `<title>MarkZ</title>` |
+| Splash screen | `index.html:78` | `<span class="app-name">MarkZ</span>` |
+| Title bar brand | `src/components/layout/TitleBar.svelte:249` | `<span class="app-name">MarkZ</span>` |
+| About dialog logo | `src/components/settings/SettingsModal.svelte:527-528` | `alt="MarkZ logo"` + `<span class="logo-text">MarkZ</span>` |
+
+### 6.2 Default Welcome Content
+
+`src/lib/tabStore.ts` contains the default tab text shown on first launch — **25+ "MarkZ" mentions** including headings, body text, code samples (`println!("Hello, MarkZ!")`), image URLs (`picsum.photos/seed/markz1`), and the closing line.
+
+### 6.3 Built-in Template
+
+`crates/markz-templates/src/lib.rs` — the `FORMATTING_TEST` built-in template contains **15+ "MarkZ" mentions** in headings, descriptions, code samples, and image URLs.
+
+### 6.4 E2E Mock Data
+
+`e2e/tauri-mock.ts` — `MOCK_HTML` and `FORMATTING_TEST_MD` contain **20+ "MarkZ" mentions**. These are what E2E tests assert against.
+
+### 6.5 Preview Font Face
+
+`src/components/preview/PreviewPane.svelte:557` — `@font-face { font-family: "MarkZEmoji"; … }`. This is an internal CSS font name; harmless to keep or change.
+
+### 6.6 Debug Output
+
+`src/lib/debug.ts:26` — `console.info("=== MarkZ startup ===")`
 
 ---
 
-## 4. Documentation (MEDIUM — P1)
-
-| File | References |
-|------|-----------|
-| `README.md` | ~25 references: repo URLs, clone commands, crate names, feature descriptions |
-| `CHANGELOG.md` | Header + all release notes mention "MarkZ" |
-| `ROADMAP.md` | Header, feature descriptions, file paths |
-| `AGENTS.md` | Extensive references to project name, docs filenames, architecture |
-| `docs/MarkZ_App_Plan.md` | Filename + content |
-| `docs/MarkZ_Architectural_Plan.md` | Filename + content |
-| `docs/MarkZ_UI_UX_Design.md` | Filename + content |
-
----
-
-## 5. Infrastructure & CI/CD (HIGH — P2)
-
-### 5.1 GitHub Repository
-
-| Aspect | Current | Impact of Rename |
-|--------|---------|-----------------|
-| Repo URL | `https://github.com/tzero86/markz` | All README links, site links, CI refs break unless GitHub redirect is preserved. |
-| Pages URL | `https://tzero86.github.io/markz/` | Hardcoded in `.github/workflows/pages.yml:44`, site download links. |
-| Releases | `https://github.com/tzero86/markz/releases` | 10+ links in `site/index.html`, README, CI. |
-
-### 5.2 GitHub Actions Workflows
-
-| File | Lines | Content |
-|------|-------|---------|
-| `.github/workflows/release.yml` | 20, 23 | Bundle name patterns: `markz_*_amd64.deb`, `markz_*_x64-setup.exe` |
-| | 63 | Release name: `"MarkZ ${{ github.ref_name }}"` |
-| `.github/workflows/pages.yml` | 44 | Comment referencing `https://tzero86.github.io/markz/` |
-
-### 5.3 Marketing Site
-
-`site/index.html` contains **~15** MarkZ references:
-- Page title + meta description
-- Nav logo text
-- GitHub links (5)
-- Download card links (3)
-- Hero screenshot alt text
-- Gallery alt text
-- Footer links (4)
-- Copyright / author credit
-
----
-
-## 6. E2E Test Suite (MEDIUM — P1)
+## 7. Documentation (P1)
 
 | File | References | Notes |
 |------|-----------|-------|
-| `e2e/app.spec.ts` | 2 | Welcome heading assertions |
-| `e2e/sidebar-preview.spec.ts` | 2 | TOC heading + preview heading assertions |
-| `e2e/settings.spec.ts` | 1 | About dialog logo text assertion |
-| `e2e/session-restore.spec.ts` | 6 | `localStorage.setItem("markz-session", …)` |
-| `e2e/screenshot-capture.spec.ts` | 1 | Editor content with `"Hello, MarkZ!"` |
-| `e2e/editor.spec.ts` | 7 | `__markz_editorCommands` access |
-| `e2e/titlebar.spec.ts` | 1 | `markz:print` event name |
-| `e2e/tauri-mock.ts` | 25+ | Mock HTML, Markdown, template descriptions |
+| `README.md` | ~30 | Title, badges, clone commands, crate names, feature descriptions, architecture diagram |
+| `CHANGELOG.md` | 1+ | Header line. Historical entries should keep the old name for accuracy. |
+| `ROADMAP.md` | 5+ | Title, feature descriptions, file paths |
+| `AGENTS.md` | 15+ | Extensive references to project name, docs filenames, architecture |
+| `docs/MarkZ_App_Plan.md` | 10+ | Filename + content throughout |
+| `docs/MarkZ_Architectural_Plan.md` | 15+ | Filename + crate names, architecture diagrams |
+| `docs/MarkZ_UI_UX_Design.md` | 5+ | Filename + design philosophy text |
+| `REBRAND_IMPACT_ASSESSMENT.md` | 20+ | This file itself (meta) |
 
 ---
 
-## 7. Data Migration Strategy (CRITICAL)
+## 8. Marketing Site (P1)
 
-When the app identifier and config paths change, existing users lose:
+`site/index.html` — **~20 references**:
+- Page `<title>` and `<meta name="description">`
+- Nav logo text
+- GitHub links (5): `github.com/tzero86/markz`
+- Download links (3): releases/latest
+- Hero screenshot `alt` text
+- Gallery screenshot `alt` text
+- Download section heading
+- Footer links: Releases, Issues, Roadmap, License
+- Copyright / author credit
+- JavaScript: default gallery caption
 
-1. **Settings** (font, theme, zoom, custom CSS, key bindings)
-2. **Session** (open tabs, active tab, unsaved content)
+---
+
+## 9. CI/CD & Release Infrastructure (P2)
+
+| File | Line | Content |
+|------|------|---------|
+| `.github/workflows/release.yml` | 20 | Bundle name: `markz_*_amd64.deb` |
+| | 23 | Bundle name: `markz_*_x64-setup.exe` |
+| | 63 | Release name: `"MarkZ ${{ github.ref_name }}"` |
+| `.github/workflows/pages.yml` | 44 | Comment: `https://tzero86.github.io/markz/` |
+| `Cargo.toml` (workspace) | 9 | `authors = ["MarkZ Contributors"]` |
+| | 11 | `repository = "https://github.com/zero/markz"` *(note: appears to be a typo, should be `tzero86`)* |
+| `package.json` | 2 | `"name": "markz"` |
+| `package-lock.json` | 2, 8 | `"name": "markz"` (auto-regenerates) |
+
+---
+
+## 10. Visual Assets (P1)
+
+| Asset | Path | Platform |
+|-------|------|----------|
+| App logo (frontend) | `src/assets/logo.png` | In-app: README, Settings About |
+| Icon source | `src-tauri/icons/icon-source.png` | Source for `tauri icon` generator |
+| macOS icon | `src-tauri/icons/icon.icns` | Generated from source |
+| Windows icon | `src-tauri/icons/icon.ico` | Generated from source |
+| Linux/general | `src-tauri/icons/icon.png` | Generated from source |
+| Android icons | `src-tauri/icons/android/mipmap-*/` | 5 density buckets |
+| iOS icons | `src-tauri/icons/ios/AppIcon-*.png` | 10 sizes |
+| Square logos | `src-tauri/icons/Square*.png` | Windows Store, etc. |
+
+**Action:** Design new logo → run `tauri icon /path/to/new-source.png` to regenerate all platform icon sets.
+
+---
+
+## 11. Data Migration Strategy (P0 — Do Not Skip)
+
+When config paths change, existing users lose:
+1. **Settings** — fonts, themes, zoom, custom CSS, TTS preferences, auto-save
+2. **Session** — open tabs, active tab, unsaved content
 3. **Recent files** list
-4. **User templates** (saved in config dir)
-5. **OS-level permissions** (notifications, file access on macOS)
+4. **User templates** — anything saved via Settings > Templates
+5. **OS permissions** — notifications, file associations (due to bundle ID change)
 
-### Recommended Migration Approach
+### Recommended: One-Time Migration on Startup
 
-Add a one-time migration in Rust on app startup (before `tauri::Builder::run()`):
+**Rust side** (in `src-tauri/src/lib.rs`, before `tauri::Builder::run()`):
 
 ```rust
-// Pseudocode
-fn migrate_from_markz() {
+fn migrate_user_data() {
     let old_config = dirs::config_dir().map(|d| d.join("markz"));
-    let new_config = dirs::config_dir().map(|d| d.join("nova"));
+    let new_config = dirs::config_dir().map(|d| d.join("nova")); // or new name
+
     if let (Some(old), Some(new)) = (old_config, new_config) {
         if old.exists() && !new.exists() {
-            // Copy settings, session, templates
-            std::fs::rename(&old, &new).ok();
+            // Try atomic rename first; fallback to copy
+            if std::fs::rename(&old, &new).is_err() {
+                // Copy recursively if rename fails (cross-device, permissions)
+                copy_dir_all(&old, &new).ok();
+            }
         }
     }
 }
 ```
 
-Also add a JavaScript migration for localStorage keys:
+**JavaScript side** (in `src/main.ts` or `src/App.svelte`, on first mount):
 
 ```typescript
 function migrateLocalStorage() {
-  const keys = ["markz-session", "markz-recent-files", "markz-theme", "markz-content-zoom"];
-  keys.forEach(oldKey => {
+  const mapping: Record<string, string> = {
+    "markz-session": "nova-session",
+    "markz-recent-files": "nova-recent-files",
+    "markz-theme": "nova-theme",
+    "markz-content-zoom": "nova-content-zoom",
+  };
+  for (const [oldKey, newKey] of Object.entries(mapping)) {
     const val = localStorage.getItem(oldKey);
     if (val !== null) {
-      const newKey = oldKey.replace("markz", "nova");
       localStorage.setItem(newKey, val);
       localStorage.removeItem(oldKey);
     }
-  });
+  }
 }
 ```
 
-**Run migrations once, then remove in the following release.**
+**Run once, remove in the next release.** Gate it with a `migration-v1-to-v2` flag in the new config dir so it doesn't run twice.
 
 ---
 
-## 8. Execution Checklist
+## 12. Execution Checklist
 
-### Phase A: Preparation (before touching code)
-- [ ] Finalize new name (lowercase-safe, domain-available)
-- [ ] Design new logo (PNG source, 1024×1024+)
-- [ ] Register new domain (if applicable)
-- [ ] Reserve social handles (if applicable)
+### Phase A: Prep
+- [ ] Finalize new name (identifier-safe, domain-available)
+- [ ] Design new logo (1024×1024+ PNG with transparency)
+- [ ] Confirm GitHub repo rename plan (preserve redirects)
 
 ### Phase B: Code Rebrand (P0)
-- [ ] Rename Rust crate directories + `Cargo.toml` names
-- [ ] Update all `use markz_*::` imports
-- [ ] Update `src-tauri/tauri.conf.json` identifier, productName, title
-- [ ] Update `package.json` name
-- [ ] Update config dir paths in Rust (`markz` → `nova`)
-- [ ] Update localStorage keys in TypeScript
-- [ ] Update custom CSS style ID
-- [ ] Update temp file prefixes
-- [ ] Update log file name
-- [ ] Run `cargo update -w` and verify build
-- [ ] Add data migration (Rust config + JS localStorage)
+- [ ] Rename `crates/markz-*` dirs → `crates/{newname}-*`
+- [ ] Update all `Cargo.toml` `[package] name` and `path` deps
+- [ ] Update all `use markz_*::` imports across Rust source
+- [ ] Update `src-tauri/src/main.rs` lib crate name
+- [ ] Update `src-tauri/tauri.conf.json`: productName, identifier, title, description, updater URL
+- [ ] Update `Cargo.toml` (workspace): authors, repository
+- [ ] Update `package.json`: name
+- [ ] Update Rust config paths: `markz` → `{newname}` (config dir, templates dir, assets dir, session path, log file)
+- [ ] Update temp file prefix: `markz-pandoc-*` → `{newname}-pandoc-*`
+- [ ] Update localStorage keys in TypeScript stores
+- [ ] Update custom CSS style ID: `markz-custom-css` → `{newname}-custom-css`
+- [ ] Rename all `markz:*` custom events → `{newname}:*`
+- [ ] Rename window globals: `__markz_*` → `__{newname}_*`
+- [ ] Run `cargo clean && cargo update -w && cargo check`
+- [ ] Run `npm install` to regenerate package-lock.json
 
 ### Phase C: UI Text & Assets (P1)
-- [ ] Generate new icon set with `tauri icon`
+- [ ] Generate icon set: `tauri icon src/assets/logo.png`
 - [ ] Replace `src/assets/logo.png`
-- [ ] Update all in-app text strings (window title, splash, title bar, about)
-- [ ] Update default welcome tab content
-- [ ] Update built-in template content
-- [ ] Update E2E mock content
+- [ ] Update `index.html`: title, splash screen app name
+- [ ] Update `src/components/layout/TitleBar.svelte`: app name
+- [ ] Update `src/components/settings/SettingsModal.svelte`: about dialog text
+- [ ] Update `src/lib/tabStore.ts`: default welcome content (25+ mentions)
+- [ ] Update `crates/markz-templates/src/lib.rs`: built-in template content
+- [ ] Update `src/lib/debug.ts`: startup console log
 - [ ] Update `MarkZEmoji` font name (optional)
 
-### Phase D: Documentation (P1)
-- [ ] Rewrite README.md
-- [ ] Update CHANGELOG.md header (keep historical entries)
-- [ ] Update ROADMAP.md
-- [ ] Rename `docs/MarkZ_*` files → `docs/{NEW_NAME}_*`
-- [ ] Update AGENTS.md
-- [ ] Update CSS file headers (cosmetic)
+### Phase D: E2E Tests (P1)
+- [ ] Update `e2e/tauri-mock.ts`: MOCK_HTML, FORMATTING_TEST_MD
+- [ ] Update `e2e/app.spec.ts`: "Welcome to MarkZ" assertions
+- [ ] Update `e2e/sidebar-preview.spec.ts`: TOC heading assertions
+- [ ] Update `e2e/settings.spec.ts`: logo text assertion
+- [ ] Update `e2e/editor.spec.ts`: `__markz_editorCommands` → `__{newname}_editorCommands`
+- [ ] Update `e2e/screenshot-capture.spec.ts`: editor content text
+- [ ] Update `e2e/session-restore.spec.ts`: localStorage keys
+- [ ] Update `e2e/titlebar.spec.ts`: event name
 
-### Phase E: Infrastructure (P2)
-- [ ] Rename GitHub repository
-- [ ] Verify GitHub auto-redirect preserves old links
-- [ ] Update `.github/workflows/release.yml` bundle names
-- [ ] Update `.github/workflows/pages.yml` URL comments
+### Phase E: Documentation (P1)
+- [ ] Rewrite `README.md` (keep historical accuracy in old changelog entries)
+- [ ] Update `CHANGELOG.md` header
+- [ ] Update `ROADMAP.md`
+- [ ] Rename `docs/MarkZ_*.md` → `docs/{NEW_NAME}_*.md`
+- [ ] Update `AGENTS.md`
+- [ ] Update CSS file header comments (cosmetic)
+
+### Phase F: Infrastructure (P2)
+- [ ] Rename GitHub repository (`tzero86/markz` → `tzero86/{newname}`)
+- [ ] Verify GitHub auto-redirect is active
+- [ ] Update `.github/workflows/release.yml`: bundle name patterns, release name
+- [ ] Update `.github/workflows/pages.yml`: URL comments
+- [ ] Regenerate `site/index.html` with new branding and all GitHub URLs
 - [ ] Update updater endpoint in `tauri.conf.json`
-- [ ] Regenerate `site/index.html` with new branding
-- [ ] Update all GitHub URLs in site and README
-- [ ] Cut a release with new name + migration
 
-### Phase F: Cleanup (post-release)
-- [ ] Remove one-time migration code (next release)
-- [ ] Verify old config dir can be safely deleted by users
+### Phase G: Release & Migration
+- [ ] Implement Rust + JS data migration
+- [ ] Cut release with migration + new branding
+- [ ] Publish release notes explaining bundle ID change
+
+### Phase H: Cleanup (next release)
+- [ ] Remove one-time migration code
+- [ ] Document that old config dir can be manually deleted
 
 ---
 
-## 9. Risk Matrix
+## 13. Risk Matrix
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|-----------|
-| Users lose settings/session | High | High | Implement Rust + JS migration; test on all 3 OSes |
-| macOS treats app as new (permissions lost) | Certain | Medium | Document in release notes; users re-grant permissions |
-| Updater breaks (old app can't find new releases) | High | High | Ship one intermediate release with old identifier pointing to new updater URL; OR accept that old versions won't auto-update |
-| Cargo/workspace build breaks | Medium | High | Full `cargo clean` + `cargo update -w`; verify all crate paths |
-| E2E tests break | High | Low | Update all mock content and assertions |
-| GitHub Pages 404s | Medium | Medium | GitHub auto-redirects repo Pages for 6+ months; update custom domains if any |
-| External blog/posts link to old repo | N/A | Low | GitHub preserves redirects indefinitely for renamed repos |
+| Users lose settings/session | High | High | Rust + JS migration; test on macOS, Windows, Linux |
+| macOS treats app as new (permissions lost) | Certain | Medium | Document in release notes |
+| Updater breaks for old versions | High | High | Ship one transitional release with old identifier + new updater URL; OR accept old versions won't auto-update |
+| Workspace build breaks | Medium | High | `cargo clean`, `cargo update -w`, full `cargo check` |
+| E2E tests break | High | Low | Bulk update mock content + assertions |
+| GitHub Pages 404 | Low | Medium | GitHub preserves repo redirects; update if custom domain |
+| External links rot | N/A | Low | GitHub preserves repo redirects indefinitely |
 
 ---
 
-## 10. Effort Estimate
+## 14. Effort Estimate
 
-| Task | Hours | Owner |
-|------|-------|-------|
-| Rust crate rename + import fixes | 2 | Rust dev |
-| Tauri config + identifier change | 1 | Rust dev |
-| Config path + data migration (Rust) | 3 | Rust dev |
-| Frontend text + event rename + localStorage migration | 2 | Frontend dev |
-| Logo + icon generation | 2 | Designer |
-| E2E test updates | 1 | QA |
-| README + docs rewrite | 2 | Writer |
-| Site HTML update | 1 | Frontend dev |
-| CI workflow updates | 0.5 | DevOps |
-| GitHub repo rename + release | 1 | Admin |
-| **Total** | **~15.5 hours** | |
+| Task | Hours |
+|------|-------|
+| Rust crate rename + imports | 2 |
+| Tauri config + identifier | 1 |
+| Config path migration (Rust) | 3 |
+| Frontend events + localStorage + globals | 2 |
+| Logo + icon generation | 2 |
+| E2E test updates | 1 |
+| README + docs rewrite | 2 |
+| Marketing site update | 1 |
+| CI workflow updates | 0.5 |
+| GitHub repo rename + release | 1 |
+| **Total** | **~15.5 hrs** |
 
 ---
 
-*End of assessment. This document should be updated as the definitive new name is chosen and as work progresses.*
+*End of assessment. Update as the definitive new name is chosen.*
