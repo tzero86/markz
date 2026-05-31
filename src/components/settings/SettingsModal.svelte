@@ -129,6 +129,8 @@
             customCss: settings.custom_css,
             pandocPath: settings.pandoc_path,
             embedRemoteImages: settings.embed_remote_images,
+            autoOpenFolder: settings.auto_open_folder,
+            enableSpellcheck: settings.enable_spellcheck,
             theme: settings.theme,
           },
         })
@@ -287,6 +289,20 @@
                 </span>
                 <input type="checkbox" bind:checked={settings.show_minimap} />
               </label>
+              <label class="toggle-row">
+                <span class="toggle-label">
+                  Auto-open folder
+                  <span class="toggle-hint">Automatically open the folder of a file when you open it</span>
+                </span>
+                <input type="checkbox" bind:checked={settings.auto_open_folder} />
+              </label>
+              <label class="toggle-row">
+                <span class="toggle-label">
+                  Spellcheck
+                  <span class="toggle-hint">Enable browser-native spellchecking in the editor</span>
+                </span>
+                <input type="checkbox" bind:checked={settings.enable_spellcheck} />
+              </label>
             </div>
 
             <div class="settings-section">
@@ -347,6 +363,10 @@
                 rows={6}
                 placeholder={"/* Example: change accent color */\n:root {\n  --accent-default: #ff6b6b;\n}"}
               ></textarea>
+              <div class="css-actions">
+                <button class="css-btn" onclick={() => { settings.custom_css = CSS_TEMPLATE; }}>Load Template</button>
+                <button class="css-btn secondary" onclick={() => { settings.custom_css = ""; }}>Clear</button>
+              </div>
             </div>
 
             <div class="settings-section">
@@ -778,6 +798,29 @@
   }
   .custom-css-input:focus {
     border-color: var(--accent-default);
+  }
+  .css-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .css-btn {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 150ms var(--ease-out);
+  }
+  .css-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+  .css-btn.secondary {
+    background: transparent;
+    color: var(--text-secondary);
   }
 
   .toggle-row {

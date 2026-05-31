@@ -25,6 +25,8 @@ pub struct Settings {
     pub tts_rate: f32,
     pub custom_css: String,
     pub pandoc_path: Option<String>,
+    pub auto_open_folder: bool,
+    pub enable_spellcheck: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +70,8 @@ impl Default for Settings {
             tts_rate: 1.0,
             custom_css: String::new(),
             pandoc_path: None,
+            auto_open_folder: true,
+            enable_spellcheck: true,
         }
     }
 }

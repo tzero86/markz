@@ -141,6 +141,16 @@
       // Restore workspace folder if one was open
       if (session?.workspacePath) {
         workspaceStore.loadWorkspace(session.workspacePath).catch(() => {});
+      } else if (session?.activeTabPath) {
+        // Auto-open folder of restored active tab (if setting enabled)
+        invoke("get_settings")
+          .then((s: any) => {
+            if (s?.auto_open_folder ?? true) {
+              const parent = session.activeTabPath?.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+              if (parent) workspaceStore.loadWorkspace(parent).catch(() => {});
+            }
+          })
+          .catch(() => {});
       }
     });
 

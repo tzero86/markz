@@ -4,7 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
@@ -21,6 +21,7 @@
   let baseLineHeight = $state(1.7);
   let wordWrap = $state(true);
   let showMinimap = $state(false);
+  let spellcheckEnabled = $state(true);
 
   function triggerPasteFlash() {
     isPasteFlash = true;
@@ -150,6 +151,12 @@
     }
   }
 
+  function applySpellcheck() {
+    if (editorView) {
+      setSpellcheck(editorView, spellcheckEnabled);
+    }
+  }
+
   async function loadFontSettings() {
     try {
       const s = await invoke<any>("get_settings");
@@ -159,9 +166,11 @@
         baseLineHeight = s.line_height ?? 1.7;
         wordWrap = s.word_wrap ?? true;
         showMinimap = s.show_minimap ?? false;
+        spellcheckEnabled = s.enable_spellcheck ?? true;
         applyEditorFont();
         applyWordWrap();
         applyMinimap();
+        applySpellcheck();
       }
     } catch (e) {
       console.error("Failed to load font settings:", e);
@@ -183,6 +192,10 @@
     if (detail.showMinimap !== undefined) {
       showMinimap = detail.showMinimap;
       applyMinimap();
+    }
+    if (detail.enableSpellcheck !== undefined) {
+      spellcheckEnabled = detail.enableSpellcheck;
+      applySpellcheck();
     }
   }
 

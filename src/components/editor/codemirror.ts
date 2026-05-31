@@ -27,6 +27,7 @@ const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 const minimapCompartment = new Compartment();
+const spellcheckCompartment = new Compartment();
 
 function createEditorTheme(isDark: boolean) {
   return EditorView.theme(
@@ -184,7 +185,7 @@ export function initEditor(
     markdown(),
     syntaxHighlighting(markdownHighlightStyle),
     markdownLinter,
-    spellcheckFacet,
+    spellcheckCompartment.of(spellcheckFacet),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         config.onChange(update.state.doc.toString());
@@ -267,5 +268,10 @@ function createMinimapExtension(enabled: boolean): Extension {
 export function setMinimap(view: EditorView, enabled: boolean) {
   view.dispatch({
     effects: minimapCompartment.reconfigure(createMinimapExtension(enabled)),
+  });
+}
+export function setSpellcheck(view: EditorView, enabled: boolean) {
+  view.dispatch({
+    effects: spellcheckCompartment.reconfigure(enabled ? spellcheckFacet : []),
   });
 }

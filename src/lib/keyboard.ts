@@ -90,6 +90,21 @@ export async function openDocumentByPath(path: string) {
   }
 }
 
+async function maybeOpenFolder(filePath: string | null) {
+  if (!filePath) return;
+  try {
+    const settings = await invoke<any>("get_settings");
+    if (settings?.auto_open_folder ?? true) {
+      const parent = filePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+      if (parent) {
+        workspaceStore.loadWorkspace(parent).catch(() => {});
+      }
+    }
+  } catch {
+    // silently ignore settings read failures
+  }
+}
+
 export async function openFolder() {
   console.log("[keyboard] openFolder called");
   await workspaceStore.openWorkspace();
