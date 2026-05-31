@@ -22,6 +22,48 @@ import type { CursorPosition } from "../../lib/editorStore";
 import { indentSelection } from "./editorCommands";
 import { snippetKeymap, cycleSnippetTabStops } from "./snippets";
 import { markdownLinter, spellcheckFacet } from "./markdownLinter";
+import { closeBrackets } from "@codemirror/autocomplete";
+
+/** Smart list continuation: pressing Enter on a list item continues the list.
+ *  If the line is empty (only the marker), removes the marker and exits the list. */
+function smartListEnter(view: EditorView): boolean {
+  const { state } = view;
+  const pos = state.selection.main.head;
+  const line = state.doc.lineAt(pos);
+  const lineText = line.text;
+
+  // Match: optional whitespace, then list marker, then space/tab
+  const match = lineText.match(/^(\s*)([-*+]|\d+\.)\s+/);
+  if (!match) return false;
+
+  const indent = match[1];
+  const marker = match[2];
+  const contentAfterMarker = lineText.slice(match[0].length);
+
+  // If line only has the marker + whitespace, remove it and exit list
+  if (contentAfterMarker.trim() === "") {
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert: "" },
+      selection: { anchor: line.from },
+    });
+    return true;
+  }
+
+  // Continue the list: insert newline + marker at cursor position
+  let nextMarker = marker;
+  if (/^\d+\./.test(marker)) {
+    const num = parseInt(marker, 10);
+    nextMarker = `${num + 1}.`;
+  }
+
+  const insertText = `\n${indent}${nextMarker} `;
+  view.dispatch({
+    changes: { from: pos, to: pos, insert: insertText },
+    selection: { anchor: pos + insertText.length },
+  });
+  return true;
+}
+
 
 const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
@@ -172,6 +214,10 @@ export function initEditor(
         key: "Shift-Tab",
         run: (view) => indentSelection(view, "outdent"),
       },
+      {
+        key: "Enter",
+        run: smartListEnter,
+      },
       ...defaultKeymap,
       ...historyKeymap,
       ...searchKeymap,
@@ -186,6 +232,7 @@ export function initEditor(
     syntaxHighlighting(markdownHighlightStyle),
     markdownLinter,
     spellcheckCompartment.of(spellcheckFacet),
+    closeBrackets(),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         config.onChange(update.state.doc.toString());

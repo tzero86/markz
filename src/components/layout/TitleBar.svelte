@@ -47,6 +47,12 @@ import Toast from "../ui/Toast.svelte";
   let triggerRef: HTMLButtonElement | undefined = $state();
   let pandocAvailable = $state(false);
 
+  let breadcrumb = $derived(
+    $activeDocumentStore.path
+      ? $activeDocumentStore.path.split(/[\\/]/).filter(Boolean).slice(-3).join(" › ")
+      : "MarkZ"
+  );
+
   onMount(() => {
     invoke("pandoc_available")
       .then((available) => { pandocAvailable = Boolean(available); })
@@ -137,6 +143,7 @@ import Toast from "../ui/Toast.svelte";
           return;
         }
         if (command === "export_via_pandoc") {
+          showToast("Exporting...", "info");
           await invoke("export_via_pandoc", {
             markdown: doc.content,
             docPath: doc.path,
@@ -144,7 +151,7 @@ import Toast from "../ui/Toast.svelte";
             format: ext,
           });
         } else {
-          showToast("Preparing images for export...", "info");
+          showToast("Exporting...", "info");
           const preparedMarkdown = await prepareMarkdownForDocx(doc.content);
           await invoke(command, {
             markdown: preparedMarkdown,
@@ -246,7 +253,7 @@ import Toast from "../ui/Toast.svelte";
   <div class="titlebar-left">
     <div class="brand">
       <img src={logo} alt="" class="brand-icon" width="18" height="18" />
-      <span class="app-name">MarkZ</span>
+      <span class="app-name" title={$activeDocumentStore.path || "MarkZ"}>{breadcrumb}</span>
     </div>
     {#if $updateReady}
       <button

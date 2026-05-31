@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { trapFocus } from "../../lib/focusTrap";
   import { File, FolderOpen, FilePlus, Save, Search, Command, ListTree, Link2, GitBranch, Settings, HelpCircle, Type, Image, Table, Printer, Download, PanelLeft, Eye, EyeOff, Moon, Sun, ZoomIn, ZoomOut, RotateCcw, ChevronRight, Presentation } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
   import { searchPalette, type PaletteItem, type PaletteMode, registerCommandPalette } from "../../lib/commandPalette";

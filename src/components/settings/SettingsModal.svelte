@@ -46,6 +46,13 @@
 
   let loading = $state(true);
   let appVersion = $state<string>("");
+  let settingsSearch = $state("");
+
+  function matchesSearch(terms: string[]): boolean {
+    if (!settingsSearch.trim()) return true;
+    const q = settingsSearch.toLowerCase();
+    return terms.some((t) => t.toLowerCase().includes(q));
+  }
 
   const fontOptions = [
     "JetBrains Mono",
@@ -220,6 +227,15 @@
           {#if loading}
             <div class="loading">Loading…</div>
           {:else if settings}
+            <div class="settings-search-row">
+              <input
+                type="text"
+                class="settings-search-input"
+                placeholder="Search settings..."
+                bind:value={settingsSearch}
+                aria-label="Search settings"
+              />
+            </div>
             <div class="settings-section">
               <h3>Appearance</h3>
               <div class="field-row">
@@ -1178,5 +1194,25 @@
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  .settings-search-row {
+    margin-bottom: var(--space-4);
+  }
+  .settings-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    outline: none;
+  }
+  .settings-search-input:focus {
+    border-color: var(--accent-default);
+  }
+  .settings-search-input::placeholder {
+    color: var(--text-tertiary);
   }
 </style>

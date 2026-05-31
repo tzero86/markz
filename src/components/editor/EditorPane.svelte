@@ -199,6 +199,29 @@
     }
   }
 
+  function handleToggleCheckbox(event: CustomEvent<{ index: number }>) {
+    if (!editorView) return;
+    const { index } = event.detail;
+    const doc = editorView.state.doc;
+    const text = doc.toString();
+    const regex = /- \[( |x|X)\]/g;
+    let match;
+    let count = 0;
+    while ((match = regex.exec(text)) !== null) {
+      if (count === index) {
+        const current = match[1];
+        const replacement = current === " " ? "x" : " ";
+        const from = match.index + 3;
+        const to = from + 1;
+        editorView.dispatch({
+          changes: { from, to, insert: replacement },
+        });
+        break;
+      }
+      count++;
+    }
+  }
+
   onMount(() => {
     startupCheckpoint("EditorPane mounting");
     const editor = initEditor(container, $activeDocumentStore.content, {
@@ -249,6 +272,10 @@
       "markz:settings-changed",
       handleSettingsChanged as EventListener
     );
+    window.addEventListener(
+      "markz:toggle-checkbox",
+      handleToggleCheckbox as EventListener
+    );
 
     const unsubZoom = contentZoomStore.subscribe(() => {
       applyEditorFont();
@@ -262,6 +289,10 @@
       window.removeEventListener(
         "markz:settings-changed",
         handleSettingsChanged as EventListener
+      );
+      window.removeEventListener(
+        "markz:toggle-checkbox",
+        handleToggleCheckbox as EventListener
       );
     };
   });
