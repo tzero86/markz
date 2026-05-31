@@ -50,18 +50,15 @@
     for (const item of imageItems) {
       const file = item.getAsFile();
       if (!file) continue;
-
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const imageData = Array.from(new Uint8Array(arrayBuffer));
+        const imageData = new Uint8Array(arrayBuffer);
         const filename = file.name || "pasted.png";
-
         const result = await invoke<{
           relative_path: string;
           absolute_path: string;
           filename: string;
         }>("process_pasted_image", { imageData, filename });
-
         insertMarkdownImage(editorView, result.filename, result.relative_path);
         triggerPasteFlash();
       } catch (err) {
@@ -111,9 +108,7 @@
     for (const file of imageFiles) {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const imageData = Array.from(new Uint8Array(arrayBuffer));
-        const filename = file.name;
-
+        const imageData = new Uint8Array(arrayBuffer);
         const result = await invoke<{
           relative_path: string;
           absolute_path: string;

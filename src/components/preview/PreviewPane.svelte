@@ -643,23 +643,21 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       >
         <Presentation size={14} strokeWidth={2} />
       </button>
-    </div>
   </div>
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
-    {#key htmlContent}
-      <div
-        class="preview-content"
-        class:editing={previewEditing}
-        bind:this={contentDiv}
-        contenteditable={previewEditing}
-        onclick={handlePreviewClick}
-        ondblclick={handleTableDblClick}
-        role="presentation"
-        style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
-      >
-        {@html htmlContent}
-      </div>
-    {/key}
+    <div
+      class="preview-content"
+      class:editing={previewEditing}
+      bind:this={contentDiv}
+      contenteditable={previewEditing}
+      onclick={handlePreviewClick}
+      ondblclick={handleTableDblClick}
+      role="presentation"
+      style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
+    >
+      {@html htmlContent}
+    </div>
+  </div>
   <TableEditorModal
     open={tableEditorOpen}
     markdown={$activeDocumentStore.content}
