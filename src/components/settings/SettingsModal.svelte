@@ -42,6 +42,8 @@
     tts_rate: number;
     custom_css: string;
     pandoc_path: string | null;
+    custom_dictionary: string[];
+    split_direction: string;
   } | null = $state(null);
 
   let loading = $state(true);
@@ -138,6 +140,7 @@
             embedRemoteImages: settings.embed_remote_images,
             autoOpenFolder: settings.auto_open_folder,
             enableSpellcheck: settings.enable_spellcheck,
+            customDictionary: settings.custom_dictionary,
             theme: settings.theme,
           },
         })
@@ -319,6 +322,43 @@
                 </span>
                 <input type="checkbox" bind:checked={settings.enable_spellcheck} />
               </label>
+            {#if settings.custom_dictionary !== undefined}
+              <div class="dictionary-section">
+                <label class="field-label" for="custom-dictionary">Custom dictionary</label>
+                <p class="field-hint">Words listed here will be ignored by the spellchecker. One word per line.</p>
+                <textarea
+                  id="custom-dictionary"
+                  class="custom-dict-input"
+                  rows={4}
+                  value={settings.custom_dictionary.join("\n")}
+                  onchange={(e) => {
+                    const text = e.currentTarget.value;
+                    settings.custom_dictionary = text
+                      .split("\n")
+                      .map((w) => w.trim())
+                      .filter((w) => w.length > 0);
+                  }}
+                ></textarea>
+                {#if settings.custom_dictionary.length > 0}
+                  <div class="dict-chips">
+                    {#each settings.custom_dictionary as word, i}
+                      <span class="dict-chip">
+                        {word}
+                        <button
+                          class="dict-chip-remove"
+                          onclick={() => {
+                            settings.custom_dictionary = settings.custom_dictionary.filter((_, idx) => idx !== i);
+                          }}
+                          aria-label={`Remove ${word}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
             </div>
 
             <div class="settings-section">
@@ -329,6 +369,13 @@
                   <option value="split">Split (editor + preview)</option>
                   <option value="editor">Editor only</option>
                   <option value="preview">Preview only</option>
+                </select>
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="split-direction">Split direction</label>
+                <select id="split-direction" bind:value={settings.split_direction}>
+                  <option value="horizontal">Horizontal (side by side)</option>
+                  <option value="vertical">Vertical (stacked)</option>
                 </select>
               </div>
             </div>
@@ -837,6 +884,63 @@
   .css-btn.secondary {
     background: transparent;
     color: var(--text-secondary);
+  }
+  .dictionary-section {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .custom-dict-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    resize: vertical;
+    outline: none;
+  }
+  .custom-dict-input:focus {
+    border-color: var(--accent-default);
+  }
+  .dict-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+  }
+  .dict-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px var(--space-2);
+    background: var(--accent-muted);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+  }
+  .dict-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    margin-left: 2px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+  }
+  .dict-chip-remove:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .toggle-row {

@@ -22,6 +22,66 @@
   let wordWrap = $state(true);
   let showMinimap = $state(false);
   let spellcheckEnabled = $state(true);
+  let contextMenuVisible = $state(false);
+  let contextMenuX = $state(0);
+  let contextMenuY = $state(0);
+  let contextMenuWord = $state("");
+
+  function getWordAtPoint(x: number, y: number): string | null {
+    const range = (document as any).caretRangeFromPoint?.(x, y)
+      || (document as any).caretPositionFromPoint?.(x, y);
+    if (!range) return null;
+    const node = range.startContainer || range.offsetNode;
+    const offset = range.startOffset ?? range.offset;
+    if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+    const text = node.textContent || "";
+    // Expand to word boundaries
+    let start = offset;
+    let end = offset;
+    while (start > 0 && /\w/.test(text[start - 1])) start--;
+    while (end < text.length && /\w/.test(text[end])) end++;
+    const word = text.slice(start, end);
+    return word.length > 0 ? word : null;
+  }
+
+  async function addToDictionary(word: string) {
+    if (!word || !editorView) return;
+    try {
+      const settings = await invoke<any>("get_settings");
+      const dict = settings.custom_dictionary ?? [];
+      if (dict.includes(word)) return;
+      dict.push(word);
+      settings.custom_dictionary = dict;
+      await invoke("update_settings", { settings });
+      setCustomDictionary(editorView, dict);
+      window.dispatchEvent(
+        new CustomEvent("markz:settings-changed", {
+          detail: { customDictionary: dict },
+        })
+      );
+    } catch (e) {
+      console.error("Failed to add word to dictionary:", e);
+    }
+  }
+
+  function handleContextMenu(event: MouseEvent) {
+    if (!spellcheckEnabled) return;
+    const target = event.target as HTMLElement;
+    // Only show on CodeMirror content area
+    if (!target.closest(".cm-content")) return;
+    const word = getWordAtPoint(event.clientX, event.clientY);
+    if (!word) return;
+    event.preventDefault();
+    contextMenuWord = word;
+    contextMenuX = event.clientX;
+    contextMenuY = event.clientY;
+    contextMenuVisible = true;
+  }
+
+  function closeContextMenu() {
+    contextMenuVisible = false;
+    contextMenuWord = "";
+  }
 
   function triggerPasteFlash() {
     isPasteFlash = true;
@@ -195,6 +255,9 @@
       spellcheckEnabled = detail.enableSpellcheck;
       applySpellcheck();
     }
+    if (detail.customDictionary !== undefined && editorView) {
+      setCustomDictionary(editorView, detail.customDictionary);
+    }
   }
 
   function handleToggleCheckbox(event: CustomEvent<{ index: number }>) {
@@ -311,7 +374,30 @@
     ondragenter={handleDragEnter}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
+    oncontextmenu={handleContextMenu}
   ></div>
+  {#if contextMenuVisible}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="editor-ctx-overlay"
+      onclick={closeContextMenu}
+      oncontextmenu={(e) => { e.preventDefault(); closeContextMenu(); }}
+      role="presentation"
+    >
+      <div
+        class="editor-ctx-menu"
+        style="left: {contextMenuX}px; top: {contextMenuY}px;"
+        onclick={(e) => e.stopPropagation()}
+      >
+        <button
+          class="editor-ctx-item"
+          onclick={() => { addToDictionary(contextMenuWord); closeContextMenu(); }}
+        >
+          Add “{contextMenuWord}” to dictionary
+        </button>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -337,6 +423,40 @@
   }
   .paste-flash {
     animation: pasteFlash 300ms ease;
+  }
+  .editor-ctx-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+  }
+  .editor-ctx-menu {
+    position: fixed;
+    min-width: 180px;
+    padding: var(--space-1) 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    animation: ctxIn 100ms var(--ease-out);
+  }
+  .editor-ctx-item {
+    display: block;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .editor-ctx-item:hover {
+    background: var(--bg-hover);
+  }
+  @keyframes ctxIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
   }
   @keyframes pasteFlash {
     0% {

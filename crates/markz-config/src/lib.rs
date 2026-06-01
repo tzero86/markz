@@ -28,8 +28,15 @@ pub struct Settings {
     pub auto_open_folder: bool,
     pub enable_spellcheck: bool,
     pub custom_dictionary: Vec<String>,
+    pub split_direction: SplitDirection,
 }
-
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SplitDirection {
+    #[default]
+    Horizontal,
+    Vertical,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeSetting {
@@ -74,6 +81,7 @@ impl Default for Settings {
             auto_open_folder: true,
             enable_spellcheck: true,
             custom_dictionary: Vec::new(),
+            split_direction: SplitDirection::Horizontal,
         }
     }
 }

@@ -6,7 +6,9 @@
   import { invoke } from "@tauri-apps/api/core";
   let props: {
     viewMode: "split" | "editor" | "preview";
+    splitDirection: "horizontal" | "vertical";
     onSetViewMode: (mode: "split" | "editor" | "preview") => void;
+    onToggleSplitDirection: () => void;
     onOpenGitDiff?: () => void;
   } = $props();
   let wordCount = $derived(
@@ -76,6 +78,16 @@
         </button>
       {/each}
     </div>
+    {#if props.viewMode === "split"}
+      <button
+        class="split-dir-btn"
+        onclick={props.onToggleSplitDirection}
+        title={props.splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
+        aria-label={props.splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
+      >
+        <Columns2 size={14} strokeWidth={2} class={props.splitDirection === "vertical" ? "rotated" : ""} />
+      </button>
+    {/if}
   </div>
 
   <div class="status-right">

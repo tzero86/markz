@@ -41,10 +41,12 @@
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
   let viewMode = $state<"split" | "editor" | "preview">("split");
+  let splitDirection = $state<"horizontal" | "vertical">("horizontal");
 
   function applySettings(s: any) {
     activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
     viewMode = s.view_mode || s.viewMode || "split";
+    splitDirection = s.split_direction || s.splitDirection || "horizontal";
     document.documentElement.setAttribute("data-reduced-motion", String(s.reduced_motion ?? s.reducedMotion ?? false));
     document.documentElement.style.setProperty("--ui-font-size", `${s.ui_font_size ?? s.uiFontSize ?? 14}px`);
     // Inject custom CSS if provided
@@ -288,7 +290,7 @@
       <OutlineSidebar activity={activeActivity} />
     {/if}
     {#if effectiveViewMode === "split"}
-      <SplitPane>
+      <SplitPane direction={splitDirection}>
         {#snippet left()}
           <EditorPane />
         {/snippet}
@@ -306,7 +308,16 @@
       </div>
     {/if}
   </div>
-  <StatusBar {viewMode} onSetViewMode={(mode) => (viewMode = mode)} onOpenGitDiff={() => { gitDiffOpen = true; }} />
+  <StatusBar {viewMode} {splitDirection} onSetViewMode={(mode) => (viewMode = mode)} onToggleSplitDirection={() => {
+    const next = splitDirection === "horizontal" ? "vertical" : "horizontal";
+    splitDirection = next;
+    invoke("get_settings").then((s: any) => {
+      if (s) {
+        s.split_direction = next;
+        invoke("update_settings", { settings: s }).catch(() => {});
+      }
+    }).catch(() => {});
+  }} onOpenGitDiff={() => { gitDiffOpen = true; }} />
   <GitDiffModal bind:open={gitDiffOpen} docPath={$activeDocumentStore.path ?? ""} />
   <SettingsModal bind:open={settingsOpen} initialTab={settingsInitialTab} />
   <TemplateBrowser bind:open={templateBrowserOpen} />

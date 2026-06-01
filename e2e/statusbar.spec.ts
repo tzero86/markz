@@ -85,6 +85,26 @@ test.describe("Status bar", () => {
     await expect(page.locator('button[aria-label="Split"]')).toHaveClass(/active/);
   });
 
+  test("split direction toggle is visible in split mode and toggles", async ({ page }) => {
+    // Ensure split mode is active
+    await page.locator('button[aria-label="Split"]').click();
+    const toggle = page.locator('button[aria-label="Switch to vertical split"]');
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+    await expect(page.locator('button[aria-label="Switch to horizontal split"]')).toBeVisible();
+    // Toggle back
+    await page.locator('button[aria-label="Switch to horizontal split"]').click();
+    await expect(page.locator('button[aria-label="Switch to vertical split"]')).toBeVisible();
+  });
+
+  test("split direction toggle is hidden in non-split modes", async ({ page }) => {
+    await page.locator('button[aria-label="Editor"]').click();
+    await expect(page.locator('button[aria-label="Switch to vertical split"]')).not.toBeVisible();
+    await expect(page.locator('button[aria-label="Switch to horizontal split"]')).not.toBeVisible();
+    // Return to split
+    await page.locator('button[aria-label="Split"]').click();
+  });
+
 });
 
 test.describe("Git status indicator", () => {

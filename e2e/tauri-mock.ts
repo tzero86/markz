@@ -18,7 +18,15 @@ export const MOCK_SETTINGS = {
   preview_font_size: 16,
   reduced_motion: false,
   ui_font_size: 14,
+  tts_engine: "online",
+  tts_voice_id: "",
+  tts_rate: 1.0,
+  custom_css: "",
   pandoc_path: "",
+  auto_open_folder: true,
+  enable_spellcheck: true,
+  custom_dictionary: [],
+  split_direction: "horizontal",
 };
 
 export const MOCK_HTML = `<h1>Welcome to MarkZ</h1>
