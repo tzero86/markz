@@ -1,20 +1,34 @@
+## [0.8.7] - 2026-06-01
+
+### Added
+- **Vertical split layout** - Toggle between horizontal (side-by-side) and vertical (stacked) editor/preview split. Quick-toggle button in the status bar and a dropdown in Settings -> Layout.
+- **Custom spellcheck dictionary** - Manage per-user words in Settings -> Editor (textarea + chip list). Right-click any word in the editor to add it to the dictionary, suppressing browser red underlines.
+- **Auto-open folder** - Automatically open the parent folder in workspace mode when opening, saving, or restoring a file. Controlled by `auto_open_folder` setting (default: true).
+
+### Fixed
+- **Sidebar panels fail to open in windowed mode** - Activity bar clicks were immediately overridden by an auto-collapse `$effect` when `windowWidth < 1200px`. Fixed by setting `userToggledSidebar = true` on activity bar clicks.
+- **Scroll ghosting in preview** - Replaced JS-driven `renderProgress` state updates (every 50ms) with a pure CSS shimmer animation. Added `contain: paint` to `.preview-scroller` for compositing isolation.
+- **Preview DOM nesting** - Restored correct tag hierarchy after `{#key}` removal. The `.toolbar-actions` div was never closed, making `.preview-scroller` a child of the toolbar.
+- **TTS button styling** - Removed dark bordered container around TTS controls; buttons now sit inline.
+- **App freeze during image paste/drop** - Replaced `Array.from(new Uint8Array(...))` with `new Uint8Array(...)` to avoid JSON-serializing millions of integers over Tauri IPC.
+
 ## [0.8.6] - 2026-05-31
 
 ### Added
-- **Presentation Mode** — Convert Markdown documents into slide decks with `F5` or the new preview toolbar button. Heading-based slide boundaries (H1 = section, H2 = slide), thematic break separators, and five slide types: Title, Section, Content, Code, and Image. Navigate with arrow keys, space, Home/End, or on-screen controls. Touch swipe support on mobile.
-- **Preview toolbar presentation button** — Start presentation mode directly from the preview pane, next to TTS controls.
-- **Settings modal search** — Filter settings sections with a real-time search input at the top of the Settings modal.
-- **Tab bar overflow handling** — Horizontal scroll arrows and mouse wheel support for when many tabs are open.
-- **Smart list continuation** — Press Enter on a list item to continue the list (`-`, `*`, `1.`). Press Enter on an empty list line to exit the list.
-- **Auto-pair markdown delimiters** — Typing `*`, `` ` ``, `[`, `(`, `{`, `"`, `'` auto-inserts the closing pair via CodeMirror `closeBrackets`.
-- **Preview inline search** — `Ctrl+F` in the preview pane opens a search bar with previous/next navigation and match highlighting.
-- **Click-to-toggle checkboxes** — Click a task list checkbox in the preview to toggle the corresponding `- [ ]` / `- [x]` in the editor source.
-- **Focus traps in all modals** — Tab cycling is now constrained within Settings, Templates, Command Palette, and Table Editor modals. Escape closes; first focusable element is auto-focused on open.
-- **Export progress indicators** — Title bar shows a breadcrumb path derived from the active document. Export operations show a consistent "Exporting…" toast.
-- **CodeMirror search panel theming** — Find/Replace panel styled to match the app's design system tokens.
+- **Presentation Mode** ï¿½ Convert Markdown documents into slide decks with `F5` or the new preview toolbar button. Heading-based slide boundaries (H1 = section, H2 = slide), thematic break separators, and five slide types: Title, Section, Content, Code, and Image. Navigate with arrow keys, space, Home/End, or on-screen controls. Touch swipe support on mobile.
+- **Preview toolbar presentation button** ï¿½ Start presentation mode directly from the preview pane, next to TTS controls.
+- **Settings modal search** ï¿½ Filter settings sections with a real-time search input at the top of the Settings modal.
+- **Tab bar overflow handling** ï¿½ Horizontal scroll arrows and mouse wheel support for when many tabs are open.
+- **Smart list continuation** ï¿½ Press Enter on a list item to continue the list (`-`, `*`, `1.`). Press Enter on an empty list line to exit the list.
+- **Auto-pair markdown delimiters** ï¿½ Typing `*`, `` ` ``, `[`, `(`, `{`, `"`, `'` auto-inserts the closing pair via CodeMirror `closeBrackets`.
+- **Preview inline search** ï¿½ `Ctrl+F` in the preview pane opens a search bar with previous/next navigation and match highlighting.
+- **Click-to-toggle checkboxes** ï¿½ Click a task list checkbox in the preview to toggle the corresponding `- [ ]` / `- [x]` in the editor source.
+- **Focus traps in all modals** ï¿½ Tab cycling is now constrained within Settings, Templates, Command Palette, and Table Editor modals. Escape closes; first focusable element is auto-focused on open.
+- **Export progress indicators** ï¿½ Title bar shows a breadcrumb path derived from the active document. Export operations show a consistent "Exportingï¿½" toast.
+- **CodeMirror search panel theming** ï¿½ Find/Replace panel styled to match the app's design system tokens.
 
 ### Fixed
-- **Presentation empty slides** — Thematic breaks (`---`) no longer produce single-line `<hr>`-only slides. Consecutive breaks are collapsed; breaks are stripped from slide content entirely.
+- **Presentation empty slides** ï¿½ Thematic breaks (`---`) no longer produce single-line `<hr>`-only slides. Consecutive breaks are collapsed; breaks are stripped from slide content entirely.
 
 ## [0.8.5] - 2026-05-30
 
