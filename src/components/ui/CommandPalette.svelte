@@ -52,6 +52,7 @@
       { id: "new-file", label: "New File", detail: "Create a new untitled document", icon: "new-file", action: () => { newDocument(); onClose(); } },
       { id: "open-file", label: "Open File...", detail: "Open an existing markdown file", icon: "file", action: () => { openDocument(); onClose(); } },
       { id: "open-folder", label: "Open Folder...", detail: "Open a workspace folder", icon: "folder", action: () => { openFolder(); onClose(); } },
+      { id: "search-workspace", label: "Search Workspace", detail: "Search across all files in the workspace", icon: "search", action: () => { window.dispatchEvent(new CustomEvent("markz:open-search")); onClose(); } },
       { id: "save", label: "Save", detail: "Save the current document", icon: "save", action: () => { saveDocument(); onClose(); } },
       { id: "close-tab", label: "Close Tab", detail: "Close the active tab", icon: "x", action: () => { closeActiveTab(); onClose(); } },
       { id: "toggle-sidebar", label: "Toggle Sidebar", detail: "Show or hide the sidebar panel", icon: "sidebar", action: () => { toggleSidebar(); onClose(); } },

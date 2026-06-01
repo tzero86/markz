@@ -14,6 +14,7 @@
   import SettingsModal from "./components/settings/SettingsModal.svelte";
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
+import SearchPanel from "./components/layout/SearchPanel.svelte";
   import { initKeyboardShortcuts, newDocument, openDocumentByPath } from "./lib/keyboard";
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
@@ -37,6 +38,7 @@
   let paletteMode = $state<PaletteMode>("commands");
   let presentationOpen = $state(false);
   let slideDeck = $state<any>(null);
+  let searchPanelOpen = $state(false);
 
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
@@ -252,6 +254,10 @@
       }
     };
     window.addEventListener("markz:start-presentation", handleStartPresentation);
+    const handleOpenSearch = () => {
+      searchPanelOpen = true;
+    };
+    window.addEventListener("markz:open-search", handleOpenSearch);
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
@@ -267,6 +273,7 @@
       window.removeEventListener("markz:open-palette", handleOpenPalette);
       window.removeEventListener("markz:print-pdf", handlePrintPdf);
       window.removeEventListener("markz:start-presentation", handleStartPresentation);
+      window.removeEventListener("markz:open-search", handleOpenSearch);
     };
   });
 </script>
@@ -326,6 +333,7 @@
   {#if presentationOpen}
     <PresentationMode deck={slideDeck} onClose={() => { presentationOpen = false; slideDeck = null; }} />
   {/if}
+  <SearchPanel bind:open={searchPanelOpen} />
 </div>
 
 <style>

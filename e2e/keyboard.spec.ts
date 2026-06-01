@@ -74,6 +74,14 @@ test.describe("Keyboard shortcuts", () => {
     await page.keyboard.press("Control+0");
     await expect(zoomBadge).toHaveText("100%");
   });
+  test("Ctrl+Shift+F opens search panel", async ({ page }) => {
+    await page.click('.app');
+    await page.keyboard.press('Control+Shift+f');
+    await expect(page.locator('.search-panel')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.search-input')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.search-panel')).not.toBeVisible();
+  });
 
   test("Escape closes open modals", async ({ page }) => {
     await page.locator('button[aria-label="Settings"]').click();

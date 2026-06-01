@@ -173,6 +173,11 @@ export function initKeyboardShortcuts() {
       window.dispatchEvent(new CustomEvent("markz:start-presentation"));
       return;
     }
+    if (mod && e.shiftKey && key === "f") {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("markz:open-search"));
+      return;
+    }
     if (!mod) return;
     if (key === "s") {
       e.preventDefault();
