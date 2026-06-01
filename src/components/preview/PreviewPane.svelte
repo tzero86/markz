@@ -816,11 +816,6 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 2px 6px;
-    background: var(--bg-base);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-xs);
   }
   .tts-spinner {
     display: inline-block;
