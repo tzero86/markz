@@ -120,6 +120,7 @@ pub struct SessionTab {
     path: Option<String>,
     title: String,
     is_dirty: bool,
+    pinned: bool,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]

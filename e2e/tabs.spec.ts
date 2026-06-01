@@ -89,10 +89,11 @@ test.describe("Tab management", () => {
     await expect(menu).toBeVisible();
 
     const items = menu.locator(".ctx-item");
-    await expect(items).toHaveCount(3);
-    await expect(items.nth(0)).toContainText("Close");
-    await expect(items.nth(1)).toContainText("Close Others");
-    await expect(items.nth(2)).toContainText("Close All");
+    await expect(items).toHaveCount(4);
+    await expect(items.nth(0)).toContainText("Pin");
+    await expect(items.nth(1)).toContainText("Close");
+    await expect(items.nth(2)).toContainText("Close Others");
+    await expect(items.nth(3)).toContainText("Close All");
   });
 
   test("context menu Close closes the tab", async ({ page }) => {
@@ -131,5 +132,45 @@ test.describe("Tab management", () => {
     await page.waitForTimeout(300);
     await expect(page.locator(".tab-bar .tab")).toHaveCount(1, { timeout: 3000 });
     await expect(page.locator(".tab-bar .tab").first()).toContainText("Untitled");
+  });
+
+  test("pin tab via context menu", async ({ page }) => {
+    // Create a second tab
+    await page.locator('button[aria-label="New tab"]').click();
+    await page.waitForTimeout(200);
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(2);
+    // Right-click first tab and pin it
+    await page.locator(".tab-bar .tab").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Pin" }).click();
+    // Pinned tab should have pin icon and no close button
+    const pinnedTab = page.locator(".tab-bar .tab.pinned");
+    await expect(pinnedTab).toHaveCount(1);
+    await expect(pinnedTab.locator(".tab-close")).not.toBeVisible();
+  });
+
+  test("pinned tabs survive Close All", async ({ page }) => {
+    // Pin the first tab
+    await page.locator(".tab-bar .tab").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Pin" }).click();
+    // Create a second tab
+    await page.locator('button[aria-label="New tab"]').click();
+    await page.waitForTimeout(200);
+    // Close all via context menu on second tab
+    await page.locator(".tab-bar .tab").nth(1).click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Close All" }).click();
+    // Only pinned tab should remain
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(1);
+    await expect(page.locator(".tab-bar .tab.pinned")).toHaveCount(1);
+  });
+
+  test("unpin tab via context menu", async ({ page }) => {
+    // Pin the first tab
+    await page.locator(".tab-bar .tab").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Pin" }).click();
+    await expect(page.locator(".tab-bar .tab.pinned")).toHaveCount(1);
+    // Unpin it
+    await page.locator(".tab-bar .tab.pinned").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Unpin" }).click();
+    await expect(page.locator(".tab-bar .tab.pinned")).toHaveCount(0);
   });
 });

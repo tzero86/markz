@@ -142,6 +142,8 @@
             autoOpenFolder: settings.auto_open_folder,
             enableSpellcheck: settings.enable_spellcheck,
             customDictionary: settings.custom_dictionary,
+            splitDirection: settings.split_direction,
+            vimMode: settings.vim_mode,
             theme: settings.theme,
           },
         })
@@ -322,6 +324,13 @@
                   <span class="toggle-hint">Enable browser-native spellchecking in the editor</span>
                 </span>
                 <input type="checkbox" bind:checked={settings.enable_spellcheck} />
+              </label>
+              <label class="toggle-row">
+                <span class="toggle-label">
+                  Vim mode
+                  <span class="toggle-hint">Enable Vim keybindings in the editor</span>
+                </span>
+                <input type="checkbox" bind:checked={settings.vim_mode} />
               </label>
             {#if settings.custom_dictionary !== undefined}
               <div class="dictionary-section">

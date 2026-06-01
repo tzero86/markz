@@ -121,6 +121,15 @@ export function newDocument() {
 export function closeActiveTab() {
   const active = tabStore.getActiveTab();
   if (active) {
+    if (active.pinned) {
+      // Find next unpinned tab to close instead
+      const state = get(tabStore);
+      const unpinned = state.tabs.find((t) => !t.pinned);
+      if (unpinned) {
+        tabStore.closeTab(unpinned.id);
+      }
+      return;
+    }
     tabStore.closeTab(active.id);
   }
 }

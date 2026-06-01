@@ -10,6 +10,7 @@ export interface Tab {
   title: string;
   isDirty: boolean;
   isLoading: boolean;
+  pinned?: boolean;
 }
 
 interface TabState {
@@ -365,6 +366,7 @@ function createTabStore() {
       path: t.path,
       title: t.title,
       isDirty: t.isDirty,
+      pinned: t.pinned,
     }));
     const ws = get(workspaceStore);
     saveSession(sessionTabs, activeTab?.path ?? null, ws.rootPath);
@@ -459,6 +461,7 @@ function createTabStore() {
         (path ? path.split(/[\\/]/).pop() || "Untitled" : "Untitled"),
       isDirty: content ? true : false,
       isLoading: false,
+      pinned: false,
     };
     update((state) => {
       const newTabs = [...state.tabs, tab];
@@ -466,6 +469,17 @@ function createTabStore() {
     });
     persistSession();
     return tab.id;
+  }
+
+  function togglePin(id: string) {
+    update((state) => {
+      const idx = state.tabs.findIndex((t) => t.id === id);
+      if (idx === -1) return state;
+      const newTabs = [...state.tabs];
+      newTabs[idx] = { ...newTabs[idx], pinned: !newTabs[idx].pinned };
+      return { ...state, tabs: newTabs };
+    });
+    persistSession();
   }
 
   async function closeTab(id: string): Promise<boolean> {
@@ -499,7 +513,7 @@ function createTabStore() {
   }
   async function closeAllExcept(keepId: string): Promise<void> {
     const state = get({ subscribe });
-    const toClose = state.tabs.filter((t) => t.id !== keepId);
+    const toClose = state.tabs.filter((t) => t.id !== keepId && !t.pinned);
     for (const tab of toClose) {
       if (tab.isDirty) {
         const proceed = await confirm(
@@ -511,14 +525,16 @@ function createTabStore() {
     }
     update((s) => {
       const keepTab = s.tabs.find((t) => t.id === keepId);
-      if (!keepTab) return s;
-      return { tabs: [keepTab], activeTabId: keepTab.id };
+      const pinned = s.tabs.filter((t) => t.pinned && t.id !== keepId);
+      if (!keepTab) return { ...s, tabs: pinned, activeTabId: pinned[0]?.id ?? s.activeTabId };
+      return { tabs: [keepTab, ...pinned], activeTabId: keepTab.id };
     });
     persistSession();
   }
   async function closeAll(): Promise<void> {
     const state = get({ subscribe });
-    for (const tab of state.tabs) {
+    const toClose = state.tabs.filter((t) => !t.pinned);
+    for (const tab of toClose) {
       if (tab.isDirty) {
         const proceed = await confirm(
           `"${tab.title}" has unsaved changes. Close without saving?`,
@@ -527,9 +543,13 @@ function createTabStore() {
         if (!proceed) return;
       }
     }
-    update(() => {
-      const fresh = makeEmptyTab();
-      return { tabs: [fresh], activeTabId: fresh.id };
+    update((s) => {
+      const pinned = s.tabs.filter((t) => t.pinned);
+      if (pinned.length === 0) {
+        const fresh = makeEmptyTab();
+        return { tabs: [fresh], activeTabId: fresh.id };
+      }
+      return { tabs: pinned, activeTabId: pinned[0].id };
     });
     persistSession();
   }
@@ -571,6 +591,7 @@ function createTabStore() {
           title: tab.title,
           isDirty: tab.isDirty,
           isLoading: false,
+          pinned: tab.pinned ?? false,
         };
         update((state) => ({
           tabs: [...state.tabs, restored],
@@ -603,6 +624,7 @@ function createTabStore() {
     closeAllExcept,
     closeAll,
     switchTab,
+    togglePin,
     getActiveTab,
     hasDirtyTabs,
     persistSession,

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, Plus } from "@lucide/svelte";
+  import { X, Plus, Pin } from "@lucide/svelte";
   import { tabStore, type Tab } from "../../lib/tabStore";
 
   let { onNewTab }: { onNewTab?: () => void } = $props();
@@ -18,6 +18,7 @@
 
   function handleClose(e: MouseEvent, tab: Tab) {
     e.stopPropagation();
+    if (tab.pinned) return;
     tabStore.closeTab(tab.id);
   }
 
@@ -27,7 +28,7 @@
 
   function handleKeydown(e: KeyboardEvent, tab: Tab) {
     if (e.key === "Enter") handleSwitch(tab);
-    if (e.key === "Delete" || (e.key === "w" && e.metaKey)) {
+    if (!tab.pinned && (e.key === "Delete" || (e.key === "w" && e.metaKey))) {
       e.preventDefault();
       handleClose(e as unknown as MouseEvent, tab);
     }
@@ -85,13 +86,42 @@
     await tabStore.closeAll();
     closeCtxMenu();
   }
+
+  function ctxTogglePin() {
+    if (ctxTab) tabStore.togglePin(ctxTab.id);
+    closeCtxMenu();
+  }
 </script>
 
 <svelte:window onclick={() => { if (ctxMenuOpen) closeCtxMenu(); }} />
 
 <div class="tab-bar">
   <div class="tab-scroll">
-    {#each $tabStore.tabs as tab (tab.id)}
+    {#each $tabStore.tabs.filter((t) => t.pinned) as tab (tab.id)}
+      <div
+        class="tab pinned"
+        class:active={tab.id === $tabStore.activeTabId}
+        onclick={() => handleSwitch(tab)}
+        onkeydown={(e) => handleKeydown(e, tab)}
+        oncontextmenu={(e) => handleContextMenu(e, tab)}
+        role="tab"
+        tabindex="0"
+        aria-selected={tab.id === $tabStore.activeTabId}
+        title={tab.path ?? tab.title}
+      >
+        <div class="tab-content">
+          <Pin size={10} strokeWidth={2} class="pin-icon" />
+          <span class="tab-title">{tab.title}</span>
+          {#if tab.isDirty}
+            <span class="tab-dot" aria-label="Unsaved changes"></span>
+          {/if}
+        </div>
+      </div>
+    {/each}
+    {#if $tabStore.tabs.some((t) => t.pinned) && $tabStore.tabs.some((t) => !t.pinned)}
+      <div class="tab-divider"></div>
+    {/if}
+    {#each $tabStore.tabs.filter((t) => !t.pinned) as tab (tab.id)}
       <div
         class="tab"
         class:active={tab.id === $tabStore.activeTabId}
@@ -142,6 +172,9 @@
     style="left: {ctxMenuX}px; top: {ctxMenuY}px;"
     role="menu"
   >
+    <button class="ctx-item" role="menuitem" onclick={ctxTogglePin}>
+      {ctxTab?.pinned ? "Unpin" : "Pin"}
+    </button>
     <button class="ctx-item" role="menuitem" onclick={ctxCloseTab}>
       Close
     </button>

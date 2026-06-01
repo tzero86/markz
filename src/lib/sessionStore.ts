@@ -5,6 +5,7 @@ export interface SessionTab {
   path: string | null;
   title: string;
   isDirty: boolean;
+  pinned?: boolean;
 }
 
 export interface SessionState {
@@ -24,6 +25,7 @@ export async function saveSession(
       path: t.path,
       title: t.title,
       is_dirty: t.isDirty,
+      pinned: t.pinned ?? false,
     })),
     active_tab_path: activeTabPath,
     workspace_path: workspacePath,
@@ -50,6 +52,7 @@ export async function getSession(): Promise<SessionState | null> {
       path: t.path,
       title: t.title,
       isDirty: t.is_dirty,
+      pinned: t.pinned ?? false,
     })),
     activeTabPath: result.active_tab_path,
     workspacePath: result.workspace_path,
