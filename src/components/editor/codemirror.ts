@@ -25,6 +25,7 @@ import { indentSelection } from "./editorCommands";
 import { snippetKeymap, cycleSnippetTabStops } from "./snippets";
 import { markdownLinter, spellcheckFacet } from "./markdownLinter";
 import { closeBrackets } from "@codemirror/autocomplete";
+import { vim } from "@replit/codemirror-vim";
 
 /** Smart list continuation: pressing Enter on a list item continues the list.
  *  If the line is empty (only the marker), removes the marker and exits the list. */
@@ -73,6 +74,7 @@ const wrapCompartment = new Compartment();
 const minimapCompartment = new Compartment();
 const spellcheckCompartment = new Compartment();
 const dictionaryCompartment = new Compartment();
+const vimCompartment = new Compartment();
 
 function buildDictionaryPlugin(words: string[]): Extension {
   if (words.length === 0) return [];
@@ -367,5 +369,11 @@ export function setSpellcheck(view: EditorView, enabled: boolean) {
 export function setCustomDictionary(view: EditorView, words: string[]) {
   view.dispatch({
     effects: dictionaryCompartment.reconfigure(buildDictionaryPlugin(words)),
+  });
+}
+
+export function setVimMode(view: EditorView, enabled: boolean) {
+  view.dispatch({
+    effects: vimCompartment.reconfigure(enabled ? vim() : []),
   });
 }

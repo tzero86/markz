@@ -44,6 +44,7 @@
     pandoc_path: string | null;
     custom_dictionary: string[];
     split_direction: string;
+    vim_mode: boolean;
   } | null = $state(null);
 
   let loading = $state(true);

@@ -4,7 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck, setCustomDictionary } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck, setCustomDictionary, setVimMode } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
@@ -22,6 +22,7 @@
   let wordWrap = $state(true);
   let showMinimap = $state(false);
   let spellcheckEnabled = $state(true);
+  let vimModeEnabled = $state(false);
   let contextMenuVisible = $state(false);
   let contextMenuX = $state(0);
   let contextMenuY = $state(0);
@@ -212,6 +213,12 @@
     }
   }
 
+  function applyVimMode() {
+    if (editorView) {
+      setVimMode(editorView, vimModeEnabled);
+    }
+  }
+
   async function loadFontSettings() {
     try {
       const s = await invoke<any>("get_settings");
@@ -222,10 +229,12 @@
         wordWrap = s.word_wrap ?? true;
         showMinimap = s.show_minimap ?? false;
         spellcheckEnabled = s.enable_spellcheck ?? true;
+        vimModeEnabled = s.vim_mode ?? false;
         applyEditorFont();
         applyWordWrap();
         applyMinimap();
         applySpellcheck();
+        applyVimMode();
         if (editorView) {
           setCustomDictionary(editorView, s.custom_dictionary ?? []);
         }
@@ -254,6 +263,10 @@
     if (detail.enableSpellcheck !== undefined) {
       spellcheckEnabled = detail.enableSpellcheck;
       applySpellcheck();
+    }
+    if (detail.vimMode !== undefined) {
+      vimModeEnabled = detail.vimMode;
+      applyVimMode();
     }
     if (detail.customDictionary !== undefined && editorView) {
       setCustomDictionary(editorView, detail.customDictionary);
@@ -291,6 +304,7 @@
       lineHeight: baseLineHeight,
       showMinimap,
       customDictionary: [],
+      vimMode: vimModeEnabled,
       onChange: (newContent) => {
         tabStore.setContent(newContent);
       },
@@ -393,7 +407,7 @@
           class="editor-ctx-item"
           onclick={() => { addToDictionary(contextMenuWord); closeContextMenu(); }}
         >
-          Add “{contextMenuWord}” to dictionary
+          Add ï¿½{contextMenuWord}ï¿½ to dictionary
         </button>
       </div>
     </div>

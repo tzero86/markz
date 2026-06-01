@@ -29,6 +29,7 @@ pub struct Settings {
     pub enable_spellcheck: bool,
     pub custom_dictionary: Vec<String>,
     pub split_direction: SplitDirection,
+    pub vim_mode: bool,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -82,6 +83,7 @@ impl Default for Settings {
             enable_spellcheck: true,
             custom_dictionary: Vec::new(),
             split_direction: SplitDirection::Horizontal,
+            vim_mode: false,
         }
     }
 }

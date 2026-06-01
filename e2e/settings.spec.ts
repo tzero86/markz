@@ -54,10 +54,26 @@ test.describe("Settings modal", () => {
     const wordWrap = modal.locator('input[type="checkbox"]').nth(0);
     const showLineNumbers = modal.locator('input[type="checkbox"]').nth(1);
     const showMinimap = modal.locator('input[type="checkbox"]').nth(2);
+    const autoOpenFolder = modal.locator('input[type="checkbox"]').nth(3);
+    const spellcheck = modal.locator('input[type="checkbox"]').nth(4);
+    const vimMode = modal.locator('input[type="checkbox"]').nth(5);
 
     await expect(wordWrap).toBeChecked();
     await expect(showLineNumbers).toBeChecked();
     await expect(showMinimap).not.toBeChecked();
+    await expect(autoOpenFolder).toBeChecked();
+    await expect(spellcheck).toBeChecked();
+    await expect(vimMode).not.toBeChecked();
+  });
+
+  test("vim mode checkbox toggles", async ({ page }) => {
+    const modal = await openSettings(page);
+    const vimMode = modal.locator('input[type="checkbox"]').nth(5);
+    await expect(vimMode).not.toBeChecked();
+    await vimMode.click();
+    await expect(vimMode).toBeChecked();
+    await vimMode.click();
+    await expect(vimMode).not.toBeChecked();
   });
   test("layout fields have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
