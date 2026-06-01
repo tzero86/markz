@@ -111,6 +111,7 @@
       sidebarPanelVisible = false;
     } else {
       activeActivity = activity;
+      userToggledSidebar = true;
       sidebarPanelVisible = true;
     }
     console.log("[App] after handleSelectActivity:", activeActivity, sidebarPanelVisible);
@@ -203,6 +204,7 @@
 
     const handleSetActivity = (e: Event) => {
       activeActivity = (e as CustomEvent).detail;
+      userToggledSidebar = true;
       sidebarPanelVisible = true;
     };
     window.addEventListener("markz:set-activity", handleSetActivity);
