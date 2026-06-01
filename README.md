@@ -49,8 +49,9 @@ MarkZ is the middle path: a **single, fast, native desktop app** with everything
 - **Document Statistics** — Words, characters, sentences, paragraphs, reading time, Flesch Reading Ease, and Flesch-Kincaid Grade Level
 
 ### Organization
-- **Workspace Mode** — Open any folder and browse a recursive file tree. Project-wide search greps across all `.md` files.
+- **Workspace Mode** — Open any folder and browse a recursive file tree. Global search (`Ctrl+Shift+F`) greps across all `.md` files with Replace All support.
 - **VS Code-Style Activity Bar** — Files, Outline, and Links panels with `Ctrl+B` toggle
+- **Auto-Open Folder** — Automatically open the parent folder when opening or saving a file
 - **WikiLinks & Backlinks** — Link documents with `[[Target]]` or `[[Target|Display]]`. Automatic backlink discovery.
 - **Outline Panel** — Document heading tree for quick navigation
 - **Session Restore** — All tabs (including untitled) persisted and restored on launch
@@ -82,15 +83,22 @@ Built-in templates for common technical documents:
 Save any document as a reusable custom template.
 
 ### Quality of Life
+- **Command Palette** (`Ctrl+Shift+P`) — Fuzzy search across all app commands
+- **Quick Open** (`Ctrl+P`) — Fuzzy search across recent files and workspace files
 - **Auto-Save** — Configurable debounced timer with on/off toggle
 - **Dark / Light / System Themes** — Fully themeable with CSS custom properties
 - **Custom CSS Themes** — Paste your own CSS in Settings
 - **Content Zoom** — `Ctrl + mousewheel` or `Ctrl + =/-` (50–300%, persisted)
 - **Word Wrap Toggle** — Per-document setting
 - **CodeMirror Minimap** — Optional overview map
+- **Vim Keybindings** — Optional Vim mode in the editor (toggle in Settings)
+- **Pin Tabs** — Right-click to pin tabs; pinned tabs survive Close All and won't close with `Ctrl+W`
+- **Vertical Split** — Toggle between horizontal and vertical editor/preview layout
+- **Custom Spellcheck Dictionary** — Manage per-user words; right-click to add words
 - **Git Integration** — Status bar shows branch and modification status; one-click diff panel (`Ctrl+Shift+D`)
 - **Text to Speech** — Dual-engine read-aloud (Edge streaming + Windows SAPI5 offline)
 - **Auto-Updater** — Built-in update check with dirty-tabs warning before restart
+- **Presentation Mode** (`F5`) — Convert Markdown to slide decks with heading-based boundaries
 
 ### Privacy
 - **Offline-First** — Works without network access

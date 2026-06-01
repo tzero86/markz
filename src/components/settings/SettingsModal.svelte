@@ -78,6 +78,8 @@
     { keys: ["Ctrl", "Shift", "P"], action: "Command palette", category: "Navigation" },
     { keys: ["Ctrl", "P"], action: "Quick open files", category: "Navigation" },
     { keys: ["Ctrl", "B"], action: "Toggle sidebar panel", category: "View" },
+    { keys: ["F5"], action: "Start presentation mode", category: "View" },
+    { keys: ["Ctrl", "Shift", "F"], action: "Search workspace", category: "View" },
     { keys: ["Ctrl", "F"], action: "Find / Replace", category: "Edit" },
     { keys: ["Ctrl", "Shift", "D"], action: "Git diff panel", category: "View" },
     { keys: ["Ctrl", "="], action: "Zoom in", category: "View" },

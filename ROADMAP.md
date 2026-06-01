@@ -2,8 +2,8 @@
 
 > This document tracks planned refactors, features, and bugfixes. Update as work progresses.
 >
-> **Current version:** v0.8.6
-> **Last updated:** 2026-05-31
+> **Current version:** v0.8.7+
+> **Last updated:** 2026-06-01
 
 ---
 
@@ -127,20 +127,20 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Effort:** Small (½ day)
 
 ### P2 — Vim keybindings option
-- **Status:** `[ ]`
+- **Status:** `[x]` Done
 - **Files:** `src/components/editor/codemirror.ts`
 - **Scope:** Integrate `@replit/codemirror-vim` as an optional extension. Toggle in Settings.
 - **Effort:** Small (½ day)
 - **Notes:** CodeMirror 6 vim plugin is mature. Mostly wiring + state persistence.
 
 ### P2 — Global find/replace across workspace
-- **Status:** `[ ]`
+- **Status:** `[x]` Done
 - **Files:** `src-tauri/src/commands/workspace.rs`, new UI component
 - **Scope:** Multi-file grep + replace using existing `search_workspace` command. Results panel with file:line previews. Click to jump.
 - **Effort:** Medium (2–3 days)
 
 ### P2 — Pin tabs
-- **Status:** `[ ]`
+- **Status:** `[x]` Done
 - **Files:** `src/lib/tabStore.ts`, `src/components/layout/TabBar.svelte`
 - **Scope:** Right-click → "Pin Tab". Pinned tabs stay at the left, show only icon or shortened title, don't close with `Ctrl+W` unless explicitly unpinned.
 - **Effort:** Small (½ day)
@@ -178,7 +178,7 @@ Features that make MarkZ feel like a serious IDE for markdown.
 
 | Issue | Status | Notes |
 |-------|--------|-------|
-| Activity bar unresponsive in production (v0.8.2) | `[!]` Blocked | Fix applied in `5baee85` (Svelte 5 prop destructuring workaround). **Awaiting user confirmation** from work machine. |
+| Activity bar unresponsive in production (v0.8.2) | `[x]` Done | Fix applied in `5baee85` (Svelte 5 prop destructuring workaround). Confirmed fixed. |
 | E2E `Ctrl+W` keyboard test | `[x]` Skipped | Playwright Chromium intercepts browser shortcut. Close-tab logic covered in `tabs.spec.ts`. |
 | Settings button lacks `data-testid` | `[ ]` | `screenshot-capture.spec.ts` uses `.locator('[data-testid="settings-button"]')` which fails; currently falls through silently. |
 | `documentStore` ↔ `tabStore` circular sync guard | `[x]` Done | `syncing` boolean removed when `documentStore` was eliminated. No longer an issue. |
