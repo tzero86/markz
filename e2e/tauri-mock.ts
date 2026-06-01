@@ -18,7 +18,15 @@ export const MOCK_SETTINGS = {
   preview_font_size: 16,
   reduced_motion: false,
   ui_font_size: 14,
+  tts_engine: "online",
+  tts_voice_id: "",
+  tts_rate: 1.0,
+  custom_css: "",
   pandoc_path: "",
+  auto_open_folder: true,
+  enable_spellcheck: true,
+  custom_dictionary: [],
+  split_direction: "horizontal",
 };
 
 export const MOCK_HTML = `<h1>Welcome to MarkZ</h1>
@@ -493,8 +501,22 @@ export const tauriMockScriptString = `
       // Always return comprehensive HTML for both default and template content
       return Promise.resolve(MOCK_HTML);
     },
+    render_slides: (args) => {
+      // Return a simple 2-slide mock deck
+      const md = args?.markdown || "";
+      const title = md.match(/^#\s+(.+)$/m)?.[1] || "Presentation";
+      return Promise.resolve({
+        title: title,
+        author: null,
+        theme: "default",
+        slides: [
+          { kind: "title", title: title, content: "\u003cp\u003eWelcome\u003c/p\u003e", level: 1, index: 0 },
+          { kind: "content", title: "Slide 2", content: "\u003cp\u003eContent here\u003c/p\u003e", level: 2, index: 1 },
+        ],
+      });
+    },
     convert_to_jira: (args) => "h1. Welcome to MarkZ\\n\\n" + (args?.markdown?.slice(0, 100) || ""),
-    convert_to_confluence: (args) => "<h1>Welcome to MarkZ</h1>\\n<p>" + (args?.markdown?.slice(0, 100) || "") + "</p>",
+    convert_to_confluence: (args) => "\u003ch1\u003eWelcome to MarkZ\u003c/h1\u003e\\n\u003cp\u003e" + (args?.markdown?.slice(0, 100) || "") + "\u003c/p\u003e",
     convert_to_slack: (args) => "*Welcome to MarkZ*\\n\\n" + (args?.markdown?.slice(0, 100) || ""),
     convert_to_github: (args) => args?.markdown || "",
     list_templates: () => [

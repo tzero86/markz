@@ -1,3 +1,21 @@
+## [0.8.6] - 2026-05-31
+
+### Added
+- **Presentation Mode** — Convert Markdown documents into slide decks with `F5` or the new preview toolbar button. Heading-based slide boundaries (H1 = section, H2 = slide), thematic break separators, and five slide types: Title, Section, Content, Code, and Image. Navigate with arrow keys, space, Home/End, or on-screen controls. Touch swipe support on mobile.
+- **Preview toolbar presentation button** — Start presentation mode directly from the preview pane, next to TTS controls.
+- **Settings modal search** — Filter settings sections with a real-time search input at the top of the Settings modal.
+- **Tab bar overflow handling** — Horizontal scroll arrows and mouse wheel support for when many tabs are open.
+- **Smart list continuation** — Press Enter on a list item to continue the list (`-`, `*`, `1.`). Press Enter on an empty list line to exit the list.
+- **Auto-pair markdown delimiters** — Typing `*`, `` ` ``, `[`, `(`, `{`, `"`, `'` auto-inserts the closing pair via CodeMirror `closeBrackets`.
+- **Preview inline search** — `Ctrl+F` in the preview pane opens a search bar with previous/next navigation and match highlighting.
+- **Click-to-toggle checkboxes** — Click a task list checkbox in the preview to toggle the corresponding `- [ ]` / `- [x]` in the editor source.
+- **Focus traps in all modals** — Tab cycling is now constrained within Settings, Templates, Command Palette, and Table Editor modals. Escape closes; first focusable element is auto-focused on open.
+- **Export progress indicators** — Title bar shows a breadcrumb path derived from the active document. Export operations show a consistent "Exporting…" toast.
+- **CodeMirror search panel theming** — Find/Replace panel styled to match the app's design system tokens.
+
+### Fixed
+- **Presentation empty slides** — Thematic breaks (`---`) no longer produce single-line `<hr>`-only slides. Consecutive breaks are collapsed; breaks are stripped from slide content entirely.
+
 ## [0.8.5] - 2026-05-30
 
 ### Added

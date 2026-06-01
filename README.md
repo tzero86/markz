@@ -149,6 +149,9 @@ The built installer will be in `src-tauri/target/release/bundle/`.
 | `Ctrl+=` / `Ctrl++` | Zoom in |
 | `Ctrl+-` | Zoom out |
 | `Ctrl+0` | Reset zoom |
+| `Ctrl+Shift+P` | Command Palette |
+| `Ctrl+P` | Quick Open / Recent Files |
+| `F5` | Start Presentation Mode |
 | `Esc` | Close modal / dropdown |
 
 ## Development

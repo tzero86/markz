@@ -25,8 +25,18 @@ pub struct Settings {
     pub tts_rate: f32,
     pub custom_css: String,
     pub pandoc_path: Option<String>,
+    pub auto_open_folder: bool,
+    pub enable_spellcheck: bool,
+    pub custom_dictionary: Vec<String>,
+    pub split_direction: SplitDirection,
 }
-
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SplitDirection {
+    #[default]
+    Horizontal,
+    Vertical,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeSetting {
@@ -68,6 +78,10 @@ impl Default for Settings {
             tts_rate: 1.0,
             custom_css: String::new(),
             pandoc_path: None,
+            auto_open_folder: true,
+            enable_spellcheck: true,
+            custom_dictionary: Vec::new(),
+            split_direction: SplitDirection::Horizontal,
         }
     }
 }

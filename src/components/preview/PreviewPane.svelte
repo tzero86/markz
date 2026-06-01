@@ -9,7 +9,7 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import { Copy, Check, Play, Pause, Square, ChevronDown } from "@lucide/svelte";
+  import { Copy, Check, Play, Pause, Square, ChevronDown, Presentation } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
   import { onMount } from "svelte";
 import TableEditorModal from "../editor/TableEditorModal.svelte";
@@ -29,10 +29,14 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   let copyDropdownOpen = $state(false);
   let settings = $state<{ embed_remote_images: boolean; preview_font_size: number } | null>(null);
   let copyFeedback = $state(false);
-  let renderProgress = $state(0);
   let previewEditing = $state(false);
   let tableEditorOpen = $state(false);
   let tableEditorIndex = $state(0);
+  let previewSearchOpen = $state(false);
+  let previewSearchQuery = $state("");
+  let previewSearchIndex = $state(0);
+  let previewSearchTotal = $state(0);
+  let searchBarRef: HTMLDivElement | undefined = $state();
   let syncFeedback = $state(false);
 
   const copyFormats: { id: CopyFormat; label: string }[] = [
@@ -69,14 +73,8 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
 
     clearTimeout(timeout);
     isRendering = true;
-    renderProgress = 0;
-    const progressInterval = setInterval(() => {
-      renderProgress = Math.min(renderProgress + 15, 85);
-    }, 50);
     timeout = setTimeout(async () => {
       try {
-        clearInterval(progressInterval);
-        renderProgress = 90;
         const result = DOMPurify.sanitize(
           await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path })
         );
@@ -89,20 +87,16 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
           const oldestKey = renderCache.keys().next().value;
           if (oldestKey) renderCache.delete(oldestKey);
         }
-        renderProgress = 100;
       } catch (e) {
         htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
       } finally {
-        clearInterval(progressInterval);
         setTimeout(() => {
           isRendering = false;
-          renderProgress = 0;
         }, 200);
       }
-    }, 150); // Increased debounce from 80ms to 150ms for better performance
+    }, 150); // Debounced render
     return () => {
       clearTimeout(timeout);
-      clearInterval(progressInterval);
     };
   });
 
@@ -113,6 +107,18 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  function handlePreviewClick(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.tagName !== "INPUT" || (target as HTMLInputElement).type !== "checkbox") return;
+    if (!target.closest(".task-list-item")) return;
+    const checkboxes = contentDiv?.querySelectorAll(".task-list-item input[type=\'checkbox\']") ?? [];
+    let index = -1;
+    checkboxes.forEach((cb, i) => { if (cb === target) index = i; });
+    if (index >= 0) {
+      window.dispatchEvent(new CustomEvent("markz:toggle-checkbox", { detail: { index } }));
+    }
   }
 
   function handleTableDblClick(e: MouseEvent) {
@@ -127,6 +133,101 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       tableEditorOpen = true;
     }
   }
+
+  function clearSearchHighlights() {
+    if (!contentDiv) return;
+    const marks = contentDiv.querySelectorAll("mark.preview-search-match");
+    marks.forEach((mark) => {
+      const parent = mark.parentNode;
+      if (parent) {
+        parent.insertBefore(document.createTextNode(mark.textContent || ""), mark);
+        parent.removeChild(mark);
+        parent.normalize();
+      }
+    });
+  }
+
+  function highlightSearchMatches() {
+    clearSearchHighlights();
+    if (!contentDiv || !previewSearchQuery) return;
+    const walker = document.createTreeWalker(contentDiv, NodeFilter.SHOW_TEXT, null);
+    const textNodes: Text[] = [];
+    let node: Node | null;
+    while ((node = walker.nextNode()) !== null) {
+      if (node.textContent?.toLowerCase().includes(previewSearchQuery.toLowerCase())) {
+        textNodes.push(node as Text);
+      }
+    }
+    let total = 0;
+    textNodes.forEach((textNode) => {
+      const text = textNode.textContent || "";
+      const lowerText = text.toLowerCase();
+      const lowerQuery = previewSearchQuery.toLowerCase();
+      let idx = lowerText.indexOf(lowerQuery);
+      while (idx !== -1) {
+        const range = document.createRange();
+        range.setStart(textNode, idx);
+        range.setEnd(textNode, idx + previewSearchQuery.length);
+        const mark = document.createElement("mark");
+        mark.className = "preview-search-match";
+        mark.dataset.index = String(total);
+        try {
+          range.surroundContents(mark);
+        } catch {
+          // Range crosses element boundary � skip
+        }
+        total++;
+        idx = lowerText.indexOf(lowerQuery, idx + previewSearchQuery.length);
+      }
+    });
+    previewSearchTotal = total;
+    if (total > 0) {
+      previewSearchIndex = 0;
+      scrollToMatch(0);
+    }
+  }
+
+  function scrollToMatch(index: number) {
+    if (!contentDiv) return;
+    const marks = contentDiv.querySelectorAll("mark.preview-search-match");
+    if (marks[index]) {
+      (marks[index] as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+      marks.forEach((m, i) => {
+        (m as HTMLElement).style.background = i === index ? "var(--accent-default)" : "var(--accent-subtle)";
+        (m as HTMLElement).style.color = i === index ? "white" : "inherit";
+      });
+    }
+  }
+
+  function findNext() {
+    if (previewSearchTotal === 0) return;
+    previewSearchIndex = (previewSearchIndex + 1) % previewSearchTotal;
+    scrollToMatch(previewSearchIndex);
+  }
+
+  function findPrev() {
+    if (previewSearchTotal === 0) return;
+    previewSearchIndex = (previewSearchIndex - 1 + previewSearchTotal) % previewSearchTotal;
+    scrollToMatch(previewSearchIndex);
+  }
+
+  function openPreviewSearch() {
+    previewSearchOpen = true;
+    setTimeout(() => searchBarRef?.querySelector("input")?.focus(), 50);
+  }
+
+  function closePreviewSearch() {
+    previewSearchOpen = false;
+    previewSearchQuery = "";
+    clearSearchHighlights();
+  }
+
+  $effect(() => {
+    // Re-highlight after render if search is active
+    if (htmlContent && previewSearchQuery) {
+      setTimeout(() => highlightSearchMatches(), 100);
+    }
+  });
 
   function onScroll() {
     if (!previewDiv) return;
@@ -298,19 +399,15 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       }
     });
   }
-
   $effect(() => {
     const _content = htmlContent;
     if (!contentDiv) return;
-
-    if (format === "html") {
-      addHeadingAnchors(contentDiv);
-      renderMathBlocks(contentDiv);
-      renderMermaidBlocks(contentDiv)
-        .then(() => scaleMermaidDiagrams())
-        .catch(console.error);
-      highlightCodeBlocks(contentDiv);
-    }
+    addHeadingAnchors(contentDiv);
+    renderMathBlocks(contentDiv);
+    renderMermaidBlocks(contentDiv)
+      .then(() => scaleMermaidDiagrams())
+      .catch(console.error);
+    highlightCodeBlocks(contentDiv);
   });
 
   // Re-scale mermaid when zoom changes (content already rendered)
@@ -437,7 +534,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
 
 <div class="preview-pane">
   {#if isRendering}
-    <div class="render-progress-bar" style="--progress: {renderProgress}%"></div>
+    <div class="render-progress-bar"></div>
   {/if}
   <div class="preview-toolbar">
     <div class="copy-dropdown">
@@ -527,23 +624,30 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
             </button>
           {/if}
         </div>
-
+      <button
+        class="action-btn"
+        onclick={() => window.dispatchEvent(new CustomEvent("markz:start-presentation"))}
+        aria-label="Start presentation"
+        data-tooltip="Start presentation"
+      >
+        <Presentation size={14} strokeWidth={2} />
+      </button>
     </div>
   </div>
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
-    {#key htmlContent}
-      <div
-        class="preview-content"
-        class:editing={previewEditing}
-        bind:this={contentDiv}
-        contenteditable={previewEditing}
-        ondblclick={handleTableDblClick}
-        role="presentation"
-        style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
-      >
-        {@html htmlContent}
-      </div>
-    {/key}
+    <div
+      class="preview-content"
+      class:editing={previewEditing}
+      bind:this={contentDiv}
+      contenteditable={previewEditing}
+      onclick={handlePreviewClick}
+      ondblclick={handleTableDblClick}
+      role="presentation"
+      style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
+    >
+      {@html htmlContent}
+    </div>
+  </div>
   <TableEditorModal
     open={tableEditorOpen}
     markdown={$activeDocumentStore.content}
@@ -553,7 +657,6 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     }}
     onClose={() => (tableEditorOpen = false)}
   />
-  </div>
 </div>
 
 <style>
@@ -590,11 +693,25 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     top: 0;
     left: 0;
     height: 2px;
-    width: var(--progress);
+    width: 100%;
     background: var(--accent-default);
     z-index: 5;
-    transition: width 50ms ease;
     border-radius: 0 1px 1px 0;
+    overflow: hidden;
+  }
+  .render-progress-bar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: progressShimmer 1200ms ease-in-out infinite;
+  }
+  @keyframes progressShimmer {
+    0% { transform: translateX(-250%); }
+    100% { transform: translateX(350%); }
   }
 
   /* Toolbar */
@@ -702,11 +819,6 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 2px 6px;
-    background: var(--bg-base);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-xs);
   }
   .tts-spinner {
     display: inline-block;
@@ -724,6 +836,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   .preview-scroller {
     flex: 1;
     overflow: auto;
+    contain: paint;
   }
   .preview-content {
     max-width: 820px;
@@ -924,5 +1037,55 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   :global(.preview-content table:hover) {
     outline: 2px dashed var(--accent-default, #3b82f6);
     outline-offset: 2px;
+  }
+
+  .preview-search-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+  }
+  .preview-search-input {
+    width: 140px;
+    padding: var(--space-1) var(--space-2);
+    background: var(--bg-base);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--text-xs);
+    outline: none;
+  }
+  .preview-search-input:focus {
+    border-color: var(--accent-default);
+  }
+  .preview-search-count {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    min-width: 36px;
+    text-align: center;
+  }
+  .preview-search-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .preview-search-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  mark.preview-search-match {
+    background: var(--accent-subtle);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
   }
 </style>

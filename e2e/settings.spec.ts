@@ -62,6 +62,19 @@ test.describe("Settings modal", () => {
   test("layout fields have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
     await expect(modal.locator('select#view-mode')).toHaveValue("split");
+    await expect(modal.locator('select#split-direction')).toHaveValue("horizontal");
+  });
+
+  test("split direction dropdown changes value", async ({ page }) => {
+    const modal = await openSettings(page);
+    await modal.locator('select#split-direction').selectOption("vertical");
+    await expect(modal.locator('select#split-direction')).toHaveValue("vertical");
+  });
+
+  test("custom dictionary section is present", async ({ page }) => {
+    const modal = await openSettings(page);
+    await expect(modal.locator('label:has-text("Custom dictionary")')).toBeVisible();
+    await expect(modal.locator('textarea#custom-dictionary')).toBeVisible();
   });
 
   test("accessibility fields have correct initial values", async ({ page }) => {

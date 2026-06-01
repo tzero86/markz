@@ -7,6 +7,7 @@
   import TabBar from "./components/layout/TabBar.svelte";
   import StatusBar from "./components/layout/StatusBar.svelte";
   import GitDiffModal from "./components/layout/GitDiffModal.svelte";
+  import PresentationMode from "./components/preview/PresentationMode.svelte";
   import SplitPane from "./components/layout/SplitPane.svelte";
   import OutlineSidebar from "./components/layout/OutlineSidebar.svelte";
   import ActivityBar from "./components/layout/ActivityBar.svelte";
@@ -34,14 +35,18 @@
   let gitDiffOpen = $state(false);
   let paletteOpen = $state(false);
   let paletteMode = $state<PaletteMode>("commands");
+  let presentationOpen = $state(false);
+  let slideDeck = $state<any>(null);
 
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
   let viewMode = $state<"split" | "editor" | "preview">("split");
+  let splitDirection = $state<"horizontal" | "vertical">("horizontal");
 
   function applySettings(s: any) {
     activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
     viewMode = s.view_mode || s.viewMode || "split";
+    splitDirection = s.split_direction || s.splitDirection || "horizontal";
     document.documentElement.setAttribute("data-reduced-motion", String(s.reduced_motion ?? s.reducedMotion ?? false));
     document.documentElement.style.setProperty("--ui-font-size", `${s.ui_font_size ?? s.uiFontSize ?? 14}px`);
     // Inject custom CSS if provided
@@ -108,6 +113,7 @@
       sidebarPanelVisible = false;
     } else {
       activeActivity = activity;
+      userToggledSidebar = true;
       sidebarPanelVisible = true;
     }
     console.log("[App] after handleSelectActivity:", activeActivity, sidebarPanelVisible);
@@ -138,6 +144,16 @@
       // Restore workspace folder if one was open
       if (session?.workspacePath) {
         workspaceStore.loadWorkspace(session.workspacePath).catch(() => {});
+      } else if (session?.activeTabPath) {
+        // Auto-open folder of restored active tab (if setting enabled)
+        invoke("get_settings")
+          .then((s: any) => {
+            if (s?.auto_open_folder ?? true) {
+              const parent = session.activeTabPath?.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+              if (parent) workspaceStore.loadWorkspace(parent).catch(() => {});
+            }
+          })
+          .catch(() => {});
       }
     });
 
@@ -190,6 +206,7 @@
 
     const handleSetActivity = (e: Event) => {
       activeActivity = (e as CustomEvent).detail;
+      userToggledSidebar = true;
       sidebarPanelVisible = true;
     };
     window.addEventListener("markz:set-activity", handleSetActivity);
@@ -220,6 +237,21 @@
     };
     window.addEventListener("markz:open-palette", handleOpenPalette);
     window.addEventListener("markz:print-pdf", handlePrintPdf);
+    const handleStartPresentation = async () => {
+      const doc = tabStore.getActiveTab();
+      if (!doc) return;
+      try {
+        const deck = await invoke<any>("render_slides", {
+          markdown: doc.content,
+          docPath: doc.path,
+        });
+        slideDeck = deck;
+        presentationOpen = true;
+      } catch (e) {
+        console.error("Failed to render slides:", e);
+      }
+    };
+    window.addEventListener("markz:start-presentation", handleStartPresentation);
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
@@ -234,9 +266,11 @@
       window.removeEventListener("markz:export-docx", handleExportDocx);
       window.removeEventListener("markz:open-palette", handleOpenPalette);
       window.removeEventListener("markz:print-pdf", handlePrintPdf);
+      window.removeEventListener("markz:start-presentation", handleStartPresentation);
     };
   });
 </script>
+
 <div class="app">
   <TitleBar
     onOpenSettings={() => { settingsInitialTab = "settings"; settingsOpen = true; }}
@@ -256,7 +290,7 @@
       <OutlineSidebar activity={activeActivity} />
     {/if}
     {#if effectiveViewMode === "split"}
-      <SplitPane>
+      <SplitPane direction={splitDirection}>
         {#snippet left()}
           <EditorPane />
         {/snippet}
@@ -274,12 +308,24 @@
       </div>
     {/if}
   </div>
-  <StatusBar {viewMode} onSetViewMode={(mode) => (viewMode = mode)} onOpenGitDiff={() => { gitDiffOpen = true; }} />
+  <StatusBar {viewMode} {splitDirection} onSetViewMode={(mode) => (viewMode = mode)} onToggleSplitDirection={() => {
+    const next = splitDirection === "horizontal" ? "vertical" : "horizontal";
+    splitDirection = next;
+    invoke("get_settings").then((s: any) => {
+      if (s) {
+        s.split_direction = next;
+        invoke("update_settings", { settings: s }).catch(() => {});
+      }
+    }).catch(() => {});
+  }} onOpenGitDiff={() => { gitDiffOpen = true; }} />
   <GitDiffModal bind:open={gitDiffOpen} docPath={$activeDocumentStore.path ?? ""} />
   <SettingsModal bind:open={settingsOpen} initialTab={settingsInitialTab} />
   <TemplateBrowser bind:open={templateBrowserOpen} />
   <CommandPalette bind:open={paletteOpen} mode={paletteMode} onClose={() => (paletteOpen = false)} />
   <SaveTemplateDialog bind:open={saveTemplateOpen} />
+  {#if presentationOpen}
+    <PresentationMode deck={slideDeck} onClose={() => { presentationOpen = false; slideDeck = null; }} />
+  {/if}
 </div>
 
 <style>

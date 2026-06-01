@@ -2,8 +2,8 @@
 
 > This document tracks planned refactors, features, and bugfixes. Update as work progresses.
 >
-> **Current version:** v0.8.4
-> **Last updated:** 2026-05-30
+> **Current version:** v0.8.6
+> **Last updated:** 2026-05-31
 
 ---
 
@@ -87,6 +87,26 @@
 - [x] Fix Svelte 5 production prop destructuring bug
 - [x] Table editor dark mode fix
 - [x] GitHub Pages marketing site + README overhaul
+
+### Phase 3.x: P0 UX Fixes (v0.8.6)
+- [x] Settings modal search input
+- [x] Tab bar overflow (scroll arrows + mouse wheel)
+- [x] Smart list continuation (Enter continues lists, exits on empty)
+- [x] Auto-pair markdown delimiters (`closeBrackets`)
+- [x] Preview inline search (`Ctrl+F` in preview)
+- [x] Click-to-toggle task list checkboxes
+- [x] Focus traps in all modals (Settings, Templates, Palette, TableEditor)
+- [x] Export progress toasts + breadcrumb in title bar
+- [x] CodeMirror search panel themed to match app
+
+### Phase 3.x: Presentation Mode (v0.8.6)
+- [x] Slide deck generation from Markdown (H1/H2/--- boundaries)
+- [x] Five slide types: Title, Section, Content, Code, Image
+- [x] Keyboard navigation (arrows, space, Home, End, Escape, Q)
+- [x] Progress dots and slide counter
+- [x] Touch swipe support
+- [x] Preview toolbar button to start presentation
+- [x] Fix: strip thematic breaks from slide content (no empty slides)
 
 ---
 

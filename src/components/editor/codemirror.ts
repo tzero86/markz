@@ -5,6 +5,8 @@ import {
   highlightActiveLineGutter,
   highlightActiveLine,
   drawSelection,
+  Decoration,
+  ViewPlugin,
 } from "@codemirror/view";
 import { showMinimap } from "@replit/codemirror-minimap";
 
@@ -12,7 +14,7 @@ if (typeof window !== "undefined") {
   (window as any).EditorView = EditorView;
 }
 import { type Extension } from "@codemirror/state";
-import { EditorState, Compartment } from "@codemirror/state";
+import { EditorState, Compartment, RangeSetBuilder } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownKeymap } from "@codemirror/lang-markdown";
 import { highlightSelectionMatches, searchKeymap, search, openSearchPanel } from "@codemirror/search";
@@ -22,11 +24,92 @@ import type { CursorPosition } from "../../lib/editorStore";
 import { indentSelection } from "./editorCommands";
 import { snippetKeymap, cycleSnippetTabStops } from "./snippets";
 import { markdownLinter, spellcheckFacet } from "./markdownLinter";
+import { closeBrackets } from "@codemirror/autocomplete";
+
+/** Smart list continuation: pressing Enter on a list item continues the list.
+ *  If the line is empty (only the marker), removes the marker and exits the list. */
+function smartListEnter(view: EditorView): boolean {
+  const { state } = view;
+  const pos = state.selection.main.head;
+  const line = state.doc.lineAt(pos);
+  const lineText = line.text;
+
+  // Match: optional whitespace, then list marker, then space/tab
+  const match = lineText.match(/^(\s*)([-*+]|\d+\.)\s+/);
+  if (!match) return false;
+
+  const indent = match[1];
+  const marker = match[2];
+  const contentAfterMarker = lineText.slice(match[0].length);
+
+  // If line only has the marker + whitespace, remove it and exit list
+  if (contentAfterMarker.trim() === "") {
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert: "" },
+      selection: { anchor: line.from },
+    });
+    return true;
+  }
+
+  // Continue the list: insert newline + marker at cursor position
+  let nextMarker = marker;
+  if (/^\d+\./.test(marker)) {
+    const num = parseInt(marker, 10);
+    nextMarker = `${num + 1}.`;
+  }
+
+  const insertText = `\n${indent}${nextMarker} `;
+  view.dispatch({
+    changes: { from: pos, to: pos, insert: insertText },
+    selection: { anchor: pos + insertText.length },
+  });
+  return true;
+}
+
 
 const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 const minimapCompartment = new Compartment();
+const spellcheckCompartment = new Compartment();
+const dictionaryCompartment = new Compartment();
+
+function buildDictionaryPlugin(words: string[]): Extension {
+  if (words.length === 0) return [];
+  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp("(?:^|[^\w])" + escaped.join("|") + "(?![\w])", "gi");
+  const mark = Decoration.mark({ attributes: { spellcheck: "false" } });
+  const plugin = ViewPlugin.fromClass(
+    class {
+      decorations = Decoration.none;
+      constructor(view: EditorView) {
+        this.decorations = this.buildDeco(view);
+      }
+      update(update: any) {
+        if (update.docChanged || update.viewportChanged) {
+          this.decorations = this.buildDeco(update.view);
+        }
+      }
+      buildDeco(view: EditorView) {
+        const builder = new RangeSetBuilder<Decoration>();
+        const { viewport } = view;
+        const text = view.state.doc.toString();
+        let m: RegExpExecArray | null;
+        pattern.lastIndex = 0;
+        while ((m = pattern.exec(text)) !== null) {
+          const from = m.index + (m[0].match(/^[^\w]/) ? 1 : 0);
+          const to = from + m[0].length - (m[0].match(/[^\w]$/) ? 1 : 0);
+          if (to > viewport.from && from < viewport.to) {
+            builder.add(from, to, mark);
+          }
+        }
+        return builder.finish();
+      }
+    },
+    { decorations: (v: any) => v.decorations }
+  );
+  return plugin;
+}
 
 function createEditorTheme(isDark: boolean) {
   return EditorView.theme(
@@ -123,6 +206,7 @@ export interface EditorConfig {
   fontSize?: number;
   lineHeight?: number;
   showMinimap?: boolean;
+  customDictionary?: string[];
   onChange: (content: string) => void;
   onCursorChange?: (pos: CursorPosition) => void;
   onScroll?: () => void;
@@ -171,6 +255,10 @@ export function initEditor(
         key: "Shift-Tab",
         run: (view) => indentSelection(view, "outdent"),
       },
+      {
+        key: "Enter",
+        run: smartListEnter,
+      },
       ...defaultKeymap,
       ...historyKeymap,
       ...searchKeymap,
@@ -184,7 +272,9 @@ export function initEditor(
     markdown(),
     syntaxHighlighting(markdownHighlightStyle),
     markdownLinter,
-    spellcheckFacet,
+    spellcheckCompartment.of(spellcheckFacet),
+    dictionaryCompartment.of(buildDictionaryPlugin(config.customDictionary ?? [])),
+    closeBrackets(),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         config.onChange(update.state.doc.toString());
@@ -267,5 +357,15 @@ function createMinimapExtension(enabled: boolean): Extension {
 export function setMinimap(view: EditorView, enabled: boolean) {
   view.dispatch({
     effects: minimapCompartment.reconfigure(createMinimapExtension(enabled)),
+  });
+}
+export function setSpellcheck(view: EditorView, enabled: boolean) {
+  view.dispatch({
+    effects: spellcheckCompartment.reconfigure(enabled ? spellcheckFacet : []),
+  });
+}
+export function setCustomDictionary(view: EditorView, words: string[]) {
+  view.dispatch({
+    effects: dictionaryCompartment.reconfigure(buildDictionaryPlugin(words)),
   });
 }

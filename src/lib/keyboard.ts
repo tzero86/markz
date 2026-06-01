@@ -27,6 +27,7 @@ export async function saveDocument() {
     tabStore.markClean();
     if (!doc.path) tabStore.setPath(path);
     addRecentFile(path);
+    await maybeOpenFolder(path);
   } catch (e) {
     console.error("Save failed:", e);
     alert("Save failed: " + String(e));
@@ -54,6 +55,7 @@ export async function openDocument() {
       tabStore.newTab(result.content, undefined, result.path);
     }
     addRecentFile(result.path);
+    await maybeOpenFolder(result.path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));
@@ -82,11 +84,27 @@ export async function openDocumentByPath(path: string) {
       tabStore.newTab(info.content, undefined, info.path);
     }
     addRecentFile(path);
+    await maybeOpenFolder(path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));
   } finally {
     tabStore.setLoading(false);
+  }
+}
+
+async function maybeOpenFolder(filePath: string | null) {
+  if (!filePath) return;
+  try {
+    const settings = await invoke<any>("get_settings");
+    if (settings?.auto_open_folder ?? true) {
+      const parent = filePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+      if (parent) {
+        workspaceStore.loadWorkspace(parent).catch(() => {});
+      }
+    }
+  } catch {
+    // silently ignore settings read failures
   }
 }
 
@@ -138,6 +156,12 @@ export function initKeyboardShortcuts() {
     if (mod && e.shiftKey && key === "o") {
       e.preventDefault();
       openFolder();
+      return;
+    }
+    // F5 — start presentation mode
+    if (e.key === "F5") {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("markz:start-presentation"));
       return;
     }
     if (!mod) return;

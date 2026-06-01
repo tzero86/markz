@@ -8,6 +8,9 @@
   let ctxMenuX = $state(0);
   let ctxMenuY = $state(0);
   let ctxTab: Tab | null = $state(null);
+  let tabScrollEl: HTMLElement | null = $state(null);
+  let canScrollLeft = $state(false);
+  let canScrollRight = $state(false);
 
   function handleSwitch(tab: Tab) {
     tabStore.switchTab(tab.id);
@@ -37,6 +40,31 @@
     ctxMenuY = e.clientY;
     ctxMenuOpen = true;
   }
+
+  function checkScroll() {
+    if (!tabScrollEl) return;
+    canScrollLeft = tabScrollEl.scrollLeft > 0;
+    canScrollRight = tabScrollEl.scrollLeft + tabScrollEl.clientWidth < tabScrollEl.scrollWidth;
+  }
+
+  function handleWheel(e: WheelEvent) {
+    if (!tabScrollEl) return;
+    e.preventDefault();
+    tabScrollEl.scrollLeft += e.deltaY;
+  }
+
+  function scrollLeft() {
+    tabScrollEl?.scrollBy({ left: -120, behavior: "smooth" });
+  }
+
+  function scrollRight() {
+    tabScrollEl?.scrollBy({ left: 120, behavior: "smooth" });
+  }
+
+  $effect(() => {
+    $tabStore.tabs.length;
+    tabScrollEl && checkScroll();
+  });
 
   function closeCtxMenu() {
     ctxMenuOpen = false;
@@ -289,5 +317,26 @@
   }
   .ctx-item:hover {
     background: var(--bg-hover);
+  }
+
+  .tab-scroll-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 150ms var(--ease-out);
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .tab-scroll-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 </style>

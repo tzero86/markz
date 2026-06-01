@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { trapFocus } from "../../lib/focusTrap";
   import { findTable, tableToMarkdown, addRow, removeRow, addColumn, removeColumn, type TableData } from "../../lib/tableEditor";
 
   interface Props {

@@ -42,10 +42,19 @@
     tts_rate: number;
     custom_css: string;
     pandoc_path: string | null;
+    custom_dictionary: string[];
+    split_direction: string;
   } | null = $state(null);
 
   let loading = $state(true);
   let appVersion = $state<string>("");
+  let settingsSearch = $state("");
+
+  function matchesSearch(terms: string[]): boolean {
+    if (!settingsSearch.trim()) return true;
+    const q = settingsSearch.toLowerCase();
+    return terms.some((t) => t.toLowerCase().includes(q));
+  }
 
   const fontOptions = [
     "JetBrains Mono",
@@ -129,6 +138,9 @@
             customCss: settings.custom_css,
             pandocPath: settings.pandoc_path,
             embedRemoteImages: settings.embed_remote_images,
+            autoOpenFolder: settings.auto_open_folder,
+            enableSpellcheck: settings.enable_spellcheck,
+            customDictionary: settings.custom_dictionary,
             theme: settings.theme,
           },
         })
@@ -218,6 +230,15 @@
           {#if loading}
             <div class="loading">Loading…</div>
           {:else if settings}
+            <div class="settings-search-row">
+              <input
+                type="text"
+                class="settings-search-input"
+                placeholder="Search settings..."
+                bind:value={settingsSearch}
+                aria-label="Search settings"
+              />
+            </div>
             <div class="settings-section">
               <h3>Appearance</h3>
               <div class="field-row">
@@ -287,6 +308,57 @@
                 </span>
                 <input type="checkbox" bind:checked={settings.show_minimap} />
               </label>
+              <label class="toggle-row">
+                <span class="toggle-label">
+                  Auto-open folder
+                  <span class="toggle-hint">Automatically open the folder of a file when you open it</span>
+                </span>
+                <input type="checkbox" bind:checked={settings.auto_open_folder} />
+              </label>
+              <label class="toggle-row">
+                <span class="toggle-label">
+                  Spellcheck
+                  <span class="toggle-hint">Enable browser-native spellchecking in the editor</span>
+                </span>
+                <input type="checkbox" bind:checked={settings.enable_spellcheck} />
+              </label>
+            {#if settings.custom_dictionary !== undefined}
+              <div class="dictionary-section">
+                <label class="field-label" for="custom-dictionary">Custom dictionary</label>
+                <p class="field-hint">Words listed here will be ignored by the spellchecker. One word per line.</p>
+                <textarea
+                  id="custom-dictionary"
+                  class="custom-dict-input"
+                  rows={4}
+                  value={settings.custom_dictionary.join("\n")}
+                  onchange={(e) => {
+                    const text = e.currentTarget.value;
+                    settings.custom_dictionary = text
+                      .split("\n")
+                      .map((w) => w.trim())
+                      .filter((w) => w.length > 0);
+                  }}
+                ></textarea>
+                {#if settings.custom_dictionary.length > 0}
+                  <div class="dict-chips">
+                    {#each settings.custom_dictionary as word, i}
+                      <span class="dict-chip">
+                        {word}
+                        <button
+                          class="dict-chip-remove"
+                          onclick={() => {
+                            settings.custom_dictionary = settings.custom_dictionary.filter((_, idx) => idx !== i);
+                          }}
+                          aria-label={`Remove ${word}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
             </div>
 
             <div class="settings-section">
@@ -297,6 +369,13 @@
                   <option value="split">Split (editor + preview)</option>
                   <option value="editor">Editor only</option>
                   <option value="preview">Preview only</option>
+                </select>
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="split-direction">Split direction</label>
+                <select id="split-direction" bind:value={settings.split_direction}>
+                  <option value="horizontal">Horizontal (side by side)</option>
+                  <option value="vertical">Vertical (stacked)</option>
                 </select>
               </div>
             </div>
@@ -347,6 +426,10 @@
                 rows={6}
                 placeholder={"/* Example: change accent color */\n:root {\n  --accent-default: #ff6b6b;\n}"}
               ></textarea>
+              <div class="css-actions">
+                <button class="css-btn" onclick={() => { settings.custom_css = CSS_TEMPLATE; }}>Load Template</button>
+                <button class="css-btn secondary" onclick={() => { settings.custom_css = ""; }}>Clear</button>
+              </div>
             </div>
 
             <div class="settings-section">
@@ -779,6 +862,86 @@
   .custom-css-input:focus {
     border-color: var(--accent-default);
   }
+  .css-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .css-btn {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all 150ms var(--ease-out);
+  }
+  .css-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+  .css-btn.secondary {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .dictionary-section {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .custom-dict-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    resize: vertical;
+    outline: none;
+  }
+  .custom-dict-input:focus {
+    border-color: var(--accent-default);
+  }
+  .dict-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+  }
+  .dict-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px var(--space-2);
+    background: var(--accent-muted);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+  }
+  .dict-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    margin-left: 2px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+  }
+  .dict-chip-remove:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
 
   .toggle-row {
     display: grid;
@@ -1135,5 +1298,25 @@
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  .settings-search-row {
+    margin-bottom: var(--space-4);
+  }
+  .settings-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    outline: none;
+  }
+  .settings-search-input:focus {
+    border-color: var(--accent-default);
+  }
+  .settings-search-input::placeholder {
+    color: var(--text-tertiary);
   }
 </style>

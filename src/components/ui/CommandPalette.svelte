@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { File, FolderOpen, FilePlus, Save, Search, Command, ListTree, Link2, GitBranch, Settings, HelpCircle, Type, Image, Table, Printer, Download, PanelLeft, Eye, EyeOff, Moon, Sun, ZoomIn, ZoomOut, RotateCcw, ChevronRight } from "@lucide/svelte";
+  import { trapFocus } from "../../lib/focusTrap";
+  import { File, FolderOpen, FilePlus, Save, Search, Command, ListTree, Link2, GitBranch, Settings, HelpCircle, Type, Image, Table, Printer, Download, PanelLeft, Eye, EyeOff, Moon, Sun, ZoomIn, ZoomOut, RotateCcw, ChevronRight, Presentation } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
   import { searchPalette, type PaletteItem, type PaletteMode, registerCommandPalette } from "../../lib/commandPalette";
   import { contentZoomStore } from "../../lib/contentZoomStore";
@@ -43,6 +44,7 @@
     "zoom-in": ZoomIn,
     "zoom-out": ZoomOut,
     "rotate-ccw": RotateCcw,
+    presentation: Presentation,
   };
 
   function buildCommands(): PaletteItem[] {
@@ -67,6 +69,7 @@
       { id: "help", label: "Help", detail: "Open the help modal", icon: "help", action: () => { window.dispatchEvent(new CustomEvent("markz:open-help")); onClose(); } },
       { id: "export-docx", label: "Export to DOCX", detail: "Export current document as Word", icon: "download", action: () => { window.dispatchEvent(new CustomEvent("markz:export-docx")); onClose(); } },
       { id: "print-pdf", label: "Print to PDF", detail: "Print preview as PDF", icon: "printer", action: () => { window.dispatchEvent(new CustomEvent("markz:print-pdf")); onClose(); } },
+      { id: "presentation", label: "Start Presentation", detail: "Present current document as slides", icon: "presentation", action: () => { window.dispatchEvent(new CustomEvent("markz:start-presentation")); onClose(); } },
     ];
   }
 
@@ -84,6 +87,7 @@
     selectedIndex = 0;
     tick().then(() => inputRef?.focus());
   }
+
   $effect(() => {
     if (open) {
       query = "";
@@ -91,6 +95,7 @@
       tick().then(() => inputRef?.focus());
     }
   });
+
   function handleKeydown(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === "Escape") {

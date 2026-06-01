@@ -150,7 +150,7 @@ test.describe("DOCX export", () => {
   test("shows info toast during export", async ({ page }) => {
     await page.locator('button[aria-label="Copy as"]').click();
     await page.locator('button:has-text("Export as DOCX")').click();
-    await expect(page.locator('.toast:has-text("Preparing")')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.toast:has-text("Exporting")')).toBeVisible({ timeout: 3000 });
   });
 });
 

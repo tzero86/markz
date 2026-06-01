@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { trapFocus } from "../../lib/focusTrap";
   import { invoke } from "@tauri-apps/api/core";
   import { X, Trash2 } from "@lucide/svelte";
   import { tabStore } from "../../lib/tabStore";
