@@ -29,7 +29,6 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   let copyDropdownOpen = $state(false);
   let settings = $state<{ embed_remote_images: boolean; preview_font_size: number } | null>(null);
   let copyFeedback = $state(false);
-  let renderProgress = $state(0);
   let previewEditing = $state(false);
   let tableEditorOpen = $state(false);
   let tableEditorIndex = $state(0);
@@ -74,14 +73,8 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
 
     clearTimeout(timeout);
     isRendering = true;
-    renderProgress = 0;
-    const progressInterval = setInterval(() => {
-      renderProgress = Math.min(renderProgress + 15, 85);
-    }, 50);
     timeout = setTimeout(async () => {
       try {
-        clearInterval(progressInterval);
-        renderProgress = 90;
         const result = DOMPurify.sanitize(
           await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path })
         );
@@ -94,20 +87,16 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
           const oldestKey = renderCache.keys().next().value;
           if (oldestKey) renderCache.delete(oldestKey);
         }
-        renderProgress = 100;
       } catch (e) {
         htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
       } finally {
-        clearInterval(progressInterval);
         setTimeout(() => {
           isRendering = false;
-          renderProgress = 0;
         }, 200);
       }
-    }, 150); // Increased debounce from 80ms to 150ms for better performance
+    }, 150); // Debounced render
     return () => {
       clearTimeout(timeout);
-      clearInterval(progressInterval);
     };
   });
 
@@ -545,7 +534,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
 
 <div class="preview-pane">
   {#if isRendering}
-    <div class="render-progress-bar" style="--progress: {renderProgress}%"></div>
+    <div class="render-progress-bar"></div>
   {/if}
   <div class="preview-toolbar">
     <div class="copy-dropdown">
@@ -704,11 +693,25 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
     top: 0;
     left: 0;
     height: 2px;
-    width: var(--progress);
+    width: 100%;
     background: var(--accent-default);
     z-index: 5;
-    transition: width 50ms ease;
     border-radius: 0 1px 1px 0;
+    overflow: hidden;
+  }
+  .render-progress-bar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: progressShimmer 1200ms ease-in-out infinite;
+  }
+  @keyframes progressShimmer {
+    0% { transform: translateX(-250%); }
+    100% { transform: translateX(350%); }
   }
 
   /* Toolbar */
@@ -833,6 +836,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   .preview-scroller {
     flex: 1;
     overflow: auto;
+    contain: paint;
   }
   .preview-content {
     max-width: 820px;

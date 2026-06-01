@@ -4,7 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck, setCustomDictionary } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
@@ -166,6 +166,9 @@
         applyWordWrap();
         applyMinimap();
         applySpellcheck();
+        if (editorView) {
+          setCustomDictionary(editorView, s.custom_dictionary ?? []);
+        }
       }
     } catch (e) {
       console.error("Failed to load font settings:", e);
@@ -224,6 +227,7 @@
       fontSize: Math.round(baseFontSize * $contentZoomStore),
       lineHeight: baseLineHeight,
       showMinimap,
+      customDictionary: [],
       onChange: (newContent) => {
         tabStore.setContent(newContent);
       },

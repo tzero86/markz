@@ -27,6 +27,7 @@ pub struct Settings {
     pub pandoc_path: Option<String>,
     pub auto_open_folder: bool,
     pub enable_spellcheck: bool,
+    pub custom_dictionary: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +73,7 @@ impl Default for Settings {
             pandoc_path: None,
             auto_open_folder: true,
             enable_spellcheck: true,
+            custom_dictionary: Vec::new(),
         }
     }
 }

@@ -27,6 +27,7 @@ export async function saveDocument() {
     tabStore.markClean();
     if (!doc.path) tabStore.setPath(path);
     addRecentFile(path);
+    await maybeOpenFolder(path);
   } catch (e) {
     console.error("Save failed:", e);
     alert("Save failed: " + String(e));
@@ -54,6 +55,7 @@ export async function openDocument() {
       tabStore.newTab(result.content, undefined, result.path);
     }
     addRecentFile(result.path);
+    await maybeOpenFolder(result.path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));
@@ -82,6 +84,7 @@ export async function openDocumentByPath(path: string) {
       tabStore.newTab(info.content, undefined, info.path);
     }
     addRecentFile(path);
+    await maybeOpenFolder(path);
   } catch (e) {
     console.error("Open failed:", e);
     alert("Open failed: " + String(e));

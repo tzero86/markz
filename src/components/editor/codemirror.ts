@@ -5,6 +5,8 @@ import {
   highlightActiveLineGutter,
   highlightActiveLine,
   drawSelection,
+  Decoration,
+  ViewPlugin,
 } from "@codemirror/view";
 import { showMinimap } from "@replit/codemirror-minimap";
 
@@ -12,7 +14,7 @@ if (typeof window !== "undefined") {
   (window as any).EditorView = EditorView;
 }
 import { type Extension } from "@codemirror/state";
-import { EditorState, Compartment } from "@codemirror/state";
+import { EditorState, Compartment, RangeSetBuilder } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownKeymap } from "@codemirror/lang-markdown";
 import { highlightSelectionMatches, searchKeymap, search, openSearchPanel } from "@codemirror/search";
@@ -70,6 +72,44 @@ const fontCompartment = new Compartment();
 const wrapCompartment = new Compartment();
 const minimapCompartment = new Compartment();
 const spellcheckCompartment = new Compartment();
+const dictionaryCompartment = new Compartment();
+
+function buildDictionaryPlugin(words: string[]): Extension {
+  if (words.length === 0) return [];
+  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp("(?:^|[^\w])" + escaped.join("|") + "(?![\w])", "gi");
+  const mark = Decoration.mark({ attributes: { spellcheck: "false" } });
+  const plugin = ViewPlugin.fromClass(
+    class {
+      decorations = Decoration.none;
+      constructor(view: EditorView) {
+        this.decorations = this.buildDeco(view);
+      }
+      update(update: any) {
+        if (update.docChanged || update.viewportChanged) {
+          this.decorations = this.buildDeco(update.view);
+        }
+      }
+      buildDeco(view: EditorView) {
+        const builder = new RangeSetBuilder<Decoration>();
+        const { viewport } = view;
+        const text = view.state.doc.toString();
+        let m: RegExpExecArray | null;
+        pattern.lastIndex = 0;
+        while ((m = pattern.exec(text)) !== null) {
+          const from = m.index + (m[0].match(/^[^\w]/) ? 1 : 0);
+          const to = from + m[0].length - (m[0].match(/[^\w]$/) ? 1 : 0);
+          if (to > viewport.from && from < viewport.to) {
+            builder.add(from, to, mark);
+          }
+        }
+        return builder.finish();
+      }
+    },
+    { decorations: (v: any) => v.decorations }
+  );
+  return plugin;
+}
 
 function createEditorTheme(isDark: boolean) {
   return EditorView.theme(
@@ -166,6 +206,7 @@ export interface EditorConfig {
   fontSize?: number;
   lineHeight?: number;
   showMinimap?: boolean;
+  customDictionary?: string[];
   onChange: (content: string) => void;
   onCursorChange?: (pos: CursorPosition) => void;
   onScroll?: () => void;
@@ -232,6 +273,7 @@ export function initEditor(
     syntaxHighlighting(markdownHighlightStyle),
     markdownLinter,
     spellcheckCompartment.of(spellcheckFacet),
+    dictionaryCompartment.of(buildDictionaryPlugin(config.customDictionary ?? [])),
     closeBrackets(),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
@@ -320,5 +362,10 @@ export function setMinimap(view: EditorView, enabled: boolean) {
 export function setSpellcheck(view: EditorView, enabled: boolean) {
   view.dispatch({
     effects: spellcheckCompartment.reconfigure(enabled ? spellcheckFacet : []),
+  });
+}
+export function setCustomDictionary(view: EditorView, words: string[]) {
+  view.dispatch({
+    effects: dictionaryCompartment.reconfigure(buildDictionaryPlugin(words)),
   });
 }
