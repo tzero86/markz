@@ -1,3 +1,17 @@
+## [0.8.8] - 2026-06-01
+
+### Added
+- **Vim keybindings** — Optional Vim mode in the editor via `@replit/codemirror-vim`. Toggle in Settings → Editor. Uses a Compartment for dynamic enable/disable without recreating the editor.
+- **Pin tabs** — Right-click any tab → Pin/Unpin. Pinned tabs stay at the left with a pin icon, have no close button, survive Close All, and are skipped by `Ctrl+W` (closes next unpinned tab instead). Pin state persists in session restore.
+- **Global workspace search** (`Ctrl+Shift+F`) — Search across all `.md`/`.mdx`/`.markdown` files in the workspace. Results show file path, line number, and context preview; click to open the file. Replace All reads each matched file, performs replacements, and saves back. Accessible via keyboard shortcut or Command Palette.
+- **Command Palette** — "Search Workspace" command added.
+
+### Changed
+- **Settings Help tab** — Updated keyboard shortcuts list to include `F5` (Presentation Mode) and `Ctrl+Shift+F` (Search Workspace).
+- **README** — Updated feature list to include Command Palette, Quick Open, Vim mode, Pin Tabs, Vertical Split, Custom Spellcheck Dictionary, Presentation Mode, Smart List Continuation, Auto-Pair Delimiters, and Global Workspace Search.
+- **Marketing site** — Added feature cards for Presentation Mode, Command Palette & Quick Open, Vim Keybindings, Pin Tabs, and Global Workspace Search.
+- **ROADMAP** — Marked Vim keybindings, Global find/replace, and Pin tabs as completed.
+
 ## [0.8.7] - 2026-06-01
 
 ### Added
