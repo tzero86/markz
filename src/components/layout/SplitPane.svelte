@@ -99,19 +99,45 @@
     background: var(--border-default);
     transition: background 150ms ease;
     flex-shrink: 0;
+    width: 1px;
   }
   .divider.vertical {
     cursor: row-resize;
+    width: auto;
+    height: 1px;
   }
-  /* 4px invisible hit area via pseudo-element */
+  /* Visible grab handle */
+  .divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    background: var(--border-focus);
+    opacity: 0;
+    transition: opacity 150ms ease, background 150ms ease;
+  }
+  .divider.vertical::before {
+    width: 24px;
+    height: 3px;
+  }
+  .divider:hover::before,
+  .divider.dragging::before {
+    opacity: 1;
+    background: var(--accent-default);
+  }
+  /* 6px invisible hit area via pseudo-element */
   .divider::after {
     content: '';
     position: absolute;
-    inset: 0 -4px;
+    inset: 0 -6px;
     z-index: -1;
   }
   .divider.vertical::after {
-    inset: -4px 0;
+    inset: -6px 0;
   }
   .divider:hover,
   .divider.dragging {
@@ -124,4 +150,3 @@
   .bottom-right {
     flex: 1;
   }
-</style>

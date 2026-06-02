@@ -33,8 +33,8 @@ describe("sessionStore", () => {
 
     expect(invokeMock).toHaveBeenCalledWith("save_session", {
       tabs: [
-        { content: "# Hello", path: "/a.md", title: "a.md", is_dirty: false },
-        { content: "# World", path: null, title: "Untitled", is_dirty: true },
+        { content: "# Hello", path: "/a.md", title: "a.md", is_dirty: false, pinned: false },
+        { content: "# World", path: null, title: "Untitled", is_dirty: true, pinned: false },
       ],
       active_tab_path: "/a.md",
       workspace_path: "/projects",
@@ -54,8 +54,8 @@ describe("sessionStore", () => {
     const session = await getSession();
     expect(session).not.toBeNull();
     expect(session!.tabs).toEqual([
-      { content: "# Hello", path: "/a.md", title: "a.md", isDirty: false },
-      { content: "# World", path: null, title: "Untitled", isDirty: true },
+      { content: "# Hello", path: "/a.md", title: "a.md", isDirty: false, pinned: false },
+      { content: "# World", path: null, title: "Untitled", isDirty: true, pinned: false },
     ]);
     expect(session!.activeTabPath).toBe("/a.md");
     expect(session!.workspacePath).toBe("/projects");

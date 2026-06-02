@@ -1,12 +1,10 @@
-<script lang="ts">
+  import EmptyState from "../ui/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { activeDocumentStore } from "../../lib/tabStore";
   import { openDocumentByPath } from "../../lib/keyboard";
   import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
-  import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight } from "@lucide/svelte";
+  import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight, ListTree } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
-
-  let { activity }: { activity: "files" | "outline" | "links" } = $props();
 
   let toc = $state<TocEntry[]>([]);
   let activeAnchor = $state<string | null>(null);
@@ -107,12 +105,16 @@
     return $activeDocumentStore.path === path;
   }
 </script>
-
 <div class="sidebar">
   {#if activity === "outline"}
     <div class="toc-scroller">
       {#if toc.length === 0}
-        <div class="empty">No headings</div>
+        <EmptyState
+          icon={ListTree}
+          iconSize={32}
+          title="No headings"
+          subtitle="Add Markdown headings to build a document outline."
+        />
       {:else}
         <ul class="toc-list">
           {#each toc as entry (entry.anchor)}
@@ -136,7 +138,12 @@
       {:else if linksError}
         <div class="empty error">{linksError}</div>
       {:else if !$activeDocumentStore.path}
-        <div class="empty">Save the document to see links.</div>
+        <EmptyState
+          icon={Link2}
+          iconSize={32}
+          title="Save to see links"
+          subtitle="WikiLinks and backlinks are discovered after you save the document."
+        />
       {:else}
         {#if outgoingLinks.length > 0}
           <div class="link-section">
@@ -156,7 +163,6 @@
             </ul>
           </div>
         {/if}
-
         {#if backlinks.length > 0}
           <div class="link-section">
             <div class="link-section-header">
@@ -175,20 +181,26 @@
             </ul>
           </div>
         {:else if outgoingLinks.length === 0}
-          <div class="empty">No links found.</div>
+          <EmptyState
+            icon={Link2}
+            iconSize={32}
+            title="No links found"
+            subtitle="Use [[Target]] syntax to create WikiLinks between documents."
+          />
         {/if}
       {/if}
     </div>
   {:else}
     <div class="toc-scroller file-tree-scroller">
       {#if !$workspaceStore.rootPath}
-        <div class="empty">
-          <FolderOpen size={32} strokeWidth={1.5} style="opacity: 0.4; margin-bottom: 8px;" />
-          <div>No folder open</div>
-          <button class="open-folder-btn" onclick={() => workspaceStore.openWorkspace()}>
-            Open Folder
-          </button>
-        </div>
+        <EmptyState
+          icon={FolderOpen}
+          iconSize={32}
+          title="No folder open"
+          subtitle="Open a folder to browse files and search across your workspace."
+          actionLabel="Open folder"
+          action={() => workspaceStore.openWorkspace()}
+        />
       {:else}
         <div class="file-tree-header">
           <span class="file-tree-root" title={$workspaceStore.rootPath}>
@@ -198,7 +210,6 @@
             <span style="font-size: 11px;">↻</span>
           </button>
         </div>
-
         <div class="search-box">
           <Search size={12} strokeWidth={2} />
           <input
@@ -208,7 +219,6 @@
             oninput={(e) => handleSearchInput(e.currentTarget.value)}
           />
         </div>
-
         {#if $workspaceStore.searchLoading}
           <div class="empty">Searching…</div>
         {:else if $workspaceStore.searchResults.length > 0}
@@ -226,9 +236,19 @@
             {/each}
           </ul>
         {:else if searchInput.trim()}
-          <div class="empty">No matches</div>
+          <EmptyState
+            icon={Search}
+            iconSize={32}
+            title="No matches"
+            subtitle="Try a different search term."
+          />
         {:else if $workspaceStore.fileTree.length === 0}
-          <div class="empty">No markdown files found.</div>
+          <EmptyState
+            icon={FileText}
+            iconSize={32}
+            title="No markdown files"
+            subtitle="This folder doesn't contain any .md files."
+          />
         {:else}
           <ul class="file-tree">
             {#each $workspaceStore.fileTree as node (node.path)}
@@ -278,12 +298,11 @@
   {/if}
 {/snippet}
 
-<style>
   .sidebar {
     display: flex;
     flex-direction: column;
-    width: 220px;
-    min-width: 220px;
+    width: 100%;
+    min-width: 100%;
     background: var(--bg-surface);
     border-right: 1px solid var(--border-default);
     overflow: hidden;

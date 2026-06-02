@@ -39,12 +39,11 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   let presentationOpen = $state(false);
   let slideDeck = $state<any>(null);
   let searchPanelOpen = $state(false);
-
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
+  let sidebarWidth = $state(220);
   let viewMode = $state<"split" | "editor" | "preview">("split");
   let splitDirection = $state<"horizontal" | "vertical">("horizontal");
-
   function applySettings(s: any) {
     activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
     viewMode = s.view_mode || s.viewMode || "split";
@@ -68,6 +67,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   invoke("get_settings")
     .then((s: any) => {
       applySettings(s);
+      sidebarWidth = s.sidebar_width ?? s.sidebarWidth ?? 220;
       // Initialize TTS from saved preferences
       const engine = (s.tts_engine ?? "online") as TtsEngine;
       const voiceId = s.tts_voice_id ?? "";
@@ -80,7 +80,6 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       );
     })
     .catch(() => {});
-
   /* Adaptive layout — responsive breakpoints */
   let windowWidth = $state(0);
   $effect(() => {
@@ -294,7 +293,38 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       onSelectActivity={handleSelectActivity}
     />
     {#if sidebarPanelVisible}
-      <OutlineSidebar activity={activeActivity} />
+      <div class="sidebar-wrapper" style="width: {sidebarWidth}px; min-width: {sidebarWidth}px;">
+        <OutlineSidebar activity={activeActivity} />
+        <div
+          class="sidebar-resize-handle"
+          role="separator"
+          aria-label="Resize sidebar"
+          onmousedown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startWidth = sidebarWidth;
+            function onMove(ev: MouseEvent) {
+              const delta = ev.clientX - startX;
+              sidebarWidth = Math.max(180, Math.min(320, startWidth + delta));
+            }
+            function onUp() {
+              window.removeEventListener("mousemove", onMove);
+              window.removeEventListener("mouseup", onUp);
+              // Persist width
+              invoke("get_settings")
+                .then((s: any) => {
+                  if (s) {
+                    s.sidebar_width = sidebarWidth;
+                    invoke("update_settings", { settings: s }).catch(() => {});
+                  }
+                })
+                .catch(() => {});
+            }
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+          }}
+        ></div>
+      </div>
     {/if}
     {#if effectiveViewMode === "split"}
       <SplitPane direction={splitDirection}>
@@ -340,7 +370,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   .app {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    min-height: 100dvh;
     width: 100vw;
     overflow: hidden;
     background: var(--bg-base);
@@ -353,6 +383,26 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     display: flex;
     overflow: hidden;
     min-height: 0;
+  }
+  .sidebar-wrapper {
+    display: flex;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 100;
+    transition: background 150ms ease;
+  }
+  .sidebar-resize-handle:hover,
+  .sidebar-resize-handle:active {
+    background: var(--accent-default);
   }
   .single-pane {
     flex: 1;

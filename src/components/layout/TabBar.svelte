@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, Plus, Pin } from "@lucide/svelte";
+  import { X, Plus, Pin, ChevronLeft, ChevronRight } from "@lucide/svelte";
   import { tabStore, type Tab } from "../../lib/tabStore";
 
   let { onNewTab }: { onNewTab?: () => void } = $props();
@@ -96,6 +96,16 @@
 <svelte:window onclick={() => { if (ctxMenuOpen) closeCtxMenu(); }} />
 
 <div class="tab-bar">
+  {#if canScrollLeft}
+    <button
+      class="tab-scroll-btn"
+      onclick={scrollLeft}
+      aria-label="Scroll tabs left"
+      tabindex="-1"
+    >
+      <ChevronLeft size={14} strokeWidth={2.5} />
+    </button>
+  {/if}
   <div class="tab-scroll">
     {#each $tabStore.tabs.filter((t) => t.pinned) as tab (tab.id)}
       <div
@@ -156,6 +166,16 @@
       </div>
     {/each}
   </div>
+  {#if canScrollRight}
+    <button
+      class="tab-scroll-btn"
+      onclick={scrollRight}
+      aria-label="Scroll tabs right"
+      tabindex="-1"
+    >
+      <ChevronRight size={14} strokeWidth={2.5} />
+    </button>
+  {/if}
   <button
     class="new-tab-btn"
     onclick={handleNewTab}

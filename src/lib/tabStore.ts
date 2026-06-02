@@ -343,6 +343,8 @@ function createTabStore() {
     try {
       await invoke("save_document", { path: doc.path, content: doc.content });
       markClean();
+      autoSaveFlash.set(true);
+      setTimeout(() => autoSaveFlash.set(false), 800);
     } catch (e) {
       console.error("Auto-save failed:", e);
     }
@@ -639,6 +641,7 @@ function createTabStore() {
     setLoading,
   };
 }
+export const autoSaveFlash = writable(false);
 
 export const tabStore = createTabStore();
 

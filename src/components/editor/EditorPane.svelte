@@ -1,3 +1,5 @@
+  import EmptyState from "../ui/EmptyState.svelte";
+  import { FilePlus, FileText } from "@lucide/svelte";
 <script lang="ts">
   import { onMount } from "svelte";
   import type { EditorView } from "@codemirror/view";
@@ -372,24 +374,38 @@
       );
     };
   });
-</script>
+{#snippet emptyEditor()}
+  <EmptyState
+    icon={FileText}
+    title="No document open"
+    subtitle="Open a file or create a new document to start writing."
+    actionLabel="New document"
+    action={() => {
+      import("../../lib/keyboard").then((m) => m.newDocument());
+    }}
+  />
+{/snippet}
 
 <div class="editor-pane">
   <Toolbar view={editorView} />
-  <div
-    class="editor-container"
-    class:drag-over={isDragOver}
-    class:paste-flash={isPasteFlash}
-    role="application"
-    aria-label="Markdown editor"
-    bind:this={container}
-    onpaste={handlePaste}
-    ondragover={handleDragOver}
-    ondragenter={handleDragEnter}
-    ondragleave={handleDragLeave}
-    ondrop={handleDrop}
-    oncontextmenu={handleContextMenu}
-  ></div>
+  {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
+    {@render emptyEditor()}
+  {:else}
+    <div
+      class="editor-container"
+      class:drag-over={isDragOver}
+      class:paste-flash={isPasteFlash}
+      role="application"
+      aria-label="Markdown editor"
+      bind:this={container}
+      onpaste={handlePaste}
+      ondragover={handleDragOver}
+      ondragenter={handleDragEnter}
+      ondragleave={handleDragLeave}
+      ondrop={handleDrop}
+      oncontextmenu={handleContextMenu}
+    ></div>
+  {/if}
   {#if contextMenuVisible}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
@@ -407,7 +423,7 @@
           class="editor-ctx-item"
           onclick={() => { addToDictionary(contextMenuWord); closeContextMenu(); }}
         >
-          Add �{contextMenuWord}� to dictionary
+          Add "{contextMenuWord}" to dictionary
         </button>
       </div>
     </div>

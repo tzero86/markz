@@ -11,6 +11,26 @@
     insertMermaidBlock,
     insertDetailsBlock,
   } from "./editorCommands";
+  import {
+    Heading1,
+    Heading2,
+    Heading3,
+    Bold,
+    Italic,
+    Strikethrough,
+    Code,
+    Braces,
+    Quote,
+    Minus,
+    FunctionSquare,
+    List,
+    ListOrdered,
+    CheckSquare,
+    Link,
+    Table,
+    GitBranch,
+    PanelBottom,
+  } from "@lucide/svelte";
 
   interface Props {
     view: EditorView | null;
@@ -30,44 +50,44 @@
     {
       group: "headings",
       items: [
-        { label: "H1", title: "Heading 1", action: () => doAction((v) => toggleHeading(v, 1)) },
-        { label: "H2", title: "Heading 2", action: () => doAction((v) => toggleHeading(v, 2)) },
-        { label: "H3", title: "Heading 3", action: () => doAction((v) => toggleHeading(v, 3)) },
+        { icon: Heading1, title: "Heading 1", action: () => doAction((v) => toggleHeading(v, 1)) },
+        { icon: Heading2, title: "Heading 2", action: () => doAction((v) => toggleHeading(v, 2)) },
+        { icon: Heading3, title: "Heading 3", action: () => doAction((v) => toggleHeading(v, 3)) },
       ],
     },
     {
       group: "style",
       items: [
-        { label: "B", title: "Bold (Ctrl+B)", action: () => doAction((v) => wrapSelection(v, "**", "**")) },
-        { label: "I", title: "Italic (Ctrl+I)", action: () => doAction((v) => wrapSelection(v, "*", "*")) },
-        { label: "S", title: "Strikethrough", action: () => doAction((v) => wrapSelection(v, "~~", "~~")) },
-        { label: "` `", title: "Inline Code", action: () => doAction((v) => wrapSelection(v, "`", "`", "code")) },
+        { icon: Bold, title: "Bold (Ctrl+B)", action: () => doAction((v) => wrapSelection(v, "**", "**")) },
+        { icon: Italic, title: "Italic (Ctrl+I)", action: () => doAction((v) => wrapSelection(v, "*", "*")) },
+        { icon: Strikethrough, title: "Strikethrough", action: () => doAction((v) => wrapSelection(v, "~~", "~~")) },
+        { icon: Code, title: "Inline Code", action: () => doAction((v) => wrapSelection(v, "`", "`", "code")) },
       ],
     },
     {
       group: "blocks",
       items: [
-        { label: "{}", title: "Code Block", action: () => doAction((v) => insertCodeBlock(v, "")) },
-        { label: "\"", title: "Blockquote", action: () => doAction((v) => toggleLinePrefix(v, "> ")) },
-        { label: "—", title: "Horizontal Rule", action: () => doAction((v) => insertText(v, "\n---\n")) },
-        { label: "$$", title: "Math Block", action: () => doAction((v) => insertMathBlock(v)) },
+        { icon: Braces, title: "Code Block", action: () => doAction((v) => insertCodeBlock(v, "")) },
+        { icon: Quote, title: "Blockquote", action: () => doAction((v) => toggleLinePrefix(v, "> ")) },
+        { icon: Minus, title: "Horizontal Rule", action: () => doAction((v) => insertText(v, "\n---\n")) },
+        { icon: FunctionSquare, title: "Math Block", action: () => doAction((v) => insertMathBlock(v)) },
       ],
     },
     {
       group: "lists",
       items: [
-        { label: "•", title: "Bullet List", action: () => doAction((v) => toggleLinePrefix(v, "- ")) },
-        { label: "1.", title: "Numbered List", action: () => doAction((v) => toggleLinePrefix(v, "1. ")) },
-        { label: "☐", title: "Task List", action: () => doAction((v) => toggleLinePrefix(v, "- [ ] ")) },
+        { icon: List, title: "Bullet List", action: () => doAction((v) => toggleLinePrefix(v, "- ")) },
+        { icon: ListOrdered, title: "Numbered List", action: () => doAction((v) => toggleLinePrefix(v, "1. ")) },
+        { icon: CheckSquare, title: "Task List", action: () => doAction((v) => toggleLinePrefix(v, "- [ ] ")) },
       ],
     },
     {
       group: "insert",
       items: [
-        { label: "[]", title: "Link", action: () => doAction((v) => wrapSelection(v, "[", "](url)", "text")) },
-        { label: "⊞", title: "Table", action: () => { showTableDialog = true; } },
-        { label: "Mmd", title: "Mermaid Diagram", action: () => doAction((v) => insertMermaidBlock(v)) },
-        { label: "▼", title: "Expandable Section", action: () => doAction((v) => insertDetailsBlock(v)) },
+        { icon: Link, title: "Link", action: () => doAction((v) => wrapSelection(v, "[", "](url)", "text")) },
+        { icon: Table, title: "Table", action: () => { showTableDialog = true; } },
+        { icon: GitBranch, title: "Mermaid Diagram", action: () => doAction((v) => insertMermaidBlock(v)) },
+        { icon: PanelBottom, title: "Expandable Section", action: () => doAction((v) => insertDetailsBlock(v)) },
       ],
     },
   ];
@@ -77,13 +97,14 @@
   {#each tools as group}
     <div class="tool-group">
       {#each group.items as item}
+        {@const Icon = item.icon}
         <button
           class="tool-btn"
           onclick={item.action}
           title={item.title}
           type="button"
         >
-          {item.label}
+          <Icon size={16} strokeWidth={2} />
         </button>
       {/each}
     </div>
@@ -149,19 +170,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
+    width: 28px;
     height: 28px;
-    padding: 0 var(--space-2);
+    padding: 0;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
-    font-size: var(--text-sm);
-    font-family: var(--font-mono);
-    font-weight: 600;
     cursor: pointer;
     transition: background 150ms ease, color 150ms ease, transform 100ms ease;
-    white-space: nowrap;
   }
   .tool-btn:hover {
     background: var(--bg-hover);

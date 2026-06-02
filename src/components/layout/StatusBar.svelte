@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Columns2, AlignLeft, Eye, Type, ZoomIn, Text, GitBranch } from "@lucide/svelte";
-  import { activeDocumentStore } from "../../lib/tabStore";
+  import { activeDocumentStore, autoSaveFlash } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { invoke } from "@tauri-apps/api/core";
@@ -38,7 +38,7 @@
 
 <div class="statusbar">
   <div class="status-left">
-    <div class="save-indicator" class:unsaved={$activeDocumentStore.isDirty}>
+    <div class="save-indicator" class:unsaved={$activeDocumentStore.isDirty} class:flashing={$autoSaveFlash}>
       <span class="save-dot"></span>
       <span class="save-text">{$activeDocumentStore.isDirty ? "Unsaved" : "Saved"}</span>
     </div>
@@ -184,6 +184,9 @@
     box-shadow: 0 0 0 2px var(--warning-bg);
     animation: pulse-dot 2s ease infinite;
   }
+  .save-indicator.flashing {
+    animation: flash-save 600ms ease;
+  }
   .save-text {
     font-weight: 500;
     font-size: var(--text-xs);
@@ -195,6 +198,10 @@
   @keyframes pulse-dot {
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(0.85); opacity: 0.7; }
+  }
+  @keyframes flash-save {
+    0%, 100% { background: var(--bg-subtle); }
+    50% { background: var(--accent-subtle); }
   }
 
   .status-item {

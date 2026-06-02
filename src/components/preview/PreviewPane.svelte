@@ -1,4 +1,5 @@
-<script lang="ts">
+  import EmptyState from "../ui/EmptyState.svelte";
+  import { Eye, Copy, Check, Play, Pause, Square, ChevronDown, Presentation } from "@lucide/svelte";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { invoke } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
@@ -9,10 +10,9 @@
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
-  import { Copy, Check, Play, Pause, Square, ChevronDown, Presentation } from "@lucide/svelte";
   import { ttsStore } from "../../lib/ttsStore";
   import { onMount } from "svelte";
-import TableEditorModal from "../editor/TableEditorModal.svelte";
+  import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
 
   type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github";
@@ -531,7 +531,6 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
   });
 
 </script>
-
 <div class="preview-pane">
   {#if isRendering}
     <div class="render-progress-bar"></div>
@@ -544,6 +543,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
         onclick={() => { copyDropdownOpen = !copyDropdownOpen; }}
         aria-label="Copy"
         aria-expanded={copyDropdownOpen}
+        disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
       >
         {#if copyFeedback}
           <Check size={14} strokeWidth={2.5} />
@@ -568,13 +568,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
       {/if}
     </div>
     <div class="toolbar-actions">
-      <!-- Bi-directional editing hidden for now — needs more testing -->
-      <!-- {#if activeFormat === "html"} -->
-      <!--   <button class="action-btn" class:active={previewEditing} onclick={() => (previewEditing = !previewEditing)}> -->
-      <!--     <Pencil size={14} strokeWidth={2} /> -->
-      <!--   </button> -->
-      <!--   {#if previewEditing} ... sync button ... {/if} -->
-      <!-- {/if} -->
+      <!-- Bi-directional editing hidden for now -->
       <div class="tts-controls">
           {#if $ttsStore.state === "loading"}
             <button class="action-btn" disabled aria-label="Loading">
@@ -591,6 +585,7 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
               }}
               aria-label="Read aloud"
               data-tooltip="Read aloud"
+              disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
             >
               <Play size={14} strokeWidth={2} />
             </button>
@@ -629,25 +624,34 @@ import TableEditorModal from "../editor/TableEditorModal.svelte";
         onclick={() => window.dispatchEvent(new CustomEvent("markz:start-presentation"))}
         aria-label="Start presentation"
         data-tooltip="Start presentation"
+        disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
       >
         <Presentation size={14} strokeWidth={2} />
       </button>
     </div>
   </div>
-  <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
-    <div
-      class="preview-content"
-      class:editing={previewEditing}
-      bind:this={contentDiv}
-      contenteditable={previewEditing}
-      onclick={handlePreviewClick}
-      ondblclick={handleTableDblClick}
-      role="presentation"
-      style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
-    >
-      {@html htmlContent}
+  {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
+    <EmptyState
+      icon={Eye}
+      title="Nothing to preview"
+      subtitle="Open or create a document to see the live preview."
+    />
+  {:else}
+    <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
+      <div
+        class="preview-content"
+        class:editing={previewEditing}
+        bind:this={contentDiv}
+        contenteditable={previewEditing}
+        onclick={handlePreviewClick}
+        ondblclick={handleTableDblClick}
+        role="presentation"
+        style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
+      >
+        {@html htmlContent}
+      </div>
     </div>
-  </div>
+  {/if}
   <TableEditorModal
     open={tableEditorOpen}
     markdown={$activeDocumentStore.content}
