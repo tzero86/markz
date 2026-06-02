@@ -49,7 +49,7 @@ import Toast from "../ui/Toast.svelte";
 
   let breadcrumb = $derived(
     $activeDocumentStore.path
-      ? $activeDocumentStore.path.split(/[\\/]/).filter(Boolean).slice(-3).join(" › ")
+      ? $activeDocumentStore.path.split(/[\\/]/).filter(Boolean).slice(-3).join(" \u203A ")
       : "MarkZ"
   );
 
@@ -457,6 +457,7 @@ import Toast from "../ui/Toast.svelte";
     font-weight: 700;
     color: var(--text-accent);
     letter-spacing: -0.01em;
+    font-family: "MarkZEmoji", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", var(--font-sans);
   }
   .doc-info {
     display: flex;
@@ -472,6 +473,7 @@ import Toast from "../ui/Toast.svelte";
     white-space: nowrap;
     max-width: 300px;
     transition: color 150ms ease;
+    font-family: "MarkZEmoji", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", var(--font-sans);
   }
   .dirty-dot {
     width: 6px;

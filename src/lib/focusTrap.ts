@@ -1,10 +1,9 @@
-export function trapFocus(container: HTMLElement) {
+export function trapFocus(container: HTMLElement): { destroy: () => void } {
   const focusable = container.querySelectorAll(
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
   );
   const first = focusable[0] as HTMLElement;
   const last = focusable[focusable.length - 1] as HTMLElement;
-
   function handler(e: KeyboardEvent) {
     if (e.key !== "Tab") return;
     if (e.shiftKey) {
@@ -21,5 +20,5 @@ export function trapFocus(container: HTMLElement) {
   }
   container.addEventListener("keydown", handler);
   first?.focus();
-  return () => container.removeEventListener("keydown", handler);
+  return { destroy: () => container.removeEventListener("keydown", handler) };
 }

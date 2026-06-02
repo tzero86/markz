@@ -120,6 +120,7 @@ pub struct SessionTab {
     path: Option<String>,
     title: String,
     is_dirty: bool,
+    #[serde(default)]
     pinned: bool,
 }
 

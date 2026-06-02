@@ -112,17 +112,16 @@ test("settings modal opens and has fixed height", async ({ page }) => {
   const modal = page.locator('[role="dialog"]');
   await expect(modal).toBeVisible({ timeout: 3000 });
 
-  // Modal should have a fixed height (not shrink when switching tabs)
   const box = await modal.boundingBox();
   expect(box?.height).toBeGreaterThan(600);
 
-  // Switch to Help tab
-  await modal.locator('button:has-text("Help")').click();
+  // Switch to Shortcuts category
+  await modal.locator('.sidebar-item').filter({ hasText: "Shortcuts" }).click();
   const boxAfter = await modal.boundingBox();
   expect(Math.round(boxAfter?.height ?? 0)).toBe(Math.round(box?.height ?? 0));
 
-  // Switch to About tab
-  await modal.locator('button:has-text("About")').click();
+  // Switch to About category
+  await modal.locator('.sidebar-item').filter({ hasText: "About" }).click();
   const boxAbout = await modal.boundingBox();
   expect(Math.round(boxAbout?.height ?? 0)).toBe(Math.round(box?.height ?? 0));
 
@@ -198,23 +197,21 @@ test("accessibility settings are present in settings modal", async ({ page }) =>
   const modal = page.locator('[role="dialog"]');
   await expect(modal).toBeVisible({ timeout: 3000 });
 
-  // Scroll to Accessibility section
-  const accessibilityHeading = modal.locator('h3:has-text("Accessibility")');
-  await expect(accessibilityHeading).toBeVisible();
-
-  // Interface font size field
+  // Interface font size field (in General category, visible by default)
   await expect(modal.locator('input#ui-font-size')).toBeVisible();
   const uiFontSizeVal = await modal.locator('input#ui-font-size').inputValue();
   expect(Number(uiFontSizeVal)).toBeGreaterThanOrEqual(10);
   expect(Number(uiFontSizeVal)).toBeLessThanOrEqual(24);
 
-  // Preview font size field
+  // Preview font size field (in Preview category - navigate there)
+  await modal.locator('.sidebar-item').filter({ hasText: "Preview" }).click();
   await expect(modal.locator('input#preview-font-size')).toBeVisible();
   const fontSizeVal = await modal.locator('input#preview-font-size').inputValue();
   expect(Number(fontSizeVal)).toBeGreaterThanOrEqual(8);
   expect(Number(fontSizeVal)).toBeLessThanOrEqual(32);
 
-  // Reduced motion toggle
+  // Reduced motion toggle (in General category)
+  await modal.locator('.sidebar-item').filter({ hasText: "General" }).click();
   await expect(modal.locator('label:has-text("Reduced motion")')).toBeVisible();
 
   await page.keyboard.press("Escape");
@@ -286,15 +283,15 @@ test("no console errors on startup", async ({ page }) => {
   expect(criticalErrors).toEqual([]);
 });
 
-test("Help button opens modal on Help tab", async ({ page }) => {
+test("Help button opens modal on Shortcuts category", async ({ page }) => {
   await page.locator('button[aria-label="Help"]').click();
 
   const modal = page.locator('[role="dialog"]');
   await expect(modal).toBeVisible({ timeout: 3000 });
 
-  // Should be on Help tab
-  const helpTab = modal.locator('.tab').filter({ hasText: "Help" });
-  await expect(helpTab).toHaveClass(/active/);
+  // Should be on Shortcuts category
+  const shortcutsItem = modal.locator('.sidebar-item').filter({ hasText: "Shortcuts" });
+  await expect(shortcutsItem).toHaveClass(/active/);
 
   // Should show shortcuts list
   await expect(modal.locator(".shortcut-row").first()).toBeVisible();
@@ -304,15 +301,15 @@ test("Help button opens modal on Help tab", async ({ page }) => {
   await expect(modal).not.toBeVisible();
 });
 
-test("Settings button opens modal on Settings tab", async ({ page }) => {
+test("Settings button opens modal on General category", async ({ page }) => {
   await page.locator('button[aria-label="Settings"]').click();
 
   const modal = page.locator('[role="dialog"]');
   await expect(modal).toBeVisible({ timeout: 3000 });
 
-  // Should be on Settings tab
-  const settingsTab = modal.locator('.tab').filter({ hasText: "Settings" });
-  await expect(settingsTab).toHaveClass(/active/);
+  // Should be on General category
+  const generalItem = modal.locator('.sidebar-item').filter({ hasText: "General" });
+  await expect(generalItem).toHaveClass(/active/);
 
   // Should show settings sections
   await expect(modal.locator('h3:has-text("Appearance")')).toBeVisible();
@@ -364,4 +361,56 @@ test("view mode buttons switch between split, editor, and preview", async ({ pag
   await expect(editorPane).toBeVisible();
   await expect(previewPane).toBeVisible();
   await expect(splitPane).toBeVisible();
+});
+
+test("preview pane is properly configured for scrolling", async ({ page }) => {
+  const previewScroller = page.locator(".preview-scroller");
+  await expect(previewScroller).toBeVisible();
+
+  const overflow = await previewScroller.evaluate((el) =>
+    getComputedStyle(el).overflow
+  );
+  expect(overflow).toBe("auto");
+});
+
+test("closing the last tab keeps split pane intact with divider visible", async ({
+  page,
+}) => {
+  const splitPane = page.locator(".split-pane");
+  const divider = page.getByRole("separator", { name: "Resize panes" });
+  const editorPane = page.locator(".editor-pane");
+  const previewScroller = page.locator(".preview-scroller");
+
+  await expect(splitPane).toBeVisible();
+  await expect(divider).toBeVisible();
+  await expect(editorPane).toBeVisible();
+  await expect(previewScroller).toBeVisible();
+
+  // Close the only tab
+  const tab = page.locator(".tab-bar .tab").first();
+  await tab.hover();
+  await tab.locator('button[aria-label^="Close"]').click();
+  await page.waitForTimeout(300);
+
+  // Split pane and divider should remain intact (with EmptyState content)
+  await expect(splitPane).toBeVisible();
+  await expect(divider).toBeVisible();
+  await expect(editorPane).toBeVisible();
+  await expect(page.locator(".editor-pane .empty-state")).toBeVisible();
+  await expect(previewScroller).toBeVisible();
+  await expect(previewScroller.locator(".empty-state")).toBeVisible();
+
+  const dividerBox = await divider.boundingBox();
+  expect(dividerBox?.width).toBeGreaterThan(0);
+  expect(dividerBox?.height).toBeGreaterThan(0);
+});
+
+test("editor scroller is properly configured", async ({ page }) => {
+  const cmScroller = page.locator(".cm-scroller");
+  await expect(cmScroller).toBeVisible();
+
+  const overflowY = await cmScroller.evaluate(
+    (el: HTMLElement) => getComputedStyle(el).overflowY
+  );
+  expect(overflowY).toBe("auto");
 });

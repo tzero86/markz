@@ -15,59 +15,65 @@ async function openSettings(page: Page) {
 }
 
 test.describe("Settings modal", () => {
-  test("opens on Settings tab by default", async ({ page }) => {
+  test("opens on General category by default", async ({ page }) => {
     const modal = await openSettings(page);
-    const settingsTab = modal.locator('.tab').filter({ hasText: "Settings" });
-    await expect(settingsTab).toHaveClass(/active/);
+    const generalItem = modal.locator('.sidebar-item').filter({ hasText: "General" });
+    await expect(generalItem).toHaveClass(/active/);
   });
 
-  test("has all settings sections", async ({ page }) => {
+  test("has general settings sections", async ({ page }) => {
     const modal = await openSettings(page);
     await expect(modal.locator('h3:has-text("Appearance")')).toBeVisible();
-    await expect(modal.locator('h3:has-text("Editor")')).toBeVisible();
     await expect(modal.locator('h3:has-text("Layout")')).toBeVisible();
     await expect(modal.locator('h3:has-text("Accessibility")')).toBeVisible();
-    await expect(modal.locator('h3:has-text("Auto Save")')).toBeVisible();
-    await expect(modal.locator('h3:has-text("Export")')).toBeVisible();
   });
 
-  test("export section has Pandoc path field", async ({ page }) => {
+  test("navigating to Editor category shows editor sections", async ({ page }) => {
     const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
+    await expect(modal.locator('h3:has-text("Font")')).toBeVisible();
+    await expect(modal.locator('h3:has-text("Editor")')).toBeVisible();
+    await expect(modal.locator('h3:has-text("Custom Dictionary")')).toBeVisible();
+  });
+
+  test("navigating to Advanced category shows export section with Pandoc path field", async ({ page }) => {
+    const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Advanced" }).click();
     const exportSection = modal.locator('.settings-section').filter({ hasText: 'Export' });
     await expect(exportSection).toBeVisible();
-    // The Pandoc path input should be visible with empty default
     const pandocInput = exportSection.locator('input[type="text"]');
     await expect(pandocInput).toBeVisible();
     await expect(pandocInput).toHaveValue("");
   });
 
-  test("appearance fields have correct initial values", async ({ page }) => {
+  test("General category has theme field with correct initial value", async ({ page }) => {
     const modal = await openSettings(page);
     await expect(modal.locator('select#theme-select')).toHaveValue("dark");
+  });
+
+  test("Editor category has font fields with correct initial values", async ({ page }) => {
+    const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
     await expect(modal.locator('select#font-family')).toHaveValue("JetBrains Mono");
     await expect(modal.locator('input#font-size')).toHaveValue("14");
     await expect(modal.locator('input#line-height')).toHaveValue("1.7");
   });
 
-  test("editor toggles have correct initial values", async ({ page }) => {
+  test("editor behavior toggles have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
-    const wordWrap = modal.locator('input[type="checkbox"]').nth(0);
-    const showLineNumbers = modal.locator('input[type="checkbox"]').nth(1);
-    const showMinimap = modal.locator('input[type="checkbox"]').nth(2);
-    const autoOpenFolder = modal.locator('input[type="checkbox"]').nth(3);
-    const spellcheck = modal.locator('input[type="checkbox"]').nth(4);
-    const vimMode = modal.locator('input[type="checkbox"]').nth(5);
-
-    await expect(wordWrap).toBeChecked();
-    await expect(showLineNumbers).toBeChecked();
-    await expect(showMinimap).not.toBeChecked();
-    await expect(autoOpenFolder).toBeChecked();
-    await expect(spellcheck).toBeChecked();
-    await expect(vimMode).not.toBeChecked();
+    await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
+    const checkboxes = modal.locator('input[type="checkbox"]');
+    await expect(checkboxes.nth(0)).toBeChecked(); // word wrap
+    await expect(checkboxes.nth(1)).toBeChecked(); // show line numbers
+    await expect(checkboxes.nth(2)).not.toBeChecked(); // minimap
+    await expect(checkboxes.nth(3)).toBeChecked(); // auto open folder
+    await expect(checkboxes.nth(4)).toBeChecked(); // spellcheck
+    await expect(checkboxes.nth(5)).not.toBeChecked(); // vim mode
   });
 
   test("vim mode checkbox toggles", async ({ page }) => {
     const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
     const vimMode = modal.locator('input[type="checkbox"]').nth(5);
     await expect(vimMode).not.toBeChecked();
     await vimMode.click();
@@ -75,6 +81,7 @@ test.describe("Settings modal", () => {
     await vimMode.click();
     await expect(vimMode).not.toBeChecked();
   });
+
   test("layout fields have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
     await expect(modal.locator('select#view-mode')).toHaveValue("split");
@@ -89,20 +96,27 @@ test.describe("Settings modal", () => {
 
   test("custom dictionary section is present", async ({ page }) => {
     const modal = await openSettings(page);
-    await expect(modal.locator('label:has-text("Custom dictionary")')).toBeVisible();
+    await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
+    await expect(modal.locator('h3:has-text("Custom Dictionary")')).toBeVisible();
     await expect(modal.locator('textarea#custom-dictionary')).toBeVisible();
   });
 
   test("accessibility fields have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
     await expect(modal.locator('input#ui-font-size')).toHaveValue("14");
-    await expect(modal.locator('input#preview-font-size')).toHaveValue("16");
     const reducedMotion = modal.locator('label:has-text("Reduced motion")').locator('input[type="checkbox"]');
     await expect(reducedMotion).not.toBeChecked();
   });
 
+  test("preview fields have correct initial values", async ({ page }) => {
+    const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Preview" }).click();
+    await expect(modal.locator('input#preview-font-size')).toHaveValue("16");
+  });
+
   test("auto save toggle reveals interval field", async ({ page }) => {
     const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Advanced" }).click();
     const autoSaveToggle = modal.locator('label:has-text("Auto save")').locator('input[type="checkbox"]');
     await expect(modal.locator('input#auto-save-interval')).not.toBeVisible();
 
@@ -122,6 +136,7 @@ test.describe("Settings modal", () => {
 
   test("toggling minimap checkbox changes state", async ({ page }) => {
     const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
     const showMinimap = modal.locator('input[type="checkbox"]').nth(2);
     await expect(showMinimap).not.toBeChecked();
     await showMinimap.click();
@@ -143,52 +158,45 @@ test.describe("Settings modal", () => {
   });
 });
 
-test.describe("Help tab", () => {
+test.describe("Shortcuts category (Help)", () => {
   test("shows keyboard shortcuts list", async ({ page }) => {
     await page.locator('button[aria-label="Help"]').click();
     const modal = page.locator('[role="dialog"]');
     await expect(modal).toBeVisible({ timeout: 3000 });
 
-    const helpTab = modal.locator('.tab').filter({ hasText: "Help" });
-    await expect(helpTab).toHaveClass(/active/);
+    const shortcutsItem = modal.locator('.sidebar-item').filter({ hasText: "Shortcuts" });
+    await expect(shortcutsItem).toHaveClass(/active/);
 
     await expect(modal.locator(".shortcut-row")).toHaveCount(16);
     await expect(modal.locator(".shortcut-row").first()).toBeVisible();
   });
 });
 
-test.describe("About tab", () => {
-  test("displays app version and info", async ({ page }) => {
+test.describe("About category", () => {
+  async function openAbout(page: Page) {
     await page.locator('button[aria-label="Help"]').click();
     const modal = page.locator('[role="dialog"]');
     await expect(modal).toBeVisible({ timeout: 3000 });
+    await modal.locator('.sidebar-item').filter({ hasText: "About" }).click();
+    return modal;
+  }
 
-    await modal.locator('button:has-text("About")').click();
-
+  test("displays app version and info", async ({ page }) => {
+    const modal = await openAbout(page);
     await expect(modal.locator('.logo-text:has-text("MarkZ")')).toBeVisible();
     await expect(modal.locator('.logo-version')).toContainText("v0.1.12");
-    await expect(modal.locator('p:has-text("dual-pane Markdown editor")')).toBeVisible();
+    await expect(modal.locator('.about-description')).toBeVisible();
   });
 
   test("shows features list", async ({ page }) => {
-    await page.locator('button[aria-label="Help"]').click();
-    const modal = page.locator('[role="dialog"]');
-    await expect(modal).toBeVisible({ timeout: 3000 });
-
-    await modal.locator('button:has-text("About")').click();
-
+    const modal = await openAbout(page);
     await expect(modal.locator('.about-features li')).toHaveCount(6);
     await expect(modal.locator('li:has-text("Live preview")')).toBeVisible();
     await expect(modal.locator('li:has-text("Export to JIRA")')).toBeVisible();
   });
 
   test("shows tech stack badges", async ({ page }) => {
-    await page.locator('button[aria-label="Help"]').click();
-    const modal = page.locator('[role="dialog"]');
-    await expect(modal).toBeVisible({ timeout: 3000 });
-
-    await modal.locator('button:has-text("About")').click();
-
+    const modal = await openAbout(page);
     const badges = modal.locator('.tech-badge');
     await expect(badges).toHaveCount(6);
     await expect(modal.locator('.tech-badge:has-text("Tauri v2")')).toBeVisible();
@@ -197,23 +205,13 @@ test.describe("About tab", () => {
   });
 
   test("shows credits section", async ({ page }) => {
-    await page.locator('button[aria-label="Help"]').click();
-    const modal = page.locator('[role="dialog"]');
-    await expect(modal).toBeVisible({ timeout: 3000 });
-
-    await modal.locator('button:has-text("About")').click();
-
+    const modal = await openAbout(page);
     await expect(modal.locator('.about-credits')).toBeVisible();
     await expect(modal.locator('a[href="https://github.com/tzero86"]')).toBeVisible();
   });
 
   test("update check button is present and clickable", async ({ page }) => {
-    await page.locator('button[aria-label="Help"]').click();
-    const modal = page.locator('[role="dialog"]');
-    await expect(modal).toBeVisible({ timeout: 3000 });
-
-    await modal.locator('button:has-text("About")').click();
-
+    const modal = await openAbout(page);
     const updateBtn = modal.locator('.update-btn').filter({ hasText: /Check for Updates/ });
     await expect(updateBtn).toBeVisible();
     await expect(updateBtn).toBeEnabled();

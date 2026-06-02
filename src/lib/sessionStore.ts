@@ -39,6 +39,7 @@ export async function getSession(): Promise<SessionState | null> {
       path: string | null;
       title: string;
       is_dirty: boolean;
+      pinned?: boolean;
     }>;
     active_tab_path: string | null;
     workspace_path: string | null;

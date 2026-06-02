@@ -183,4 +183,64 @@ test.describe("Session restore", () => {
     await expect(page.locator(".tree-file").first()).toContainText("doc1.md");
     await expect(page.locator(".tree-dir").first()).toContainText("docs");
   });
+
+  test("restores correct content for each tab", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector(".app", { timeout: 10000 });
+
+    // Set up file content overrides per path
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_file_contents", JSON.stringify({
+        "/project/doc-a.md": "# Document A\n\nContent of doc A.",
+        "/project/doc-b.md": "# Document B\n\nContent of doc B.",
+      }));
+      localStorage.setItem(
+        "markz-session",
+        JSON.stringify({
+          tabs: [
+            { content: "", path: "/project/doc-a.md", title: "doc-a.md", isDirty: false, pinned: false },
+            { content: "", path: "/project/doc-b.md", title: "doc-b.md", isDirty: false, pinned: false },
+            { content: "# Untitled Draft\n\nSome notes.", path: null, title: "Notes", isDirty: true, pinned: false },
+          ],
+          activeTabPath: "/project/doc-b.md",
+        })
+      );
+    });
+
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+
+    // All 3 tabs should be restored
+    const tabs = page.locator(".tab-bar .tab");
+    await expect(tabs).toHaveCount(3, { timeout: 5000 });
+    await expect(tabs.nth(0)).toContainText("doc-a.md");
+    await expect(tabs.nth(1)).toContainText("doc-b.md");
+    await expect(tabs.nth(2)).toContainText("Notes");
+
+    // Active should be doc-b (based on activeTabPath)
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+
+    // Verify the editor content via CodeMirror
+    const getEditorText = () =>
+      page.evaluate(() => {
+        const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+        return view ? view.state.doc.toString() : "";
+      });
+
+    // Active tab (doc-b) should have doc-b content
+    const contentB = await getEditorText();
+    expect(contentB).toContain("Document B");
+
+    // Switch to doc-a and verify its content
+    await tabs.nth(0).click();
+    await page.waitForTimeout(500);
+    const contentA = await getEditorText();
+    expect(contentA).toContain("Document A");
+
+    // Switch to untitled Notes tab and verify its content
+    await tabs.nth(2).click();
+    await page.waitForTimeout(500);
+    const contentNotes = await getEditorText();
+    expect(contentNotes).toContain("Untitled Draft");
+  });
 });

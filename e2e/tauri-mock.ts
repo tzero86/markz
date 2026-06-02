@@ -498,7 +498,7 @@ export const tauriMockScriptString = `
     update_settings: () => null,
     get_version: () => "0.1.12",
     render_preview: (args) => {
-      // Always return comprehensive HTML for both default and template content
+      // Return comprehensive mock HTML regardless of content so test assertions work
       return Promise.resolve(MOCK_HTML);
     },
     render_slides: (args) => {
@@ -561,7 +561,10 @@ export const tauriMockScriptString = `
       if (rejectPaths.includes(args?.path)) {
         return Promise.reject(new Error("File not found"));
       }
-      return { path: args?.path || "/test.md", content: "# Test\\n\\nHello world." };
+      const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");
+      const path = args?.path || "/test.md";
+      const content = fileOverrides[path] || "# Test\\n\\nHello world.";
+      return { path, content };
     },
     process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
@@ -651,6 +654,7 @@ export const tauriMockScriptString = `
             path: t.path || null,
             title: t.title || "Untitled",
             is_dirty: t.isDirty ?? t.is_dirty ?? false,
+            pinned: t.pinned ?? false,
           })),
           active_tab_path: parsed.activeTabPath ?? parsed.active_tab_path ?? null,
           workspace_path: parsed.workspacePath ?? parsed.workspace_path ?? null,

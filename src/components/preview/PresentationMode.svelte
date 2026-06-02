@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount } from "svelte";
 
   export interface Slide {
     kind: "title" | "section" | "content" | "code" | "image";
@@ -24,32 +24,22 @@
   let { deck, onClose }: Props = $props();
 
   let currentIndex = $state(0);
-  let direction = $state(1); // 1 = forward, -1 = backward
+  let direction = $state(1);
   let touchStartX = $state(0);
 
   let totalSlides = $derived(deck?.slides.length ?? 0);
   let currentSlide = $derived(deck?.slides[currentIndex] ?? null);
+  let displayNumber = $derived(currentIndex + 1);
 
   function goTo(index: number) {
     if (index < 0 || index >= totalSlides) return;
     direction = index > currentIndex ? 1 : -1;
     currentIndex = index;
   }
-  function next() {
-    goTo(currentIndex + 1);
-  }
-
-  function prev() {
-    goTo(currentIndex - 1);
-  }
-
-  function first() {
-    goTo(0);
-  }
-
-  function last() {
-    goTo(totalSlides - 1);
-  }
+  function next() { goTo(currentIndex + 1); }
+  function prev() { goTo(currentIndex - 1); }
+  function first() { goTo(0); }
+  function last() { goTo(totalSlides - 1); }
 
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === "Escape" || e.key === "q" || e.key === "Q") {
@@ -67,22 +57,13 @@
       prev();
       return;
     }
-    if (e.key === "Home") {
-      e.preventDefault();
-      first();
-      return;
-    }
-    if (e.key === "End") {
-      e.preventDefault();
-      last();
-      return;
-    }
+    if (e.key === "Home") { e.preventDefault(); first(); return; }
+    if (e.key === "End") { e.preventDefault(); last(); return; }
   }
 
   function handleTouchStart(e: TouchEvent) {
     touchStartX = e.touches[0].clientX;
   }
-
   function handleTouchEnd(e: TouchEvent) {
     const diff = touchStartX - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 50) {
@@ -95,9 +76,7 @@
     currentIndex = 0;
     direction = 1;
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
   function slideClass(kind: string): string {
@@ -109,9 +88,6 @@
       default: return "slide-content";
     }
   }
-
-  // Slide number display (1-based for humans)
-  let displayNumber = $derived(currentIndex + 1);
 </script>
 
 {#if deck}
@@ -123,7 +99,6 @@
     ontouchend={handleTouchEnd}
     role="presentation"
   >
-    <!-- Slide container -->
     <div class="slide-container">
       {#key currentIndex}
         <div
@@ -162,43 +137,31 @@
         </div>
       {/key}
     </div>
-    <div class="presentation-controls"
-    >
+    <div class="presentation-controls">
       <button
         class="ctrl-btn"
         onclick={(e) => { e.stopPropagation(); prev(); }}
         disabled={currentIndex === 0}
         aria-label="Previous slide"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="15 18 9 12 15 6" />
-        </svg
-        >
-      </button
-      >
+        </svg>
+      </button>
 
-      <div class="progress-area"
-      >
-        <div class="progress-dots"
-        >
+      <div class="progress-area">
+        <div class="progress-dots">
           {#each deck.slides as _, i}
             <button
               class="dot"
               class:active={i === currentIndex}
               onclick={(e) => { e.stopPropagation(); goTo(i); }}
               aria-label="Go to slide {i + 1}"
-            >
-            </button
-            >
+            ></button>
           {/each}
-        </div
-        >
-        <span class="slide-counter"
-        >{displayNumber} / {totalSlides}</span
-        >
-      </div
-      >
+        </div>
+        <span class="slide-counter">{displayNumber} / {totalSlides}</span>
+      </div>
 
       <button
         class="ctrl-btn"
@@ -206,35 +169,26 @@
         disabled={currentIndex === totalSlides - 1}
         aria-label="Next slide"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="9 18 15 12 9 6" />
-        </svg
-        >
-      </button
-      >
+        </svg>
+      </button>
 
       <button
         class="ctrl-btn close-btn"
         onclick={(e) => { e.stopPropagation(); onClose(); }}
         aria-label="Close presentation"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
-        </svg
-        >
-      </button
-      >
-    </div
-    >
-  </div
->
+        </svg>
+      </button>
+    </div>
+  </div>
 {/if}
 
-<style
-  >
+<style>
   .presentation-overlay {
     position: fixed;
     inset: 0;
@@ -289,7 +243,6 @@
     scrollbar-width: thin;
   }
 
-  /* Title slide */
   .title-layout {
     align-items: center;
     justify-content: center;
@@ -319,7 +272,6 @@
     margin-top: 8px;
   }
 
-  /* Section slide */
   .section-layout {
     align-items: center;
     justify-content: center;
@@ -338,7 +290,6 @@
     padding: 0 48px;
   }
 
-  /* Content slide */
   .content-layout {
     gap: 24px;
     padding: 16px 0;
@@ -360,19 +311,10 @@
     line-height: 1.6;
   }
 
-  .slide-html :global(p) {
-    margin: 0.6em 0;
-  }
-
+  .slide-html :global(p) { margin: 0.6em 0; }
   .slide-html :global(ul),
-  .slide-html :global(ol) {
-    margin: 0.6em 0;
-    padding-left: 1.5em;
-  }
-
-  .slide-html :global(li) {
-    margin: 0.3em 0;
-  }
+  .slide-html :global(ol) { margin: 0.6em 0; padding-left: 1.5em; }
+  .slide-html :global(li) { margin: 0.3em 0; }
 
   .slide-html :global(pre) {
     background: var(--bg-overlay);
@@ -432,13 +374,11 @@
     text-decoration: none;
   }
 
-  /* Code slide overrides */
   .slide-code .slide-html :global(pre) {
     font-size: clamp(0.85rem, 1.3vw, 1.1rem);
     padding: 24px 28px;
   }
 
-  /* Controls */
   .presentation-controls {
     display: flex;
     align-items: center;
@@ -524,7 +464,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Scrollbar styling */
   .slide-body::-webkit-scrollbar {
     width: 6px;
   }
@@ -538,9 +477,7 @@
     border-radius: 3px;
   }
 
-  /* Reduced motion */
   :global([data-reduced-motion="true"]) .slide {
     animation: none;
   }
-</style
->
+</style>

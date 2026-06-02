@@ -148,5 +148,5 @@
     border-bottom: none;
   }
   .bottom-right {
-    flex: 1;
   }
+</style>

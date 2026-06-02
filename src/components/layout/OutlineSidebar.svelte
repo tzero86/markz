@@ -1,3 +1,4 @@
+<script lang="ts">
   import EmptyState from "../ui/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { activeDocumentStore } from "../../lib/tabStore";
@@ -5,7 +6,7 @@
   import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
   import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight, ListTree } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
-
+  let { activity }: { activity: "files" | "outline" | "links" } = $props();
   let toc = $state<TocEntry[]>([]);
   let activeAnchor = $state<string | null>(null);
   let searchInput = $state("");
@@ -297,9 +298,8 @@
     </li>
   {/if}
 {/snippet}
-
+<style>
   .sidebar {
-    display: flex;
     flex-direction: column;
     width: 100%;
     min-width: 100%;

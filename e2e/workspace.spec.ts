@@ -10,8 +10,8 @@ test.beforeEach(async ({ page }) => {
 test.describe("Workspace file tree", () => {
   test("shows open folder prompt initially", async ({ page }) => {
     await page.click('.activity-btn[aria-label="Files"]');
-    await expect(page.locator(".file-tree-scroller .empty")).toContainText("No folder open");
-    await expect(page.locator(".open-folder-btn")).toBeVisible();
+    await expect(page.locator(".file-tree-scroller .empty-state")).toBeVisible();
+    await expect(page.locator(".file-tree-scroller .empty-state h3")).toContainText("No folder open");
   });
 
   test("opens folder and displays file tree", async ({ page }) => {
@@ -23,8 +23,8 @@ test.describe("Workspace file tree", () => {
     // Open Files tab
     await page.click('.activity-btn[aria-label="Files"]');
     
-    // Click Open Folder
-    await page.click(".open-folder-btn");
+    // Click Open Folder via EmptyState action button
+    await page.locator(".file-tree-scroller .btn-secondary").click();
     
     // Wait for tree to appear
     await page.waitForSelector(".tree-file", { timeout: 5000 });
@@ -39,7 +39,7 @@ test.describe("Workspace file tree", () => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
     await page.click('.activity-btn[aria-label="Files"]');
-    await page.click(".open-folder-btn");
+    await page.locator(".file-tree-scroller .btn-secondary").click();
     await page.waitForSelector(".tree-dir", { timeout: 5000 });
 
     const dirBtn = page.locator(".tree-dir").first();
@@ -56,7 +56,7 @@ test.describe("Workspace file tree", () => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
     await page.click('.activity-btn[aria-label="Files"]');
-    await page.click(".open-folder-btn");
+    await page.locator(".file-tree-scroller .btn-secondary").click();
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
     await page.locator(".tree-file").first().click();
@@ -69,7 +69,7 @@ test.describe("Workspace file tree", () => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
     await page.click('.activity-btn[aria-label="Files"]');
-    await page.click(".open-folder-btn");
+    await page.locator(".file-tree-scroller .btn-secondary").click();
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
     const searchInput = page.locator('.search-box input');
@@ -85,7 +85,7 @@ test.describe("Workspace file tree", () => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
     });
     await page.click('.activity-btn[aria-label="Files"]');
-    await page.click(".open-folder-btn");
+    await page.locator(".file-tree-scroller .btn-secondary").click();
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
     await page.locator('.search-box input').fill("hello");

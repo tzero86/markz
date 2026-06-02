@@ -1,3 +1,4 @@
+<script lang="ts">
   import EmptyState from "../ui/EmptyState.svelte";
   import { Eye, Copy, Check, Play, Pause, Square, ChevronDown, Presentation } from "@lucide/svelte";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
@@ -630,28 +631,29 @@
       </button>
     </div>
   </div>
-  {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
-    <EmptyState
-      icon={Eye}
-      title="Nothing to preview"
-      subtitle="Open or create a document to see the live preview."
-    />
-  {:else}
-    <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
-      <div
-        class="preview-content"
-        class:editing={previewEditing}
-        bind:this={contentDiv}
-        contenteditable={previewEditing}
-        onclick={handlePreviewClick}
-        ondblclick={handleTableDblClick}
-        role="presentation"
-        style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
-      >
+  <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
+    <div
+      class="preview-content"
+      class:editing={previewEditing}
+      class:empty={!$activeDocumentStore.path && !$activeDocumentStore.content}
+      bind:this={contentDiv}
+      contenteditable={previewEditing}
+      onclick={handlePreviewClick}
+      ondblclick={handleTableDblClick}
+      role="presentation"
+      style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
+    >
+      {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
+        <EmptyState
+          icon={Eye}
+          title="Nothing to preview"
+          subtitle="Open or create a document to see the live preview."
+        />
+      {:else}
         {@html htmlContent}
-      </div>
+      {/if}
     </div>
-  {/if}
+  </div>
   <TableEditorModal
     open={tableEditorOpen}
     markdown={$activeDocumentStore.content}

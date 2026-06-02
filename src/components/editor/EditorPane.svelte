@@ -1,6 +1,6 @@
-  import EmptyState from "../ui/EmptyState.svelte";
-  import { FilePlus, FileText } from "@lucide/svelte";
 <script lang="ts">
+  import EmptyState from "../ui/EmptyState.svelte";
+  import { FileText } from "@lucide/svelte";
   import { onMount } from "svelte";
   import type { EditorView } from "@codemirror/view";
   import { invoke } from "@tauri-apps/api/core";
@@ -176,8 +176,7 @@
           relative_path: string;
           absolute_path: string;
           filename: string;
-        }>("process_dropped_image", { imageData, filename });
-
+        }>("process_dropped_image", { imageData, filename: file.name });
         insertMarkdownImage(editorView, result.filename, result.relative_path);
         triggerPasteFlash();
       } catch (err) {
@@ -306,7 +305,7 @@
       lineHeight: baseLineHeight,
       showMinimap,
       customDictionary: [],
-      vimMode: vimModeEnabled,
+      // vimMode: vimModeEnabled,
       onChange: (newContent) => {
         tabStore.setContent(newContent);
       },
@@ -374,6 +373,7 @@
       );
     };
   });
+</script>
 {#snippet emptyEditor()}
   <EmptyState
     icon={FileText}
@@ -388,9 +388,12 @@
 
 <div class="editor-pane">
   <Toolbar view={editorView} />
-  {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
-    {@render emptyEditor()}
-  {:else}
+  <div class="editor-wrapper" class:empty={!$activeDocumentStore.path && !$activeDocumentStore.content}>
+    {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
+      <div class="editor-empty-overlay">
+        {@render emptyEditor()}
+      </div>
+    {/if}
     <div
       class="editor-container"
       class:drag-over={isDragOver}
@@ -405,7 +408,7 @@
       ondrop={handleDrop}
       oncontextmenu={handleContextMenu}
     ></div>
-  {/if}
+  </div>
   {#if contextMenuVisible}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
@@ -446,6 +449,24 @@
   }
   .editor-container :global(.cm-editor) {
     height: 100%;
+  }
+  .editor-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
+  }
+  .editor-wrapper.empty .editor-empty-overlay {
+    display: flex;
+  }
+  .editor-empty-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: auto;
   }
   .drag-over {
     outline: 2px dashed var(--accent-default);

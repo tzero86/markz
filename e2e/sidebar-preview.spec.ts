@@ -28,7 +28,7 @@ test.describe("Outline sidebar", () => {
     await page.keyboard.type("No headings here.");
 
     const sidebar = page.locator(".sidebar");
-    await expect(sidebar.locator('.empty:has-text("No headings")')).toBeVisible({ timeout: 3000 });
+    await expect(sidebar.locator('.empty-state h3:has-text("No headings")')).toBeVisible({ timeout: 3000 });
   });
 
   test("Ctrl+B collapses and expands sidebar panel", async ({ page }) => {

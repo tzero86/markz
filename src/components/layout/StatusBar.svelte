@@ -4,7 +4,13 @@
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { invoke } from "@tauri-apps/api/core";
-  let props: {
+  let {
+    viewMode,
+    splitDirection,
+    onSetViewMode,
+    onToggleSplitDirection,
+    onOpenGitDiff,
+  }: {
     viewMode: "split" | "editor" | "preview";
     splitDirection: "horizontal" | "vertical";
     onSetViewMode: (mode: "split" | "editor" | "preview") => void;
@@ -62,8 +68,8 @@
       {#each modes as { mode, label }}
         <button
           class="view-btn"
-          class:active={props.viewMode === mode}
-          onclick={() => props.onSetViewMode(mode)}
+          class:active={viewMode === mode}
+          onclick={() => onSetViewMode(mode)}
           aria-label={label}
           title={label}
         >
@@ -78,14 +84,14 @@
         </button>
       {/each}
     </div>
-    {#if props.viewMode === "split"}
+    {#if viewMode === "split"}
       <button
         class="split-dir-btn"
-        onclick={props.onToggleSplitDirection}
-        title={props.splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
-        aria-label={props.splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
+        onclick={onToggleSplitDirection}
+        title={splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
+        aria-label={splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
       >
-        <Columns2 size={14} strokeWidth={2} class={props.splitDirection === "vertical" ? "rotated" : ""} />
+        <Columns2 size={14} strokeWidth={2} class={splitDirection === "vertical" ? "rotated" : ""} />
       </button>
     {/if}
   </div>
@@ -95,7 +101,7 @@
       <button
         class="stat-badge git-badge"
         title={gitStatus.is_modified ? "Modified — click to view diff" : "Clean — click to view diff"}
-        onclick={() => { if (props.onOpenGitDiff) props.onOpenGitDiff(); }}
+        onclick={() => { if (onOpenGitDiff) onOpenGitDiff(); }}
       >
         <GitBranch size={11} strokeWidth={2} />
         {gitStatus.branch ?? "detached"}

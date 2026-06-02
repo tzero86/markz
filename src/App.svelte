@@ -183,18 +183,6 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     };
     window.addEventListener("markz:settings-changed", handleSettingsChanged);
 
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        if (e.deltaY < 0) {
-          contentZoomStore.increase();
-        } else {
-          contentZoomStore.decrease();
-        }
-      }
-    };
-    window.addEventListener("wheel", handleWheel, { passive: false });
-
     const handleOpenGitDiff = () => {
       gitDiffOpen = true;
     };
@@ -261,7 +249,6 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
       window.removeEventListener("markz:settings-changed", handleSettingsChanged);
-      window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("markz:open-git-diff", handleOpenGitDiff);
       window.removeEventListener("markz:workspace-changed", handleWorkspaceChanged);
       window.removeEventListener("markz:set-activity", handleSetActivity);
