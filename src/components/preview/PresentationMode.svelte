@@ -239,8 +239,8 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    scrollbar-width: thin;
+    overflow: hidden;
+    contain: content;
   }
 
   .title-layout {
@@ -296,33 +296,43 @@
   }
 
   .content-heading {
-    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-size: clamp(1.5rem, 2.5vw, 2.2rem);
     font-weight: 700;
     color: var(--text-primary);
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     line-height: 1.2;
     border-bottom: 2px solid var(--accent-default);
-    padding-bottom: 12px;
+    padding-bottom: 8px;
+    flex-shrink: 0;
   }
 
   .slide-html {
     color: var(--text-primary);
     font-size: clamp(1rem, 1.5vw, 1.3rem);
     line-height: 1.6;
+    flex-shrink: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .slide-html :global(p) { margin: 0.6em 0; }
+  .slide-html :global(p) { margin: 0.4em 0; }
   .slide-html :global(ul),
-  .slide-html :global(ol) { margin: 0.6em 0; padding-left: 1.5em; }
-  .slide-html :global(li) { margin: 0.3em 0; }
+  .slide-html :global(ol) { margin: 0.4em 0; padding-left: 1.5em; }
+  .slide-html :global(li) { margin: 0.2em 0; }
+  .slide-html :global(ul ul),
+  .slide-html :global(ol ol),
+  .slide-html :global(ul ol),
+  .slide-html :global(ol ul) { margin: 0; }
 
   .slide-html :global(pre) {
     background: var(--bg-overlay);
     border-radius: var(--radius-md);
-    padding: 16px 20px;
+    padding: 12px 16px;
     overflow-x: auto;
-    font-size: 0.9em;
-    line-height: 1.5;
+    overflow-y: hidden;
+    font-size: clamp(0.75rem, 1.1vw, 0.9em);
+    line-height: 1.4;
+    max-height: 50vh;
   }
 
   .slide-html :global(code) {
@@ -364,7 +374,7 @@
 
   .slide-html :global(img) {
     max-width: 100%;
-    max-height: 60vh;
+    max-height: 45vh;
     object-fit: contain;
     border-radius: var(--radius-md);
   }
@@ -462,19 +472,6 @@
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     font-variant-numeric: tabular-nums;
-  }
-
-  .slide-body::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .slide-body::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .slide-body::-webkit-scrollbar-thumb {
-    background: var(--border-default);
-    border-radius: 3px;
   }
 
   :global([data-reduced-motion="true"]) .slide {
