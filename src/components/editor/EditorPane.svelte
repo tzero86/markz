@@ -1,5 +1,4 @@
 <script lang="ts">
-  import EmptyState from "../ui/EmptyState.svelte";
   import { FileText } from "@lucide/svelte";
   import { onMount } from "svelte";
   import type { EditorView } from "@codemirror/view";
@@ -374,24 +373,15 @@
     };
   });
 </script>
-{#snippet emptyEditor()}
-  <EmptyState
-    icon={FileText}
-    title="No document open"
-    subtitle="Open a file or create a new document to start writing."
-    actionLabel="New document"
-    action={() => {
-      import("../../lib/keyboard").then((m) => m.newDocument());
-    }}
-  />
-{/snippet}
-
 <div class="editor-pane">
   <Toolbar view={editorView} />
-  <div class="editor-wrapper" class:empty={!$activeDocumentStore.path && !$activeDocumentStore.content}>
+  <div class="editor-area">
     {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
-      <div class="editor-empty-overlay">
-        {@render emptyEditor()}
+      <div class="editor-empty-hint">
+        <div class="editor-empty-icon">
+          <FileText size={40} strokeWidth={1.2} />
+        </div>
+        <span>Open a file or create a new document to start writing.</span>
       </div>
     {/if}
     <div
@@ -442,15 +432,7 @@
     background: var(--bg-base);
     transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .editor-container {
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-  }
-  .editor-container :global(.cm-editor) {
-    height: 100%;
-  }
-  .editor-wrapper {
+  .editor-area {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -458,15 +440,42 @@
     position: relative;
     min-height: 0;
   }
-  .editor-wrapper.empty .editor-empty-overlay {
-    display: flex;
+  .editor-container {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
   }
-  .editor-empty-overlay {
-    display: none;
+  .editor-container :global(.cm-editor) {
+    height: 100%;
+  }
+  .editor-empty-hint {
     position: absolute;
     inset: 0;
-    z-index: 10;
-    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    text-align: center;
+    pointer-events: none;
+    z-index: 0;
+    padding: var(--space-8);
+    user-select: none;
+  }
+  .editor-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
+    color: var(--text-disabled);
+    opacity: 0.5;
   }
   .drag-over {
     outline: 2px dashed var(--accent-default);

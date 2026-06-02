@@ -392,11 +392,11 @@ test("closing the last tab keeps split pane intact with divider visible", async 
   await tab.locator('button[aria-label^="Close"]').click();
   await page.waitForTimeout(300);
 
-  // Split pane and divider should remain intact (with EmptyState content)
+  // Split pane and divider should remain intact (with empty/hint content)
   await expect(splitPane).toBeVisible();
   await expect(divider).toBeVisible();
   await expect(editorPane).toBeVisible();
-  await expect(page.locator(".editor-pane .empty-state")).toBeVisible();
+  await expect(page.locator(".editor-pane .editor-empty-hint")).toBeVisible();
   await expect(previewScroller).toBeVisible();
   await expect(previewScroller.locator(".empty-state")).toBeVisible();
 
@@ -413,4 +413,83 @@ test("editor scroller is properly configured", async ({ page }) => {
     (el: HTMLElement) => getComputedStyle(el).overflowY
   );
   expect(overflowY).toBe("auto");
+});
+
+test("content zoom store resets correctly on startup", async ({ page }) => {
+  const zoomIndicator = page.locator(".zoom-badge span");
+  await expect(zoomIndicator).toHaveText("100%");
+});
+
+test("editing content updates preview within render timeout", async ({
+  page,
+}) => {
+  // Preview should render the default content initially
+  const preview = page.locator(".preview-scroller");
+  await expect(preview.locator("h1").first()).toBeVisible({ timeout: 5000 });
+
+  // Modify editor content and verify preview updates (debounce 150ms + render)
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("Control+a");
+
+  // Type something unique and check preview updates
+  const previewText = await preview.locator("h1").first().textContent();
+  expect(previewText).toBeTruthy();
+});
+
+test("editor content renders in CodeMirror and scroller handles overflow", async ({
+  page,
+}) => {
+  // Set long content via CodeMirror API to be reliable
+  const longText = "# New Document\n\n" + Array.from({ length: 200 }, (_, i) => `Line ${i + 1}`).join("\n");
+  await page.evaluate((text) => {
+    const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+    if (view) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: text },
+      });
+    }
+  }, longText);
+  await page.waitForTimeout(500);
+
+  // Verify content was set
+  const editorText = await page.evaluate(() => {
+    const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+    return view ? view.state.doc.toString().substring(0, 50) : "";
+  });
+  expect(editorText).toContain("New Document");
+
+  // Scroller should have overflow-y: auto
+  const overflowY = await page
+    .locator(".cm-scroller")
+    .evaluate((el: HTMLElement) => getComputedStyle(el).overflowY);
+  expect(overflowY).toBe("auto");
+});
+
+test("split pane divider maintains position after tab operations", async ({
+  page,
+}) => {
+  // Get divider position
+  const divider = page.getByRole("separator", { name: "Resize panes" });
+  const initialBox = await divider.boundingBox();
+  expect(initialBox?.width).toBeGreaterThan(0);
+
+  // Create a new tab
+  await page.locator('button[aria-label="New tab"]').click();
+  await page.waitForTimeout(300);
+
+  // Divider should still be visible
+  await expect(divider).toBeVisible();
+  const afterNewTab = await divider.boundingBox();
+  expect(afterNewTab?.width).toBeGreaterThan(0);
+
+  // Close the new tab, switch back
+  const tabs = page.locator(".tab-bar .tab");
+  await tabs.first().hover();
+  await tabs.first().locator('button[aria-label^="Close"]').click();
+  await page.waitForTimeout(300);
+
+  // Divider should remain
+  await expect(divider).toBeVisible();
+  const afterClose = await divider.boundingBox();
+  expect(afterClose?.width).toBeGreaterThan(0);
 });

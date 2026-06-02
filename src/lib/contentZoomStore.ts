@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { writable, get } from "svelte/store";
 
 const ZOOM_KEY = "markz-content-zoom";
 const MIN_ZOOM = 0.5;
@@ -39,13 +39,9 @@ export const contentZoomStore = {
     contentZoomStore.set(1.0);
   },
   increase: () => {
-    let current = 1.0;
-    zoomWritable.subscribe((z) => { current = z; })();
-    contentZoomStore.set(current + ZOOM_STEP);
+    contentZoomStore.set(get(zoomWritable) + ZOOM_STEP);
   },
   decrease: () => {
-    let current = 1.0;
-    zoomWritable.subscribe((z) => { current = z; })();
-    contentZoomStore.set(current - ZOOM_STEP);
+    contentZoomStore.set(get(zoomWritable) - ZOOM_STEP);
   },
 };

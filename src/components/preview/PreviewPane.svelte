@@ -18,6 +18,17 @@
 
   type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github";
 
+const RENDER_TIMEOUT_MS = 10000;
+
+async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Render timed out after ${ms}ms`)), ms);
+    invoke<T>(cmd, args)
+      .then((result) => { clearTimeout(timer); resolve(result); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
   /** Cache of content → rendered HTML to avoid redundant re-renders.
    *  Implemented as an LRU (least-recently-used) Map with a max size. */
   const renderCache = new Map<string, string>();
@@ -77,7 +88,7 @@
     timeout = setTimeout(async () => {
       try {
         const result = DOMPurify.sanitize(
-          await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path })
+          await invokeWithTimeout<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path }, RENDER_TIMEOUT_MS)
         );
         htmlContent = result;
         // LRU insertion: delete old key first to bump to most-recent position
