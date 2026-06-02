@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount } from "svelte";
   import { highlightCodeBlocks, setHljsTheme } from "./syntaxHighlighter";
 
   export interface Slide {
@@ -24,21 +24,20 @@
 
   let { deck, onClose }: Props = $props();
 
+  // Split raw deck into viewport-fitted slides via offscreen measurement
+  let fittedSlides = $state<Slide[]>([]);
   let currentIndex = $state(0);
   let direction = $state(1);
   let touchStartX = $state(0);
-  let slideScale = $state(1);
-  let slideBodyEl: HTMLElement | undefined = $state();
 
-  let totalSlides = $derived(deck?.slides.length ?? 0);
-  let currentSlide = $derived(deck?.slides[currentIndex] ?? null);
+  let totalSlides = $derived(fittedSlides.length);
+  let currentSlide = $derived(fittedSlides[currentIndex] ?? null);
   let displayNumber = $derived(currentIndex + 1);
 
   function goTo(index: number) {
     if (index < 0 || index >= totalSlides) return;
     direction = index > currentIndex ? 1 : -1;
     currentIndex = index;
-    slideScale = 1;
   }
   function next() { goTo(currentIndex + 1); }
   function prev() { goTo(currentIndex - 1); }
@@ -76,11 +75,136 @@
     }
   }
 
+  // ── Offscreen measurement splitter ──────────────────────────────────────────
+
+  /** Split HTML into top-level block-element chunks. */
+  function splitHtmlBlocks(html: string): string[] {
+    // Match top-level block tags: <p>, <h2-6>, <pre>, <ul>, <ol>,
+    // <blockquote>, <table>, <hr>, and self-closing <hr>
+    const re = /(<(?:p|h[2-6]|pre|ul|ol|blockquote|table|hr)\b[^>]*>[\s\S]*?<\/(?:p|h[2-6]|pre|ul|ol|blockquote|table)>|<hr\s*\/?>)/gi;
+    const blocks: string[] = [];
+    let match;
+    let lastIdx = 0;
+    while ((match = re.exec(html)) !== null) {
+      // Include any text before this block (plain text / raw)
+      if (match.index > lastIdx) {
+        const text = html.slice(lastIdx, match.index).trim();
+        if (text) blocks.push(text);
+      }
+      blocks.push(match[0]);
+      lastIdx = re.lastIndex;
+    }
+    if (lastIdx < html.length) {
+      const rest = html.slice(lastIdx).trim();
+      if (rest) blocks.push(rest);
+    }
+    return blocks.length > 0 ? blocks : [html];
+  }
+
+  // Shared offscreen measurer — created once
+  let measurer: HTMLDivElement | null = null;
+  let _fitted: Slide[] | null = null;
+
+  function getMeasurer(): HTMLDivElement {
+    if (!measurer) {
+      measurer = document.createElement("div");
+      measurer.style.cssText = "position:fixed;visibility:hidden;left:-9999px;top:0;padding:0;font-size:clamp(1rem,1.5vw,1.3rem);line-height:1.6;font-family:var(--font-sans);";
+      document.body.appendChild(measurer);
+    }
+    return measurer;
+  }
+
+  function measureSlides(raw: SlideDeck, viewportH: number): Slide[] {
+    const m = getMeasurer();
+    // Match the actual slide CSS: slide container padding + controls
+    const availableH = viewportH - 48 - 80 - 40;
+    const maxH = Math.max(availableH, 200);
+
+    // Set measurer width to match actual slide content area
+    const slideMaxW = 1200;
+    const slidePad = 64;
+    const actualW = Math.min(window.innerWidth, slideMaxW) - slidePad * 2;
+    m.style.width = Math.max(actualW, 300) + "px";
+
+    const result: Slide[] = [];
+    for (const slide of raw.slides) {
+      if (slide.kind === "title" || slide.kind === "section") {
+        result.push(slide);
+        continue;
+      }
+      const blocks = splitHtmlBlocks(slide.content);
+      let currentBlocks: string[] = [];
+      let currentH = 0;
+
+      for (const block of blocks) {
+        const isCode = block.startsWith("<pre") || block.startsWith("<pre>");
+
+        // Measure this block in the offscreen container with matching max-height
+        const testEl = document.createElement("div");
+        testEl.innerHTML = block;
+        if (isCode) {
+          testEl.style.maxHeight = "55vh";
+          testEl.style.overflow = "auto";
+        }
+        m.appendChild(testEl);
+        const blockH = testEl.getBoundingClientRect().height;
+        m.removeChild(testEl);
+
+        const wouldFit = currentH + blockH <= maxH;
+
+        if (!currentBlocks.length || wouldFit) {
+          currentBlocks.push(block);
+          currentH += blockH;
+        } else {
+          result.push({
+            kind: "content",
+            title: slide.title,
+            content: currentBlocks.join("\n"),
+            level: slide.level,
+            index: result.length,
+          });
+          currentBlocks = [block];
+          currentH = blockH;
+        }
+      }
+      if (currentBlocks.length > 0) {
+        result.push({
+          kind: "content",
+          title: slide.title,
+          content: currentBlocks.join("\n"),
+          level: slide.level,
+          index: result.length,
+        });
+      }
+    }
+    return result;
+  }
+
+  function refitSlides() {
+    if (!deck) return;
+    const vh = window.innerHeight;
+    _fitted = measureSlides(deck, vh);
+    fittedSlides = _fitted;
+  }
+
+  // Run fitting when deck arrives or viewport resizes
+  $effect(() => {
+    if (deck) {
+      refitSlides();
+      const ro = new ResizeObserver(refitSlides);
+      ro.observe(document.body);
+      return () => ro.disconnect();
+    }
+  });
+
   onMount(() => {
     currentIndex = 0;
     direction = 1;
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (measurer) { document.body.removeChild(measurer); measurer = null; }
+    };
   });
 
   let slideEl: HTMLElement | undefined = $state();
@@ -96,26 +220,6 @@
     if (theme) {
       setHljsTheme(theme === "dark" ? "dark" : "light");
     }
-  });
-
-  // Scale-to-fit: measure content vs available area and scale down if needed
-  $effect(() => {
-    if (!slideBodyEl || !currentSlide) return;
-    const measure = () => {
-      requestAnimationFrame(() => {
-        const available = slideBodyEl?.clientHeight ?? 1;
-        const content = slideBodyEl?.scrollHeight ?? 1;
-        if (content > available && available > 100) {
-          slideScale = Math.max(0.3, available / content);
-        } else {
-          slideScale = 1;
-        }
-      });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (slideBodyEl) ro.observe(slideBodyEl);
-    return () => ro.disconnect();
   });
 
   function slideClass(kind: string): string {
@@ -146,7 +250,7 @@
           bind:this={slideEl}
         >
           {#if currentSlide?.kind === "title"}
-            <div class="slide-body title-layout" bind:this={slideBodyEl}>
+            <div class="slide-body title-layout">
               {#if currentSlide.title}
                 <h1 class="title-heading">{@html currentSlide.title}</h1>
               {/if}
@@ -156,28 +260,22 @@
               {#if !currentSlide.title && deck.title}
                 <h1 class="title-heading">{deck.title}</h1>
               {/if}
-              <div class="slide-scaler" style="transform: scale({slideScale}); transform-origin: top center;">
-                {#if currentSlide.content}
-                  <div class="slide-html title-subtitle">{@html currentSlide.content}</div>
-                {/if}
-              </div>
+              {#if currentSlide.content}
+                <div class="slide-html title-subtitle">{@html currentSlide.content}</div>
+              {/if}
             </div>
           {:else if currentSlide?.kind === "section"}
-            <div class="slide-body section-layout" bind:this={slideBodyEl}>
-              <div class="slide-scaler" style="transform: scale({slideScale}); transform-origin: top center;">
-                {#if currentSlide.title}
-                  <h1 class="section-heading">{@html currentSlide.title}</h1>
-                {/if}
-              </div>
+            <div class="slide-body section-layout">
+              {#if currentSlide.title}
+                <h1 class="section-heading">{@html currentSlide.title}</h1>
+              {/if}
             </div>
           {:else}
-            <div class="slide-body content-layout" bind:this={slideBodyEl}>
-              <div class="slide-scaler" style="transform: scale({slideScale}); transform-origin: top center;">
-                {#if currentSlide?.title}
-                  <h2 class="content-heading">{@html currentSlide.title}</h2>
-                {/if}
-                <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
-              </div>
+            <div class="slide-body content-layout">
+              {#if currentSlide?.title}
+                <h2 class="content-heading">{@html currentSlide.title}</h2>
+              {/if}
+              <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
             </div>
           {/if}
         </div>
@@ -197,7 +295,7 @@
 
       <div class="progress-area">
         <div class="progress-dots">
-          {#each deck.slides as _, i}
+          {#each fittedSlides as _, i}
             <button
               class="dot"
               class:active={i === currentIndex}
@@ -271,13 +369,6 @@
     overflow: hidden;
   }
 
-  .slide-scaler {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: inherit;
-  }
-
   @keyframes slideIn {
     from {
       opacity: 0;
@@ -293,7 +384,6 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
     contain: content;
   }
 
@@ -382,10 +472,19 @@
     border-radius: var(--radius-md);
     padding: 12px 16px;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: auto;
     font-size: clamp(0.75rem, 1.1vw, 0.9em);
     line-height: 1.4;
-    max-height: 50vh;
+    max-height: 55vh;
+    scrollbar-width: thin;
+  }
+  .slide-html :global(pre::-webkit-scrollbar) {
+    width: 4px;
+    height: 4px;
+  }
+  .slide-html :global(pre::-webkit-scrollbar-thumb) {
+    background: var(--border-default);
+    border-radius: 2px;
   }
 
   .slide-html :global(code) {
