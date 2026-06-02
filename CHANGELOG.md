@@ -1,3 +1,10 @@
+## [0.8.12] - 2026-06-02
+
+### Fixed
+- **Mouse wheel scroll does nothing / keyboard scrolls whole UI** — Added `overscroll-behavior: contain` to all scroll containers to prevent scroll chaining to the document body. Removed editor empty-state overlay that blocked CodeMirror focus. Editor always renders for immediate click-to-type.
+- **Preview shows stale content from first document** — Preview render cache is now cleared on tab switch (path change) instead of only keyed by content string. Added 10s timeout to render invoke to prevent loading bar hangs.
+- **189 passing e2e tests** — 9 new dedicated scroll tests verify overflow CSS, arrow key page-scroll prevention, tab key safety, and multi-tab editing independence.
+
 ## [0.8.11] - 2026-06-02
 
 ### Fixed
