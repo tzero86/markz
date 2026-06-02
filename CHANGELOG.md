@@ -1,3 +1,8 @@
+## [0.8.10] - 2026-06-02
+
+### Fixed
+- **Updater not detecting new version** — Fixed `tauri.conf.json` version being stale at `0.8.8` when tag `v0.8.9` was pushed, causing the release build to report version 0.8.8 and the installed app to show "up-to-date".
+
 ## [0.8.9] - 2026-06-02
 
 ### Fixed
