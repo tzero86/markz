@@ -55,6 +55,13 @@ body {
   scroll-behavior: smooth;
 }
 
+/* Prevent scroll chaining from inner scrollers to document body */
+.cm-scroller,
+.preview-scroller,
+.toc-scroller {
+  overscroll-behavior: contain;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -66,9 +66,16 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
   // Debounced render with progress animation and content hash caching
   let timeout: ReturnType<typeof setTimeout>;
   let lastCacheKey = "";
+  let lastPath: string | null = null;
   $effect(() => {
     const content = $activeDocumentStore.content;
+    const docPath = $activeDocumentStore.path;
     const cacheKey = content;
+    // Clear cache on tab switch (path change) to prevent stale preview
+    if (docPath !== lastPath) {
+      renderCache.clear();
+      lastPath = docPath;
+    }
     // Skip re-render if content hasn't actually changed
     if (cacheKey === lastCacheKey && htmlContent !== "<p>Loading preview...</p>") {
       return;
@@ -853,7 +860,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
   .preview-scroller {
     flex: 1;
     overflow: auto;
-    contain: paint;
+    overscroll-behavior: contain;
   }
   .preview-content {
     max-width: 820px;
