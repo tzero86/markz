@@ -43,7 +43,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   let sidebarPanelVisible = $state(false);
   let sidebarWidth = $state(220);
   let viewMode = $state<"split" | "editor" | "preview">("split");
-  let splitDirection = $state<"horizontal" | "vertical">("horizontal");
+  let splitDirection = $state<"horizontal" | "vertical" | "vertical-reversed">("horizontal");
   function applySettings(s: any) {
     activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
     viewMode = s.view_mode || s.viewMode || "split";
@@ -333,7 +333,9 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     {/if}
   </div>
   <StatusBar {viewMode} {splitDirection} onSetViewMode={(mode) => (viewMode = mode)} onToggleSplitDirection={() => {
-    const next = splitDirection === "horizontal" ? "vertical" : "horizontal";
+    const order: ("horizontal" | "vertical" | "vertical-reversed")[] = ["horizontal", "vertical", "vertical-reversed"];
+    const idx = order.indexOf(splitDirection);
+    const next = order[(idx + 1) % order.length];
     splitDirection = next;
     invoke("get_settings").then((s: any) => {
       if (s) {

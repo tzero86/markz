@@ -4,7 +4,7 @@
   interface Props {
     left: Snippet;
     right: Snippet;
-    direction?: "horizontal" | "vertical";
+    direction?: "horizontal" | "vertical" | "vertical-reversed";
   }
 
   let { left, right, direction = "horizontal" }: Props = $props();
@@ -64,16 +64,24 @@
   }
 </script>
 
-<div class="split-pane" class:vertical={!isHorizontal} bind:this={containerRef}>
-  <div class="pane top-left" style={isHorizontal ? `width: ${splitRatio}%` : `height: ${splitRatio}%`}>
-    {@render left()}
-  </div>
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <div class="divider" class:dragging={isDragging} class:vertical={!isHorizontal} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
-  <div class="pane bottom-right" style={isHorizontal ? `width: ${100 - splitRatio}%` : `height: ${100 - splitRatio}%`}>
-    {@render right()}
-  </div>
+<div class="split-pane" class:vertical={!isHorizontal} class:reversed={direction === "vertical-reversed"} bind:this={containerRef}>
+  {#if direction === "vertical-reversed"}
+    <div class="pane top-left" style="height: {100 - splitRatio}%">
+      {@render right()}
+    </div>
+    <div class="divider" class:dragging={isDragging} class:vertical={true} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
+    <div class="pane bottom-right" style="height: {splitRatio}%">
+      {@render left()}
+    </div>
+  {:else}
+    <div class="pane top-left" style={isHorizontal ? `width: ${splitRatio}%` : `height: ${splitRatio}%`}>
+      {@render left()}
+    </div>
+    <div class="divider" class:dragging={isDragging} class:vertical={!isHorizontal} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
+    <div class="pane bottom-right" style={isHorizontal ? `width: ${100 - splitRatio}%` : `height: ${100 - splitRatio}%`}>
+      {@render right()}
+    </div>
+  {/if}
 </div>
 
 <style>

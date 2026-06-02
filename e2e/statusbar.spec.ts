@@ -88,19 +88,23 @@ test.describe("Status bar", () => {
   test("split direction toggle is visible in split mode and toggles", async ({ page }) => {
     // Ensure split mode is active
     await page.locator('button[aria-label="Split"]').click();
-    const toggle = page.locator('button[aria-label="Switch to vertical split"]');
+    // Start in horizontal → aria-label should be "Split vertical"
+    const toggle = page.locator('button[aria-label="Split vertical"]');
     await expect(toggle).toBeVisible();
     await toggle.click();
-    await expect(page.locator('button[aria-label="Switch to horizontal split"]')).toBeVisible();
-    // Toggle back
-    await page.locator('button[aria-label="Switch to horizontal split"]').click();
-    await expect(page.locator('button[aria-label="Switch to vertical split"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Preview bottom"]')).toBeVisible();
+    // Toggle to reversed
+    await page.locator('button[aria-label="Preview bottom"]').click();
+    await expect(page.locator('button[aria-label="Side by side"]')).toBeVisible();
+    // Toggle back to horizontal
+    await page.locator('button[aria-label="Side by side"]').click();
+    await expect(page.locator('button[aria-label="Split vertical"]')).toBeVisible();
   });
 
   test("split direction toggle is hidden in non-split modes", async ({ page }) => {
     await page.locator('button[aria-label="Editor"]').click();
-    await expect(page.locator('button[aria-label="Switch to vertical split"]')).not.toBeVisible();
-    await expect(page.locator('button[aria-label="Switch to horizontal split"]')).not.toBeVisible();
+    await expect(page.locator('button[aria-label="Split vertical"]')).not.toBeVisible();
+    await expect(page.locator('button[aria-label="Preview bottom"]')).not.toBeVisible();
     // Return to split
     await page.locator('button[aria-label="Split"]').click();
   });

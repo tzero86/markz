@@ -12,7 +12,7 @@
     onOpenGitDiff,
   }: {
     viewMode: "split" | "editor" | "preview";
-    splitDirection: "horizontal" | "vertical";
+    splitDirection: "horizontal" | "vertical" | "vertical-reversed";
     onSetViewMode: (mode: "split" | "editor" | "preview") => void;
     onToggleSplitDirection: () => void;
     onOpenGitDiff?: () => void;
@@ -88,10 +88,10 @@
       <button
         class="split-dir-btn"
         onclick={onToggleSplitDirection}
-        title={splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
-        aria-label={splitDirection === "horizontal" ? "Switch to vertical split" : "Switch to horizontal split"}
+        title={splitDirection === "horizontal" ? "Split vertical" : splitDirection === "vertical" ? "Preview bottom" : "Side by side"}
+        aria-label={splitDirection === "horizontal" ? "Split vertical" : splitDirection === "vertical" ? "Preview bottom" : "Side by side"}
       >
-        <Columns2 size={14} strokeWidth={2} class={splitDirection === "vertical" ? "rotated" : ""} />
+        <Columns2 size={14} strokeWidth={2} class={splitDirection === "vertical" ? "rotated" : splitDirection === "vertical-reversed" ? "flip" : ""} />
       </button>
     {/if}
   </div>
@@ -322,5 +322,11 @@
     background: var(--warning);
     display: inline-block;
     margin-left: 2px;
+  }
+  .rotated {
+    transform: rotate(90deg);
+  }
+  .flip {
+    transform: rotate(180deg);
   }
 </style>
