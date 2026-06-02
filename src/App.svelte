@@ -357,7 +357,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   .app {
     display: flex;
     flex-direction: column;
-    min-height: 100dvh;
+    height: 100vh;
     width: 100vw;
     overflow: hidden;
     background: var(--bg-base);
