@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { highlightCodeBlocks, setHljsTheme } from "./syntaxHighlighter";
 
   export interface Slide {
@@ -27,6 +27,8 @@
   let currentIndex = $state(0);
   let direction = $state(1);
   let touchStartX = $state(0);
+  let slideScale = $state(1);
+  let slideBodyEl: HTMLElement | undefined = $state();
 
   let totalSlides = $derived(deck?.slides.length ?? 0);
   let currentSlide = $derived(deck?.slides[currentIndex] ?? null);
@@ -36,6 +38,7 @@
     if (index < 0 || index >= totalSlides) return;
     direction = index > currentIndex ? 1 : -1;
     currentIndex = index;
+    slideScale = 1;
   }
   function next() { goTo(currentIndex + 1); }
   function prev() { goTo(currentIndex - 1); }
@@ -95,6 +98,26 @@
     }
   });
 
+  // Scale-to-fit: measure content vs available area and scale down if needed
+  $effect(() => {
+    if (!slideBodyEl || !currentSlide) return;
+    const measure = () => {
+      requestAnimationFrame(() => {
+        const available = slideBodyEl?.clientHeight ?? 1;
+        const content = slideBodyEl?.scrollHeight ?? 1;
+        if (content > available && available > 100) {
+          slideScale = Math.max(0.3, available / content);
+        } else {
+          slideScale = 1;
+        }
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (slideBodyEl) ro.observe(slideBodyEl);
+    return () => ro.disconnect();
+  });
+
   function slideClass(kind: string): string {
     switch (kind) {
       case "title": return "slide-title";
@@ -123,7 +146,7 @@
           bind:this={slideEl}
         >
           {#if currentSlide?.kind === "title"}
-            <div class="slide-body title-layout">
+            <div class="slide-body title-layout" bind:this={slideBodyEl}>
               {#if currentSlide.title}
                 <h1 class="title-heading">{@html currentSlide.title}</h1>
               {/if}
@@ -133,22 +156,28 @@
               {#if !currentSlide.title && deck.title}
                 <h1 class="title-heading">{deck.title}</h1>
               {/if}
-              {#if currentSlide.content}
-                <div class="slide-html title-subtitle">{@html currentSlide.content}</div>
-              {/if}
+              <div class="slide-scaler" style="transform: scale({slideScale}); transform-origin: top center;">
+                {#if currentSlide.content}
+                  <div class="slide-html title-subtitle">{@html currentSlide.content}</div>
+                {/if}
+              </div>
             </div>
           {:else if currentSlide?.kind === "section"}
-            <div class="slide-body section-layout">
-              {#if currentSlide.title}
-                <h1 class="section-heading">{@html currentSlide.title}</h1>
-              {/if}
+            <div class="slide-body section-layout" bind:this={slideBodyEl}>
+              <div class="slide-scaler" style="transform: scale({slideScale}); transform-origin: top center;">
+                {#if currentSlide.title}
+                  <h1 class="section-heading">{@html currentSlide.title}</h1>
+                {/if}
+              </div>
             </div>
           {:else}
-            <div class="slide-body content-layout">
-              {#if currentSlide?.title}
-                <h2 class="content-heading">{@html currentSlide.title}</h2>
-              {/if}
-              <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
+            <div class="slide-body content-layout" bind:this={slideBodyEl}>
+              <div class="slide-scaler" style="transform: scale({slideScale}); transform-origin: top center;">
+                {#if currentSlide?.title}
+                  <h2 class="content-heading">{@html currentSlide.title}</h2>
+                {/if}
+                <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
+              </div>
             </div>
           {/if}
         </div>
@@ -228,7 +257,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 48px 64px 0;
+    padding: 48px 64px 80px;
     position: relative;
     overflow: hidden;
   }
@@ -239,6 +268,14 @@
     display: flex;
     flex-direction: column;
     animation: slideIn 400ms var(--ease-out) forwards;
+    overflow: hidden;
+  }
+
+  .slide-scaler {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: inherit;
   }
 
   @keyframes slideIn {
@@ -295,7 +332,6 @@
     text-align: center;
     background: var(--accent-default);
     border-radius: var(--radius-xl);
-    margin: 16px 0;
   }
 
   .section-heading {
@@ -407,12 +443,22 @@
   }
 
   .presentation-controls {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 16px;
-    padding: 16px 24px 24px;
-    width: 100%;
+    padding: 10px 20px;
+    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
   }
 
   .ctrl-btn {
