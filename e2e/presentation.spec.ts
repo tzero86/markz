@@ -77,6 +77,7 @@ test("previous button is disabled on first slide", async ({ page }) => {
   await page.keyboard.press("F5");
   await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
 
+  await page.mouse.move(100, 100);
   const prevBtn = page.locator('.ctrl-btn').first();
   await expect(prevBtn).toBeDisabled();
 });
@@ -90,38 +91,33 @@ test("next button is disabled on last slide", async ({ page }) => {
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".slide-counter")).toHaveText("2 / 2");
 
+  await page.mouse.move(100, 100);
   const nextBtn = page.locator('.ctrl-btn').nth(1);
   await expect(nextBtn).toBeDisabled();
 });
 
-test("progress dots reflect current slide", async ({ page }) => {
-  await page.click('.app');
-  await page.keyboard.press("F5");
-  await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
-
-  const dots = page.locator('.dot');
-  await expect(dots).toHaveCount(2);
-
-  // First dot should be active
-  await expect(dots.first()).toHaveClass(/active/);
-  await expect(dots.last()).not.toHaveClass(/active/);
-
-  // Go to next slide
-  await page.keyboard.press("ArrowRight");
-  await expect(dots.first()).not.toHaveClass(/active/);
-  await expect(dots.last()).toHaveClass(/active/);
-});
-
-test("clicking progress dot navigates to slide", async ({ page }) => {
+test("slide counter reflects current slide", async ({ page }) => {
   await page.click('.app');
   await page.keyboard.press("F5");
   await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
 
   await expect(page.locator(".slide-counter")).toHaveText("1 / 2");
 
-  // Click second dot
-  const dots = page.locator('.dot');
-  await dots.last().click();
+  // Go to next slide
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".slide-counter")).toHaveText("2 / 2");
+});
+
+test("clicking next button navigates to next slide", async ({ page }) => {
+  await page.click('.app');
+  await page.keyboard.press("F5");
+  await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
+
+  await expect(page.locator(".slide-counter")).toHaveText("1 / 2");
+
+  // Mouse move to reveal controls, click next
+  await page.mouse.move(100, 100);
+  await page.locator('.ctrl-btn').nth(1).click();
   await expect(page.locator(".slide-counter")).toHaveText("2 / 2");
 });
 
@@ -153,8 +149,8 @@ test("close button exits presentation", async ({ page }) => {
   await page.keyboard.press("F5");
   await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
 
-  // Close button is the last control button
-  const closeBtn = page.locator('.close-btn');
-  await closeBtn.click();
+  // Mouse move to reveal controls, then click close
+  await page.mouse.move(100, 100);
+  await page.locator('.close-btn').click();
   await expect(page.locator(".presentation-overlay")).not.toBeVisible({ timeout: 3000 });
 });

@@ -75,6 +75,28 @@
     }
   }
 
+  // ── Auto-hide controls ───────────────────────────────────────────────────────
+  let controlsVisible = $state(true);
+  let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function showControls() {
+    controlsVisible = true;
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { controlsVisible = false; }, 3000);
+  }
+
+  // ── Full-screen ──────────────────────────────────────────────────────────────
+  let isFullscreen = $state(false);
+  async function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+      isFullscreen = true;
+    } else {
+      await document.exitFullscreen();
+      isFullscreen = false;
+    }
+  }
+
   // ── Offscreen measurement splitter ──────────────────────────────────────────
 
   /** Split HTML into top-level block-element chunks. */
@@ -201,8 +223,16 @@
     currentIndex = 0;
     direction = 1;
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousemove", showControls);
+    document.addEventListener("fullscreenchange", () => {
+      isFullscreen = !!document.fullscreenElement;
+      refitSlides();
+    });
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousemove", showControls);
+      document.removeEventListener("fullscreenchange", () => {});
+      if (hideTimer) clearTimeout(hideTimer);
       if (measurer) { document.body.removeChild(measurer); measurer = null; }
     };
   });
@@ -237,11 +267,22 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="presentation-overlay"
+    class:controls-hidden={!controlsVisible}
     onclick={(e) => { if (e.target === e.currentTarget) next(); }}
     ontouchstart={handleTouchStart}
     ontouchend={handleTouchEnd}
     role="presentation"
   >
+    <div class="slide-header">
+      <span class="slide-deck-title">{deck.title || ""}</span>
+      <button class="header-btn" onclick={toggleFullscreen} aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+        {#if isFullscreen}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        {:else}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        {/if}
+      </button>
+    </div>
     <div class="slide-container">
       {#key currentIndex}
         <div
@@ -281,52 +322,17 @@
         </div>
       {/key}
     </div>
-    <div class="presentation-controls">
-      <button
-        class="ctrl-btn"
-        onclick={(e) => { e.stopPropagation(); prev(); }}
-        disabled={currentIndex === 0}
-        aria-label="Previous slide"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
+    <div class="presentation-controls" class:visible={controlsVisible}>
+      <button class="ctrl-btn" onclick={(e) => { e.stopPropagation(); prev(); }} disabled={currentIndex === 0} aria-label="Previous slide">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
-
-      <div class="progress-area">
-        <div class="progress-dots">
-          {#each fittedSlides as _, i}
-            <button
-              class="dot"
-              class:active={i === currentIndex}
-              onclick={(e) => { e.stopPropagation(); goTo(i); }}
-              aria-label="Go to slide {i + 1}"
-            ></button>
-          {/each}
-        </div>
-        <span class="slide-counter">{displayNumber} / {totalSlides}</span>
-      </div>
-
-      <button
-        class="ctrl-btn"
-        onclick={(e) => { e.stopPropagation(); next(); }}
-        disabled={currentIndex === totalSlides - 1}
-        aria-label="Next slide"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
+      <span class="slide-counter">{displayNumber} / {totalSlides}</span>
+      <button class="ctrl-btn" onclick={(e) => { e.stopPropagation(); next(); }} disabled={currentIndex === totalSlides - 1} aria-label="Next slide">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-
-      <button
-        class="ctrl-btn close-btn"
-        onclick={(e) => { e.stopPropagation(); onClose(); }}
-        aria-label="Close presentation"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
+      <div class="ctrl-sep"></div>
+      <button class="ctrl-btn close-btn" onclick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close presentation">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
   </div>
@@ -541,99 +547,116 @@
     padding: 24px 28px;
   }
 
+  .slide-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 200ms;
+    pointer-events: none;
+  }
+  .controls-hidden .slide-header { opacity: 1; }
+  .slide-header:hover,
+  .controls-hidden .slide-header:hover { opacity: 1; }
+  .slide-header .header-btn { pointer-events: auto; }
+
+  .slide-deck-title {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    opacity: 0.5;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+
+  .header-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 150ms, background 150ms;
+  }
+  .header-btn:hover {
+    opacity: 1;
+    background: var(--bg-hover);
+  }
+
   .presentation-controls {
     position: fixed;
-    bottom: 24px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 10px 20px;
-    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+    gap: 10px;
+    padding: 6px 14px;
+    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-md);
     z-index: 10;
+    opacity: 0;
+    transition: opacity 250ms ease;
+    pointer-events: none;
+  }
+  .presentation-controls.visible {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .ctrl-btn {
-    background: transparent;
-    border: 1px solid var(--border-default);
-    color: var(--text-secondary);
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-md);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 150ms var(--ease-out);
+    transition: all 120ms var(--ease-out);
   }
-
   .ctrl-btn:hover:not(:disabled) {
-    background: var(--bg-elevated);
+    background: var(--bg-hover);
     color: var(--text-primary);
-    border-color: var(--border-hover);
   }
-
-  .ctrl-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
-
-  .close-btn {
-    margin-left: 8px;
-  }
-
-  .close-btn:hover {
+  .ctrl-btn:disabled { opacity: 0.25; cursor: default; }
+  .close-btn:hover:not(:disabled) {
     background: var(--error-bg, #3a1518);
     color: var(--error, #f87171);
-    border-color: var(--error, #f87171);
   }
 
-  .progress-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .progress-dots {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: var(--radius-full);
+  .ctrl-sep {
+    width: 1px;
+    height: 16px;
     background: var(--border-default);
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    transition: all 200ms var(--ease-out);
-  }
-
-  .dot:hover {
-    background: var(--text-tertiary);
-    transform: scale(1.3);
-  }
-
-  .dot.active {
-    background: var(--accent-default);
-    width: 24px;
-    border-radius: 4px;
   }
 
   .slide-counter {
-    font-size: var(--text-xs);
+    font-size: 11px;
+    font-weight: 500;
     color: var(--text-tertiary);
     font-variant-numeric: tabular-nums;
+    min-width: 48px;
+    text-align: center;
   }
 
   :global([data-reduced-motion="true"]) .slide {
