@@ -1,3 +1,13 @@
+## [0.8.9] - 2026-06-02
+
+### Fixed
+- **Scroll broken** — Removed non-passive window wheel handler that disabled Chromium compositor scrolling, causing mouse wheel to not scroll and keyboard to scroll the whole UI.
+- **Closing last tab corrupts split pane** — Editor and preview containers are now always rendered; EmptyState overlays instead of removing DOM elements, keeping the divider and layout intact.
+- **Split pane divider asymmetry** — Removed `flex: 1` from the right pane so both sides respect the split ratio equally.
+- **Emoji/icons in filenames show as boxes** — Added explicit emoji font fallback (`MarkZEmoji`, `Segoe UI Emoji`, `Apple Color Emoji`, `Noto Color Emoji`) to TitleBar breadcrumb and document title.
+- **Session restore crash on upgrade** — Added `#[serde(default)]` to `SessionTab.pinned` so old session files without the field don't fail deserialization.
+- **26 failing E2E tests** — Updated test selectors for restructured SettingsModal sidebar layout, workspace file tree button, and outline sidebar empty state.
+
 ## [0.8.8] - 2026-06-01
 
 ### Added
