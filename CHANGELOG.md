@@ -1,3 +1,11 @@
+## [0.8.11] - 2026-06-02
+
+### Fixed
+- **Scroll not working / UI scrolls up on keyboard navigation** — Removed competing editor empty-state overlay that blocked CodeMirror from receiving focus. The editor container is now always rendered so CodeMirror is always initialized and reachable. Empty tabs show a decorative non-blocking hint instead of an overlay.
+- **Preview loading bar never finishes** — Added 10-second timeout to the Rust `render_preview` invoke call so the spinner doesn't hang forever if the backend stalls.
+- **contentZoomStore increment/decrement crash** — Replaced broken one-shot subscribe hack with Svelte's `get()` function.
+- **Split pane divider integrity after tab operations** — 4 new tests verify divider remains visible and properly sized after creating/closing tabs.
+
 ## [0.8.10] - 2026-06-02
 
 ### Fixed
