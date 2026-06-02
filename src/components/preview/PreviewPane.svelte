@@ -565,9 +565,9 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
         disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
       >
         {#if copyFeedback}
-          <Check size={14} strokeWidth={2.5} />
+          <Check size={13} strokeWidth={2.5} />
         {:else}
-          <Copy size={14} strokeWidth={2} />
+          <Copy size={13} strokeWidth={1.5} />
         {/if}
         <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
         <ChevronDown size={12} />
@@ -606,7 +606,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
               data-tooltip="Read aloud"
               disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
             >
-              <Play size={14} strokeWidth={2} />
+              <Play size={13} strokeWidth={1.5} />
             </button>
           {:else if $ttsStore.state === "playing"}
             <button
@@ -615,7 +615,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
               aria-label="Pause"
               data-tooltip="Pause"
             >
-              <Pause size={14} strokeWidth={2} />
+              <Pause size={13} strokeWidth={1.5} />
             </button>
           {:else}
             <button
@@ -624,7 +624,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
               aria-label="Resume"
               data-tooltip="Resume"
             >
-              <Play size={14} strokeWidth={2} />
+              <Play size={13} strokeWidth={1.5} />
             </button>
           {/if}
           {#if $ttsStore.state !== "idle" && $ttsStore.state !== "loading"}
@@ -634,7 +634,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
               aria-label="Stop"
               data-tooltip="Stop"
             >
-              <Square size={14} strokeWidth={2} />
+              <Square size={13} strokeWidth={1.5} />
             </button>
           {/if}
         </div>
@@ -645,7 +645,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
         data-tooltip="Start presentation"
         disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
       >
-        <Presentation size={14} strokeWidth={2} />
+        <Presentation size={13} strokeWidth={1.5} />
       </button>
     </div>
   </div>
@@ -743,11 +743,10 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-1) var(--space-3);
     border-bottom: 1px solid var(--border-default);
     background: var(--bg-surface);
     flex-shrink: 0;
-    box-sizing: border-box;
     transition: background-color 300ms var(--ease-in-out),
                 border-color 300ms var(--ease-in-out);
   }
@@ -794,17 +793,18 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
   .action-btn {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
+    gap: 4px;
+    padding: 3px 8px;
     background: transparent;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     color: var(--text-tertiary);
-    font-size: var(--text-xs);
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     transition: all 150ms var(--ease-out);
     box-shadow: var(--shadow-xs);
+    line-height: 1;
   }
   .action-btn:hover {
     background: var(--bg-hover);

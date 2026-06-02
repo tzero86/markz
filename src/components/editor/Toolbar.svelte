@@ -104,7 +104,7 @@
           title={item.title}
           type="button"
         >
-          <Icon size={16} strokeWidth={2} />
+          <Icon size={13} strokeWidth={1.5} />
         </button>
       {/each}
     </div>
@@ -147,7 +147,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-1) var(--space-3);
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-default);
     flex-shrink: 0;
@@ -170,8 +170,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     background: transparent;
     border: none;
