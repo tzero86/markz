@@ -554,102 +554,101 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
   {#if isRendering}
     <div class="render-progress-bar"></div>
   {/if}
-  <div class="preview-toolbar">
-    <div class="copy-dropdown">
-      <button
-        class="action-btn"
-        class:success={copyFeedback}
-        onclick={() => { copyDropdownOpen = !copyDropdownOpen; }}
-        aria-label="Copy"
-        aria-expanded={copyDropdownOpen}
-        disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
-      >
-        {#if copyFeedback}
-          <Check size={13} strokeWidth={2.5} />
-        {:else}
-          <Copy size={13} strokeWidth={1.5} />
-        {/if}
-        <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
-        <ChevronDown size={12} />
-      </button>
-      {#if copyDropdownOpen}
-        <div class="copy-dropdown-menu" role="menu">
-          {#each copyFormats as fmt}
-            <button
-              class="copy-dropdown-item"
-              role="menuitem"
-              onclick={() => { copyOutput(fmt.id); copyDropdownOpen = false; }}
-            >
-              {fmt.label}
-            </button>
-          {/each}
-        </div>
-      {/if}
-    </div>
-    <div class="toolbar-actions">
-      <!-- Bi-directional editing hidden for now -->
-      <div class="tts-controls">
-          {#if $ttsStore.state === "loading"}
-            <button class="action-btn" disabled aria-label="Loading">
-              <span class="tts-spinner"></span>
-            </button>
-          {:else if $ttsStore.state === "idle"}
-            <button
-              class="action-btn"
-              onclick={() => {
-                if (contentDiv) {
-                  const text = ttsStore.extractReadableText(contentDiv);
-                  if (text) ttsStore.speak(text);
-                }
-              }}
-              aria-label="Read aloud"
-              data-tooltip="Read aloud"
-              disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
-            >
-              <Play size={13} strokeWidth={1.5} />
-            </button>
-          {:else if $ttsStore.state === "playing"}
-            <button
-              class="action-btn"
-              onclick={() => ttsStore.pause()}
-              aria-label="Pause"
-              data-tooltip="Pause"
-            >
-              <Pause size={13} strokeWidth={1.5} />
-            </button>
-          {:else}
-            <button
-              class="action-btn"
-              onclick={() => ttsStore.resume()}
-              aria-label="Resume"
-              data-tooltip="Resume"
-            >
-              <Play size={13} strokeWidth={1.5} />
-            </button>
-          {/if}
-          {#if $ttsStore.state !== "idle" && $ttsStore.state !== "loading"}
-            <button
-              class="action-btn"
-              onclick={() => ttsStore.stop()}
-              aria-label="Stop"
-              data-tooltip="Stop"
-            >
-              <Square size={13} strokeWidth={1.5} />
-            </button>
-          {/if}
-        </div>
-      <button
-        class="action-btn"
-        onclick={() => window.dispatchEvent(new CustomEvent("markz:start-presentation"))}
-        aria-label="Start presentation"
-        data-tooltip="Start presentation"
-        disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
-      >
-        <Presentation size={13} strokeWidth={1.5} />
-      </button>
-    </div>
-  </div>
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
+    <div class="preview-float-bar">
+      <div class="copy-dropdown">
+        <button
+          class="float-btn"
+          class:success={copyFeedback}
+          onclick={() => { copyDropdownOpen = !copyDropdownOpen; }}
+          aria-label="Copy"
+          aria-expanded={copyDropdownOpen}
+          disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
+        >
+          {#if copyFeedback}
+            <Check size={12} strokeWidth={2.5} />
+          {:else}
+            <Copy size={12} strokeWidth={1.5} />
+          {/if}
+          <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
+          <ChevronDown size={10} />
+        </button>
+        {#if copyDropdownOpen}
+          <div class="copy-dropdown-menu" role="menu">
+            {#each copyFormats as fmt}
+              <button
+                class="copy-dropdown-item"
+                role="menuitem"
+                onclick={() => { copyOutput(fmt.id); copyDropdownOpen = false; }}
+              >
+                {fmt.label}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
+      <div class="float-actions">
+        <div class="tts-controls">
+            {#if $ttsStore.state === "loading"}
+              <button class="float-btn" disabled aria-label="Loading">
+                <span class="tts-spinner"></span>
+              </button>
+            {:else if $ttsStore.state === "idle"}
+              <button
+                class="float-btn"
+                onclick={() => {
+                  if (contentDiv) {
+                    const text = ttsStore.extractReadableText(contentDiv);
+                    if (text) ttsStore.speak(text);
+                  }
+                }}
+                aria-label="Read aloud"
+                data-tooltip="Read aloud"
+                disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
+              >
+                <Play size={12} strokeWidth={1.5} />
+              </button>
+            {:else if $ttsStore.state === "playing"}
+              <button
+                class="float-btn"
+                onclick={() => ttsStore.pause()}
+                aria-label="Pause"
+                data-tooltip="Pause"
+              >
+                <Pause size={12} strokeWidth={1.5} />
+              </button>
+            {:else}
+              <button
+                class="float-btn"
+                onclick={() => ttsStore.resume()}
+                aria-label="Resume"
+                data-tooltip="Resume"
+              >
+                <Play size={12} strokeWidth={1.5} />
+              </button>
+            {/if}
+            {#if $ttsStore.state !== "idle" && $ttsStore.state !== "loading"}
+              <button
+                class="float-btn"
+                onclick={() => ttsStore.stop()}
+                aria-label="Stop"
+                data-tooltip="Stop"
+              >
+                <Square size={12} strokeWidth={1.5} />
+              </button>
+            {/if}
+          </div>
+        <button
+          class="float-btn"
+          onclick={() => window.dispatchEvent(new CustomEvent("markz:start-presentation"))}
+          aria-label="Start presentation"
+          data-tooltip="Start presentation"
+          disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
+        >
+          <Presentation size={12} strokeWidth={1.5} />
+        </button>
+      </div>
+    </div>
     <div
       class="preview-content"
       class:editing={previewEditing}
@@ -738,17 +737,21 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
     100% { transform: translateX(350%); }
   }
 
-  /* Toolbar */
-  .preview-toolbar {
+  /* Floating action bar inside preview */
+  .preview-float-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-1) var(--space-3);
-    border-bottom: 1px solid var(--border-default);
-    background: var(--bg-surface);
-    flex-shrink: 0;
-    transition: background-color 300ms var(--ease-in-out),
-                border-color 300ms var(--ease-in-out);
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: -44px;
+    pointer-events: none;
+  }
+  .preview-float-bar .float-btn,
+  .preview-float-bar .copy-dropdown {
+    pointer-events: auto;
   }
 
   .copy-dropdown {
@@ -784,53 +787,57 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
     background: var(--bg-hover);
   }
 
-  /* Toolbar actions */
-  .toolbar-actions {
+  /* Floating action buttons */
+  .float-actions {
     display: flex;
     align-items: center;
     gap: var(--space-1);
   }
-  .action-btn {
+  .float-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    background: transparent;
-    border: 1px solid var(--border-subtle);
+    gap: 3px;
+    padding: 3px 7px;
+    background: color-mix(in srgb, var(--bg-surface) 85%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     font-size: 11px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 150ms var(--ease-out);
-    box-shadow: var(--shadow-xs);
+    transition: all 120ms var(--ease-out);
     line-height: 1;
+    box-shadow: var(--shadow-sm);
   }
-  .action-btn:hover {
-    background: var(--bg-hover);
+  .float-btn:hover {
+    background: var(--bg-elevated);
     color: var(--text-primary);
     border-color: var(--border-focus);
-    transform: translateY(-0.5px);
   }
-  .action-btn:active {
-    transform: scale(0.97);
+  .float-btn:active {
+    transform: scale(0.96);
   }
-  .action-btn.success {
-    background: var(--success);
+  .float-btn.success {
+    background: color-mix(in srgb, var(--success) 85%, transparent);
     color: white;
     border-color: var(--success);
     animation: successPulse 300ms var(--ease-spring);
   }
-  .action-btn.success:hover {
-    background: var(--accent-hover);
+  .float-btn.success:hover {
+    background: var(--success);
   }
-  .action-btn.active {
-    background: var(--accent-default);
-    color: white;
-    border-color: var(--accent-default);
+  .float-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
   }
   .action-label {
     font-size: 11px;
+  }
+  .float-btn .action-label {
+    font-size: 10px;
   }
   @keyframes successPulse {
     0% { transform: scale(1); }

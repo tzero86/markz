@@ -77,7 +77,7 @@ test.describe("Preview pane Copy dropdown", () => {
     await dropdown.locator(".copy-dropdown-item").first().click();
 
     // Button should show success state
-    await expect(page.locator(".action-btn.success")).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.action-btn .action-label:has-text("Copied")')).toBeVisible();
+    await expect(page.locator(".float-btn.success")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.float-btn .action-label:has-text("Copied")')).toBeVisible();
   });
 });
