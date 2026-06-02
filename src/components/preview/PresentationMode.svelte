@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { highlightCodeBlocks, setHljsTheme } from "./syntaxHighlighter";
 
   export interface Slide {
     kind: "title" | "section" | "content" | "code" | "image";
@@ -79,6 +80,21 @@
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
+  let slideEl: HTMLElement | undefined = $state();
+
+  $effect(() => {
+    if (slideEl && currentSlide) {
+      highlightCodeBlocks(slideEl);
+    }
+  });
+
+  $effect(() => {
+    const theme = document.documentElement.getAttribute("data-theme");
+    if (theme) {
+      setHljsTheme(theme === "dark" ? "dark" : "light");
+    }
+  });
+
   function slideClass(kind: string): string {
     switch (kind) {
       case "title": return "slide-title";
@@ -104,6 +120,7 @@
         <div
           class="slide {slideClass(currentSlide?.kind ?? 'content')}"
           style:--dir={direction}
+          bind:this={slideEl}
         >
           {#if currentSlide?.kind === "title"}
             <div class="slide-body title-layout">
