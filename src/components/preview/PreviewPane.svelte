@@ -1,6 +1,6 @@
 <script lang="ts">
   import EmptyState from "../ui/EmptyState.svelte";
-  import { Eye, Copy, Check, Play, Pause, Square, ChevronDown, Presentation } from "@lucide/svelte";
+  import { Eye, Copy, Check, Volume2, Volume, Square, ChevronDown, Presentation } from "@lucide/svelte";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { invoke } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
@@ -556,38 +556,38 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
   {/if}
   <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
     <div class="preview-float-bar">
-      <div class="copy-dropdown">
-        <button
-          class="float-btn"
-          class:success={copyFeedback}
-          onclick={() => { copyDropdownOpen = !copyDropdownOpen; }}
-          aria-label="Copy"
-          aria-expanded={copyDropdownOpen}
-          disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
-        >
-          {#if copyFeedback}
-            <Check size={12} strokeWidth={2.5} />
-          {:else}
-            <Copy size={12} strokeWidth={1.5} />
-          {/if}
-          <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
-          <ChevronDown size={10} />
-        </button>
-        {#if copyDropdownOpen}
-          <div class="copy-dropdown-menu" role="menu">
-            {#each copyFormats as fmt}
-              <button
-                class="copy-dropdown-item"
-                role="menuitem"
-                onclick={() => { copyOutput(fmt.id); copyDropdownOpen = false; }}
-              >
-                {fmt.label}
-              </button>
-            {/each}
-          </div>
-        {/if}
-      </div>
       <div class="float-actions">
+        <div class="copy-dropdown">
+          <button
+            class="float-btn"
+            class:success={copyFeedback}
+            onclick={() => { copyDropdownOpen = !copyDropdownOpen; }}
+            aria-label="Copy"
+            aria-expanded={copyDropdownOpen}
+            disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
+          >
+            {#if copyFeedback}
+              <Check size={12} strokeWidth={2.5} />
+            {:else}
+              <Copy size={12} strokeWidth={1.5} />
+            {/if}
+            <span class="action-label">{copyFeedback ? "Copied" : "Copy"}</span>
+            <ChevronDown size={10} />
+          </button>
+          {#if copyDropdownOpen}
+            <div class="copy-dropdown-menu" role="menu">
+              {#each copyFormats as fmt}
+                <button
+                  class="copy-dropdown-item"
+                  role="menuitem"
+                  onclick={() => { copyOutput(fmt.id); copyDropdownOpen = false; }}
+                >
+                  {fmt.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
         <div class="tts-controls">
             {#if $ttsStore.state === "loading"}
               <button class="float-btn" disabled aria-label="Loading">
@@ -606,7 +606,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
                 data-tooltip="Read aloud"
                 disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
               >
-                <Play size={12} strokeWidth={1.5} />
+                <Volume2 size={12} strokeWidth={1.5} />
               </button>
             {:else if $ttsStore.state === "playing"}
               <button
@@ -615,7 +615,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
                 aria-label="Pause"
                 data-tooltip="Pause"
               >
-                <Pause size={12} strokeWidth={1.5} />
+                <Volume size={12} strokeWidth={1.5} />
               </button>
             {:else}
               <button
@@ -624,7 +624,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
                 aria-label="Resume"
                 data-tooltip="Resume"
               >
-                <Play size={12} strokeWidth={1.5} />
+                <Volume2 size={12} strokeWidth={1.5} />
               </button>
             {/if}
             {#if $ttsStore.state !== "idle" && $ttsStore.state !== "loading"}
@@ -743,11 +743,12 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
     top: 0;
     z-index: 20;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
-    padding: var(--space-2) var(--space-3);
-    margin-bottom: -44px;
+    padding: var(--space-2) var(--space-3) 0;
+    margin-bottom: -32px;
     pointer-events: none;
+    gap: var(--space-1);
   }
   .preview-float-bar .float-btn,
   .preview-float-bar .copy-dropdown {
@@ -868,6 +869,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
     flex: 1;
     overflow: auto;
     overscroll-behavior: contain;
+    contain: paint;
   }
   .preview-content {
     max-width: 820px;
