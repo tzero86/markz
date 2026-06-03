@@ -130,23 +130,36 @@
   function getMeasurer(): HTMLDivElement {
     if (!measurer) {
       measurer = document.createElement("div");
-      measurer.style.cssText = "position:fixed;visibility:hidden;left:-9999px;top:0;padding:0;font-size:clamp(1rem,1.5vw,1.3rem);line-height:1.6;font-family:var(--font-sans);";
+      measurer.style.cssText = "position:fixed;visibility:hidden;left:-9999px;top:0;";
       document.body.appendChild(measurer);
     }
     return measurer;
   }
 
+  /** Incrementally render blocks in the measurer and check total rendered height
+   *  after each addition. This automatically accounts for CSS gap, padding,
+   *  margins, borders, max-heights, and heading height — no accumulation errors. */
   function measureSlides(raw: SlideDeck, viewportH: number): Slide[] {
     const m = getMeasurer();
-    // Match the actual slide CSS: slide container padding + controls
-    const availableH = viewportH - 48 - 80 - 40;
-    const maxH = Math.max(availableH, 200);
 
-    // Set measurer width to match actual slide content area
+    // Available height for slide content (= viewport minus slide-container padding)
+    // slide-container: padding 48px top + 80px bottom = 128px
+    const maxH = viewportH - 128;
+
+    // Match the actual slide content width
     const slideMaxW = 1200;
     const slidePad = 64;
     const actualW = Math.min(window.innerWidth, slideMaxW) - slidePad * 2;
     m.style.width = Math.max(actualW, 300) + "px";
+
+    // Apply the same base styles as the real slide content area
+    m.style.padding = "16px 0";       // matches .content-layout padding
+    m.style.display = "flex";
+    m.style.flexDirection = "column";
+    m.style.gap = "24px";             // matches .content-layout gap
+    m.style.fontSize = "clamp(1rem,1.5vw,1.3rem)";
+    m.style.lineHeight = "1.6";
+    m.style.fontFamily = "var(--font-sans)";
 
     const result: Slide[] = [];
     for (const slide of raw.slides) {
@@ -155,49 +168,52 @@
         continue;
       }
       const blocks = splitHtmlBlocks(slide.content);
+
+      // Render heading + blocks incrementally; emit slide when height exceeds maxH
       let currentBlocks: string[] = [];
-      let currentH = 0;
+      let headingHtml = "";
+      if (slide.title) {
+        headingHtml = `<h2 style="font-size:clamp(1.5rem,2.5vw,2.2rem);font-weight:700;margin:0 0 6px;flex-shrink:0;border-bottom:2px solid var(--accent-default);padding-bottom:8px;">${slide.title}</h2>`;
+      }
 
       for (const block of blocks) {
         const isCode = block.startsWith("<pre") || block.startsWith("<pre>");
 
-        // Measure this block in the offscreen container with matching max-height
-        const testEl = document.createElement("div");
-        testEl.innerHTML = block;
+        // Build candidate HTML for measurement (wrap code for max-height)
+        let measurerHtml = block;
         if (isCode) {
-          testEl.style.maxHeight = "55vh";
-          testEl.style.overflow = "auto";
+          measurerHtml = `<div style="max-height:55vh;overflow:auto;">${block}</div>`;
         }
-        m.appendChild(testEl);
-        const blockH = testEl.getBoundingClientRect().height;
-        m.removeChild(testEl);
+        const candidateHtml = headingHtml + [...currentBlocks, measurerHtml].join("");
 
-        const wouldFit = currentH + blockH <= maxH;
+        // Measure total rendered height
+        m.innerHTML = candidateHtml;
+        const totalH = m.getBoundingClientRect().height;
 
-        if (!currentBlocks.length || wouldFit) {
-          currentBlocks.push(block);
-          currentH += blockH;
+        if (totalH <= maxH) {
+          currentBlocks = [...currentBlocks, block];
         } else {
-          result.push({
-            kind: "content",
-            title: slide.title,
-            content: currentBlocks.join("\n"),
-            level: slide.level,
-            index: result.length,
-          });
+          // Doesn't fit — emit previous blocks as finished slide (keep original block)
+          if (currentBlocks.length > 0) {
+            result.push({
+              kind: "content", title: slide.title,
+              content: currentBlocks.join("\n"),
+              level: slide.level, index: result.length,
+            });
+          }
           currentBlocks = [block];
-          currentH = blockH;
         }
       }
+      // Emit remaining blocks
       if (currentBlocks.length > 0) {
         result.push({
-          kind: "content",
-          title: slide.title,
+          kind: "content", title: slide.title,
           content: currentBlocks.join("\n"),
-          level: slide.level,
-          index: result.length,
+          level: slide.level, index: result.length,
         });
       }
+      // Clean measurer for next slide
+      m.innerHTML = "";
     }
     return result;
   }
