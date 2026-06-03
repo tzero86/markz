@@ -103,7 +103,10 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
         const result = DOMPurify.sanitize(
           await invokeWithTimeout<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path }, RENDER_TIMEOUT_MS)
         );
-        // Only apply if we're still the latest generation
+        // Guard: the content we started rendering must still match the
+        // current active document. If tabs were switched while we were
+        // rendering, discard.
+        if (content !== $activeDocumentStore.content) return;
         if (myGen !== renderGen) return;
         htmlContent = result;
         // LRU insertion: delete old key first to bump to most-recent position
@@ -115,7 +118,9 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
           if (oldestKey) renderCache.delete(oldestKey);
         }
       } catch (e) {
-        htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
+        if (myGen === renderGen) {
+          htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
+        }
       } finally {
         setTimeout(() => {
           isRendering = false;

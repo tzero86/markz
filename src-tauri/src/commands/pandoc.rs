@@ -6,9 +6,23 @@ fn is_supported_format(fmt: &str) -> bool {
     SUPPORTED_FORMATS.contains(&fmt)
 }
 
-/// Check whether `pandoc` is available on the system PATH.
+/// Check whether `pandoc` is available — first checking the custom path from
+/// settings (if set), then falling back to the system PATH.
 #[tauri::command]
 pub fn pandoc_available() -> Result<bool, String> {
+    // Check custom pandoc path from settings first
+    if let Some(settings) = crate::read_settings_sync() {
+        if let Some(ref custom_path) = settings.pandoc_path {
+            if !custom_path.is_empty() {
+                return Ok(Command::new(custom_path)
+                    .arg("--version")
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false));
+            }
+        }
+    }
+    // Fallback: check system PATH
     match Command::new("pandoc").arg("--version").output() {
         Ok(output) => Ok(output.status.success()),
         Err(_) => Ok(false),
