@@ -16,10 +16,10 @@ test("app loads with editor and preview panes", async ({ page }) => {
   await expect(page.locator(".tab-bar .tab")).toHaveText(/Untitled/);
 });
 
-test("preview shows empty state for new tabs", async ({ page }) => {
+test("preview renders default content", async ({ page }) => {
   const preview = page.locator(".preview-scroller");
-  await expect(preview.locator(".empty-state")).toBeVisible({ timeout: 5000 });
-  await expect(preview.locator(".empty-state h3")).toContainText("Nothing to preview");
+  await expect(preview.locator("h1:has-text('Welcome to MarkZ')")).toBeVisible({ timeout: 5000 });
+  await expect(preview.locator("text=Live preview")).toBeVisible();
 });
 
 test("formatting-test template renders all elements correctly", async ({ page }) => {
