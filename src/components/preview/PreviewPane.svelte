@@ -62,6 +62,17 @@
     const docPath = $activeDocumentStore.path;
     const cacheKey = content;
 
+    // Only render preview for tabs that have a file path. The welcome tab
+    // (path=null) shows an EmptyState instead — this prevents its async
+    // invoke from racing with session restore.
+    if (!docPath) {
+      htmlContent = "";
+      isRendering = false;
+      lastPath = docPath;
+      lastCacheKey = cacheKey;
+      return;
+    }
+
     // Bump generation so stale async renders (from a previous content) don't
     // overwrite the result of a newer render request.
     const myGen = ++renderGen;
@@ -662,7 +673,7 @@
       role="presentation"
       style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
     >
-  {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
+  {#if !$activeDocumentStore.path || !htmlContent}
     <EmptyState
       icon={Eye}
       title="Nothing to preview"

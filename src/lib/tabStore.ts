@@ -645,6 +645,11 @@ export const autoSaveFlash = writable(false);
 
 export const tabStore = createTabStore();
 
+// Expose for e2e tests
+if (typeof window !== "undefined") {
+  (window as any).__markz_tabStore = tabStore;
+}
+
 // Derived store: reactive view of the active tab as a document shape.
 // Components that previously subscribed to documentStore should use this instead.
 export const activeDocumentStore = derived(tabStore, ($tabStore) => {

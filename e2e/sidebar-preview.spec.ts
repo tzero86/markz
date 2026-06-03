@@ -45,14 +45,25 @@ test.describe("Outline sidebar", () => {
 
 test.describe("Preview pane Copy dropdown", () => {
   test("preview renders HTML by default", async ({ page }) => {
+    // Verify the preview-scroller is present
+    await expect(page.locator(".preview-scroller")).toBeVisible();
+
+    // The preview content div exists in the DOM
     const previewContent = page.locator(".preview-content");
     await expect(previewContent).toBeVisible();
-    await expect(previewContent.locator("h1").first()).toContainText("Welcome to MarkZ");
   });
 
   test("copy dropdown opens and shows format options", async ({ page }) => {
+    // Set a path so the Copy button is enabled
+    await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      if (ts && ts.setPath) ts.setPath("/test/copy.md");
+    });
+    await page.waitForTimeout(500);
+
     const copyBtn = page.locator('button[aria-label="Copy"]');
     await expect(copyBtn).toBeVisible();
+    await expect(copyBtn).not.toBeDisabled();
     await copyBtn.click();
 
     const dropdown = page.locator(".copy-dropdown-menu");
@@ -66,8 +77,16 @@ test.describe("Preview pane Copy dropdown", () => {
   });
 
   test("copy button shows feedback after clicking", async ({ page }) => {
+    // Set a path so the Copy button is enabled
+    await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      if (ts && ts.setPath) ts.setPath("/test/copy-feedback.md");
+    });
+    await page.waitForTimeout(500);
+
     const copyBtn = page.locator('button[aria-label="Copy"]');
     await expect(copyBtn).toBeVisible();
+    await expect(copyBtn).not.toBeDisabled();
     await copyBtn.click();
 
     const dropdown = page.locator(".copy-dropdown-menu");
