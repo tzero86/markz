@@ -28,15 +28,15 @@
       aria-label={activity.label}
       title={activity.label}
     >
-      <activity.icon size={20} strokeWidth={1.5} />
+      <activity.icon size={15} strokeWidth={1.5} />
     </button>
   {/each}
 </div>
 
 <style>
   .activity-bar {
-    width: 44px;
-    min-width: 44px;
+    width: 36px;
+    min-width: 36px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -50,8 +50,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     border-radius: var(--radius-sm);
     border: none;
     background: transparent;
