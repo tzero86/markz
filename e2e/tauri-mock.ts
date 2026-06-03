@@ -502,7 +502,8 @@ export const tauriMockScriptString = `
       return Promise.resolve(MOCK_HTML);
     },
     render_slides: (args) => {
-      // Return a simple 2-slide mock deck
+      const override = localStorage.getItem("__e2e_slides_override");
+      if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }
       const md = args?.markdown || "";
       const title = md.match(/^#\s+(.+)$/m)?.[1] || "Presentation";
       return Promise.resolve({

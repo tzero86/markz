@@ -125,13 +125,16 @@
   }
 
   /** Split a single slide's HTML into blocks, measure each against the fixed
-   *  1024×768 canvas, and return slides that each fit within the canvas. */
+   *  1024x768 canvas, and return slides that each fit within the canvas.
+   *  The heading is stripped from content since it's shown separately in the
+   *  .content-heading element. */
   function splitSlideContent(content: string, title: string | null): { title: string | null; content: string }[] {
     const m = getMeasurer();
 
-    // Parse content into block-level HTML chunks
-    const re = /(<(?:p|h[2-6]|pre|ul|ol|blockquote|table|hr)\b[^>]*>[\s\S]*?<\/(?:p|h[2-6]|pre|ul|ol|blockquote|table)>|<hr\s*\/?>)/gi;
-    const blocks: string[] = [];
+    // Parse content into block-level HTML chunks; strip leading heading block
+    // (it repeats what .content-heading already shows)
+    const re = /(<(?:p|h[1-6]|pre|ul|ol|blockquote|table|hr)\b[^>]*>[\s\S]*?<\/(?:p|h[1-6]|pre|ul|ol|blockquote|table)>|<hr\s*\/?>)/gi;
+    let blocks: string[] = [];
     let match;
     let lastIdx = 0;
     while ((match = re.exec(content)) !== null) {
@@ -146,7 +149,12 @@
       const rest = content.slice(lastIdx).trim();
       if (rest) blocks.push(rest);
     }
-    if (blocks.length === 0) return [{ title, content }];
+
+    // Strip any leading heading block — it's already shown as .content-heading
+    while (blocks.length > 0 && (blocks[0].startsWith("<h1") || blocks[0].startsWith("<h2") || blocks[0].startsWith("<h3"))) {
+      blocks = blocks.slice(1);
+    }
+    if (blocks.length === 0) return [{ title, content: "" }];
 
     // Build heading HTML if present
     let headingHtml = "";
@@ -321,13 +329,14 @@
                   <h1 class="section-heading">{@html currentSlide.title}</h1>
                 {/if}
               </div>
-            {:else}
-              <div class="slide-body content-layout">
-                {#if currentSlide?.title}
-                  <h2 class="content-heading">{@html currentSlide.title}</h2>
-                {/if}
-                <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
+          {:else}
+            <div class="slide-body content-layout">
+              <div class="content-heading-row">
+                <h2 class="content-heading">{@html currentSlide?.title ?? ""}</h2>
+                <span class="content-slide-num">{displayNumber}</span>
               </div>
+              <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
+            </div>
             {/if}
           </div>
         {/key}
@@ -463,10 +472,24 @@
     font-size: 28px;
     font-weight: 700;
     color: var(--text-primary);
-    margin: 0 0 6px;
+    margin: 0;
     line-height: 1.2;
+    flex-shrink: 0;
+    flex: 1;
+  }
+  .content-heading-row {
+    display: flex;
+    align-items: baseline;
     border-bottom: 2px solid var(--accent-default);
     padding-bottom: 8px;
+    margin-bottom: 6px;
+  }
+  .content-slide-num {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    margin-left: 12px;
     flex-shrink: 0;
   }
 

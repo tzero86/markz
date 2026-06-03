@@ -154,3 +154,88 @@ test("close button exits presentation", async ({ page }) => {
   await page.locator('.close-btn').click();
   await expect(page.locator(".presentation-overlay")).not.toBeVisible({ timeout: 3000 });
 });
+
+/** Helper: set a custom slide deck via localStorage override, then start
+ *  presentation mode via F5. Returns the total slide count. */
+async function startWithDeck(page: any, slides: any[]) {
+  await page.evaluate((s: any) => {
+    localStorage.setItem("__e2e_slides_override", JSON.stringify({ title: "Test", author: null, theme: "default", slides: s }));
+  }, slides);
+  await page.click('.app');
+  await page.keyboard.press("F5");
+  await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
+  const countText = await page.locator(".slide-counter").innerText();
+  return parseInt(countText.split(" / ")[1] || "0");
+}
+
+test.describe("Content completeness", () => {
+  test("all content blocks are visible across slides — no cutoff", async ({ page }) => {
+    // Build a deck with varied content types: code, lists, table, blockquote
+    const deck = [
+      { kind: "title", title: "Project Overview", content: "<p>A comprehensive project document.</p>", level: 1, index: 0 },
+      { kind: "content", title: "Requirements", content: "<p>The system must support:</p><ul><li>OAuth2 authentication</li><li>Rate limiting</li><li>Export to CSV</li></ul>", level: 2, index: 1 },
+      { kind: "content", title: "Configuration", content: '<p>Set these environment variables:</p><pre><code>export FOO_PORT=8080\nexport FOO_DB_URL=postgresql://localhost/foo\nexport FOO_REDIS_URL=redis://localhost:6379\nexport FOO_TIMEOUT=30s</code></pre>', level: 2, index: 2 },
+      { kind: "content", title: "Database", content: '<table><thead><tr><th>Table</th><th>Purpose</th></tr></thead><tbody><tr><td>users</td><td>Accounts</td></tr><tr><td>tokens</td><td>OAuth2</td></tr></tbody></table>', level: 2, index: 3 },
+    ];
+    const total = await startWithDeck(page, deck);
+
+    let allText = "";
+    for (let i = 0; i < total; i++) {
+      allText += await page.locator(".slide-body").innerText() + "\n";
+      if (i < total - 1) await page.keyboard.press("ArrowRight");
+    }
+
+    expect(allText).toContain("Project Overview");
+    expect(allText).toContain("OAuth2 authentication");
+    expect(allText).toContain("Rate limiting");
+    expect(allText).toContain("export FOO_PORT=8080");
+    expect(allText).toContain("export FOO_DB_URL=postgresql://localhost/foo");
+    expect(allText).toContain("export FOO_REDIS_URL=redis://localhost:6379");
+    expect(allText).toContain("export FOO_TIMEOUT=30s");
+    expect(allText).toContain("users");
+    expect(allText).toContain("tokens");
+  });
+
+  test("long code block is never cut off when it fits the canvas", async ({ page }) => {
+    const codeLines = [];
+    for (let i = 1; i <= 15; i++) codeLines.push("// Comment line " + i);
+    const deck = [
+      { kind: "title", title: "Code Demo", content: "<p>Large snippet below.</p>", level: 1, index: 0 },
+      { kind: "content", title: "The Code", content: "<pre><code>" + codeLines.join("\\n") + "</code></pre>", level: 2, index: 1 },
+      { kind: "content", title: "After", content: "<p>This text follows the code block.</p>", level: 2, index: 2 },
+    ];
+    const total = await startWithDeck(page, deck);
+
+    let allText = "";
+    for (let i = 0; i < total; i++) {
+      allText += await page.locator(".slide-body").innerText() + "\n";
+      if (i < total - 1) await page.keyboard.press("ArrowRight");
+    }
+
+    for (let i = 1; i <= 15; i++) {
+      expect(allText).toContain("// Comment line " + i);
+    }
+    expect(allText).toContain("This text follows the code block");
+  });
+
+  test("content split across slides is complete end-to-end", async ({ page }) => {
+    // Create 8 content slides, each with distinct markers
+    const slides = [{ kind: "title", title: "Full Doc", content: "<p>Test document start</p>", level: 1, index: 0 }];
+    for (let i = 1; i <= 8; i++) {
+      slides.push({ kind: "content", title: "Section " + i, content: "<p>Content for section " + i + ": block-A-" + i + " and block-B-" + i + "</p>", level: 2, index: i });
+    }
+    const total = await startWithDeck(page, slides);
+    expect(total).toBe(9);
+
+    for (let i = 0; i < total; i++) {
+      const text = await page.locator(".slide-body").innerText();
+      if (i === 0) expect(text).toContain("Test document start");
+      else {
+        expect(text).toContain("Section " + i);
+        expect(text).toContain("block-A-" + i);
+        expect(text).toContain("block-B-" + i);
+      }
+      if (i < total - 1) await page.keyboard.press("ArrowRight");
+    }
+  });
+});
