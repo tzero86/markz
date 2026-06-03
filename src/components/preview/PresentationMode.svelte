@@ -36,8 +36,8 @@
   let slideOffsetX = $state(0);
   let slideOffsetY = $state(0);
 
-  let totalSlides = $derived(deck?.slides.length ?? 0);
-  let currentSlide = $derived(deck?.slides[currentIndex] ?? null);
+  let totalSlides = $derived(displaySlides.length);
+  let currentSlide = $derived(displaySlides[currentIndex] ?? null);
   let displayNumber = $derived(currentIndex + 1);
 
   function goTo(index: number) {
@@ -102,10 +102,107 @@
     }
   }
 
-  // ── Scale-to-fit (remark.js approach) ────────────────────────────────────────
-  // Slides are rendered at a fixed canvas size (1024×768) and then uniformly
-  // scaled to fit the viewport. Content NEVER overflows because the canvas is
-  // fixed — same as PowerPoint, Keynote, Google Slides.
+  // ── Fixed canvas splitting + scale-to-fit ────────────────────────────────────
+  // We split heading-based slides so each fits within a 1024×768 canvas, then
+  // uniformly scale each canvas to the viewport. This guarantees no clipped
+  // content AND no viewport-dependent measurement (the canvas is always 1024×768).
+
+  // Shared offscreen measurer matching the real canvas CSS
+  let measurer: HTMLDivElement | null = null;
+
+  function getMeasurer(): HTMLDivElement {
+    if (!measurer) {
+      measurer = document.createElement("div");
+      measurer.style.cssText = "position:fixed;visibility:hidden;left:-9999px;top:0;width:1024px;height:768px;overflow:hidden;";
+      measurer.style.padding = "32px 48px";
+      measurer.style.fontSize = "18px";
+      measurer.style.lineHeight = "1.6";
+      measurer.style.fontFamily = "var(--font-sans)";
+      measurer.style.boxSizing = "border-box";
+      document.body.appendChild(measurer);
+    }
+    return measurer;
+  }
+
+  /** Split a single slide's HTML into blocks, measure each against the fixed
+   *  1024×768 canvas, and return slides that each fit within the canvas. */
+  function splitSlideContent(content: string, title: string | null): { title: string | null; content: string }[] {
+    const m = getMeasurer();
+
+    // Parse content into block-level HTML chunks
+    const re = /(<(?:p|h[2-6]|pre|ul|ol|blockquote|table|hr)\b[^>]*>[\s\S]*?<\/(?:p|h[2-6]|pre|ul|ol|blockquote|table)>|<hr\s*\/?>)/gi;
+    const blocks: string[] = [];
+    let match;
+    let lastIdx = 0;
+    while ((match = re.exec(content)) !== null) {
+      if (match.index > lastIdx) {
+        const text = content.slice(lastIdx, match.index).trim();
+        if (text) blocks.push(text);
+      }
+      blocks.push(match[0]);
+      lastIdx = re.lastIndex;
+    }
+    if (lastIdx < content.length) {
+      const rest = content.slice(lastIdx).trim();
+      if (rest) blocks.push(rest);
+    }
+    if (blocks.length === 0) return [{ title, content }];
+
+    // Build heading HTML if present
+    let headingHtml = "";
+    if (title) {
+      headingHtml = `<h2 style="font-size:28px;font-weight:700;margin:0 0 6px;border-bottom:2px solid var(--accent-default);padding-bottom:8px;">${title}</h2>`;
+    }
+
+    // Pack blocks into slides, measuring total height after each addition
+    const results: { title: string | null; content: string }[] = [];
+    let currentBlocks: string[] = [];
+
+    for (const block of blocks) {
+      const candidateHtml = headingHtml + [...currentBlocks, block].join("");
+      m.innerHTML = candidateHtml;
+      const totalH = m.getBoundingClientRect().height;
+
+      if (totalH <= 768) {
+        currentBlocks = [...currentBlocks, block];
+      } else {
+        if (currentBlocks.length > 0) {
+          results.push({ title, content: currentBlocks.join("\n") });
+        }
+        currentBlocks = [block];
+      }
+    }
+    if (currentBlocks.length > 0) {
+      results.push({ title, content: currentBlocks.join("\n") });
+    }
+
+    m.innerHTML = "";
+    return results.length > 0 ? results : [{ title, content }];
+  }
+
+  let fittedSlides = $state<Slide[]>([]);
+
+  $effect(() => {
+    if (!deck) return;
+    // Split each heading-based slide into canvas-fitting slides
+    const split: Slide[] = [];
+    for (const slide of deck.slides) {
+      if (slide.kind === "title" || slide.kind === "section") {
+        split.push(slide);
+        continue;
+      }
+      const parts = splitSlideContent(slide.content, slide.title);
+      for (const part of parts) {
+        split.push({ ...slide, title: part.title, content: part.content, index: split.length });
+      }
+    }
+    fittedSlides = split;
+  });
+
+  // Re-split on resize (in case CSS/fonts change)
+  // Use the fitted slides for display
+  let displaySlides = $derived(fittedSlides.length > 0 ? fittedSlides : deck?.slides ?? []);
+
   function computeScale() {
     if (!containerEl) return;
     const cw = containerEl.clientWidth;
@@ -114,7 +211,7 @@
     const scaleX = cw / SLIDE_W;
     const scaleY = ch / SLIDE_H;
     const s = Math.min(scaleX, scaleY);
-    slideScale = Math.min(s, 1.4); // cap at 1.4x so slides don't get too huge
+    slideScale = Math.min(s, 1.4);
     slideOffsetX = (cw - SLIDE_W * s) / 2;
     slideOffsetY = (ch - SLIDE_H * s) / 2;
   }
@@ -126,6 +223,11 @@
       ro.observe(containerEl);
       return () => ro.disconnect();
     }
+  });
+
+  onMount(() => {
+    // Clean up measurer
+    return () => { if (measurer) { document.body.removeChild(measurer); measurer = null; } };
   });
 
   onMount(() => {
