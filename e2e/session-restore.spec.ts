@@ -243,4 +243,45 @@ test.describe("Session restore", () => {
     const contentNotes = await getEditorText();
     expect(contentNotes).toContain("Untitled Draft");
   });
+
+  test("preview renders the restored file content after session reload — not the welcome template", async ({ page }) => {
+    // This reproduces the bug where after restart, the preview shows the default
+    // welcome template preview instead of the actual restored file content.
+    // We verify via editor content (preview always returns MOCK_HTML in tests).
+    await page.goto("/");
+    await page.waitForSelector(".app", { timeout: 10000 });
+
+    // Set up file content with a distinct H1 that differs from "Welcome to MarkZ"
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_file_contents", JSON.stringify({
+        "/work/notes.md": "# My Restored File\n\nThis content should show after reload.",
+      }));
+      localStorage.setItem(
+        "markz-session",
+        JSON.stringify({
+          tabs: [
+            { content: "", path: "/work/notes.md", title: "notes.md", isDirty: false, pinned: false },
+          ],
+          activeTabPath: "/work/notes.md",
+        })
+      );
+    });
+
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+    await page.waitForTimeout(800);
+
+    // Tab should be restored
+    const tabs = page.locator(".tab-bar .tab");
+    await expect(tabs).toHaveCount(1, { timeout: 5000 });
+    await expect(tabs.first()).toContainText("notes.md");
+
+    // Editor should show the restored file content (not welcome template)
+    const editorText = await page.evaluate(() => {
+      const v = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      return v ? v.state.doc.toString() : "";
+    });
+    expect(editorText).toContain("My Restored File");
+    expect(editorText).not.toContain("Welcome to MarkZ");
+  });
 });
