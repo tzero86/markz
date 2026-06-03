@@ -24,14 +24,20 @@
 
   let { deck, onClose }: Props = $props();
 
-  // Split raw deck into viewport-fitted slides via offscreen measurement
-  let fittedSlides = $state<Slide[]>([]);
+  // Fixed slide canvas size (standard 4:3 ratio, scaled to fit viewport)
+  const SLIDE_W = 1024;
+  const SLIDE_H = 768;
+
   let currentIndex = $state(0);
   let direction = $state(1);
   let touchStartX = $state(0);
+  let containerEl: HTMLDivElement | undefined = $state();
+  let slideScale = $state(1);
+  let slideOffsetX = $state(0);
+  let slideOffsetY = $state(0);
 
-  let totalSlides = $derived(fittedSlides.length);
-  let currentSlide = $derived(fittedSlides[currentIndex] ?? null);
+  let totalSlides = $derived(deck?.slides.length ?? 0);
+  let currentSlide = $derived(deck?.slides[currentIndex] ?? null);
   let displayNumber = $derived(currentIndex + 1);
 
   function goTo(index: number) {
@@ -78,7 +84,6 @@
   // ── Auto-hide controls ───────────────────────────────────────────────────────
   let controlsVisible = $state(true);
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
-
   function showControls() {
     controlsVisible = true;
     if (hideTimer) clearTimeout(hideTimer);
@@ -97,140 +102,28 @@
     }
   }
 
-  // ── Offscreen measurement splitter ──────────────────────────────────────────
-
-  /** Split HTML into top-level block-element chunks. */
-  function splitHtmlBlocks(html: string): string[] {
-    // Match top-level block tags: <p>, <h2-6>, <pre>, <ul>, <ol>,
-    // <blockquote>, <table>, <hr>, and self-closing <hr>
-    const re = /(<(?:p|h[2-6]|pre|ul|ol|blockquote|table|hr)\b[^>]*>[\s\S]*?<\/(?:p|h[2-6]|pre|ul|ol|blockquote|table)>|<hr\s*\/?>)/gi;
-    const blocks: string[] = [];
-    let match;
-    let lastIdx = 0;
-    while ((match = re.exec(html)) !== null) {
-      // Include any text before this block (plain text / raw)
-      if (match.index > lastIdx) {
-        const text = html.slice(lastIdx, match.index).trim();
-        if (text) blocks.push(text);
-      }
-      blocks.push(match[0]);
-      lastIdx = re.lastIndex;
-    }
-    if (lastIdx < html.length) {
-      const rest = html.slice(lastIdx).trim();
-      if (rest) blocks.push(rest);
-    }
-    return blocks.length > 0 ? blocks : [html];
+  // ── Scale-to-fit (remark.js approach) ────────────────────────────────────────
+  // Slides are rendered at a fixed canvas size (1024×768) and then uniformly
+  // scaled to fit the viewport. Content NEVER overflows because the canvas is
+  // fixed — same as PowerPoint, Keynote, Google Slides.
+  function computeScale() {
+    if (!containerEl) return;
+    const cw = containerEl.clientWidth;
+    const ch = containerEl.clientHeight;
+    if (cw <= 0 || ch <= 0) return;
+    const scaleX = cw / SLIDE_W;
+    const scaleY = ch / SLIDE_H;
+    const s = Math.min(scaleX, scaleY);
+    slideScale = Math.min(s, 1.4); // cap at 1.4x so slides don't get too huge
+    slideOffsetX = (cw - SLIDE_W * s) / 2;
+    slideOffsetY = (ch - SLIDE_H * s) / 2;
   }
 
-  // Shared offscreen measurer — created once
-  let measurer: HTMLDivElement | null = null;
-  let _fitted: Slide[] | null = null;
-
-  function getMeasurer(): HTMLDivElement {
-    if (!measurer) {
-      measurer = document.createElement("div");
-      measurer.style.cssText = "position:fixed;visibility:hidden;left:-9999px;top:0;";
-      document.body.appendChild(measurer);
-    }
-    return measurer;
-  }
-
-  /** Incrementally render blocks in the measurer and check total rendered height
-   *  after each addition. This automatically accounts for CSS gap, padding,
-   *  margins, borders, max-heights, and heading height — no accumulation errors. */
-  function measureSlides(raw: SlideDeck, viewportH: number): Slide[] {
-    const m = getMeasurer();
-
-    // Available height for slide content (= viewport minus slide-container padding)
-    // slide-container: padding 48px top + 80px bottom = 128px
-    const maxH = viewportH - 128;
-
-    // Match the actual slide content width
-    const slideMaxW = 1200;
-    const slidePad = 64;
-    const actualW = Math.min(window.innerWidth, slideMaxW) - slidePad * 2;
-    m.style.width = Math.max(actualW, 300) + "px";
-
-    // Apply the same base styles as the real slide content area
-    m.style.padding = "16px 0";       // matches .content-layout padding
-    m.style.display = "flex";
-    m.style.flexDirection = "column";
-    m.style.gap = "24px";             // matches .content-layout gap
-    m.style.fontSize = "clamp(1rem,1.5vw,1.3rem)";
-    m.style.lineHeight = "1.6";
-    m.style.fontFamily = "var(--font-sans)";
-
-    const result: Slide[] = [];
-    for (const slide of raw.slides) {
-      if (slide.kind === "title" || slide.kind === "section") {
-        result.push(slide);
-        continue;
-      }
-      const blocks = splitHtmlBlocks(slide.content);
-
-      // Render heading + blocks incrementally; emit slide when height exceeds maxH
-      let currentBlocks: string[] = [];
-      let headingHtml = "";
-      if (slide.title) {
-        headingHtml = `<h2 style="font-size:clamp(1.5rem,2.5vw,2.2rem);font-weight:700;margin:0 0 6px;flex-shrink:0;border-bottom:2px solid var(--accent-default);padding-bottom:8px;">${slide.title}</h2>`;
-      }
-
-      for (const block of blocks) {
-        const isCode = block.startsWith("<pre") || block.startsWith("<pre>");
-
-        // Build candidate HTML for measurement (wrap code for max-height)
-        let measurerHtml = block;
-        if (isCode) {
-          measurerHtml = `<div style="max-height:55vh;overflow:auto;">${block}</div>`;
-        }
-        const candidateHtml = headingHtml + [...currentBlocks, measurerHtml].join("");
-
-        // Measure total rendered height
-        m.innerHTML = candidateHtml;
-        const totalH = m.getBoundingClientRect().height;
-
-        if (totalH <= maxH) {
-          currentBlocks = [...currentBlocks, block];
-        } else {
-          // Doesn't fit — emit previous blocks as finished slide (keep original block)
-          if (currentBlocks.length > 0) {
-            result.push({
-              kind: "content", title: slide.title,
-              content: currentBlocks.join("\n"),
-              level: slide.level, index: result.length,
-            });
-          }
-          currentBlocks = [block];
-        }
-      }
-      // Emit remaining blocks
-      if (currentBlocks.length > 0) {
-        result.push({
-          kind: "content", title: slide.title,
-          content: currentBlocks.join("\n"),
-          level: slide.level, index: result.length,
-        });
-      }
-      // Clean measurer for next slide
-      m.innerHTML = "";
-    }
-    return result;
-  }
-
-  function refitSlides() {
-    if (!deck) return;
-    const vh = window.innerHeight;
-    _fitted = measureSlides(deck, vh);
-    fittedSlides = _fitted;
-  }
-
-  // Run fitting when deck arrives or viewport resizes
   $effect(() => {
-    if (deck) {
-      refitSlides();
-      const ro = new ResizeObserver(refitSlides);
-      ro.observe(document.body);
+    if (containerEl) {
+      computeScale();
+      const ro = new ResizeObserver(computeScale);
+      ro.observe(containerEl);
       return () => ro.disconnect();
     }
   });
@@ -242,14 +135,12 @@
     window.addEventListener("mousemove", showControls);
     document.addEventListener("fullscreenchange", () => {
       isFullscreen = !!document.fullscreenElement;
-      refitSlides();
+      requestAnimationFrame(computeScale);
     });
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("mousemove", showControls);
-      document.removeEventListener("fullscreenchange", () => {});
       if (hideTimer) clearTimeout(hideTimer);
-      if (measurer) { document.body.removeChild(measurer); measurer = null; }
     };
   });
 
@@ -299,44 +190,46 @@
         {/if}
       </button>
     </div>
-    <div class="slide-container">
-      {#key currentIndex}
-        <div
-          class="slide {slideClass(currentSlide?.kind ?? 'content')}"
-          style:--dir={direction}
-          bind:this={slideEl}
-        >
-          {#if currentSlide?.kind === "title"}
-            <div class="slide-body title-layout">
-              {#if currentSlide.title}
-                <h1 class="title-heading">{@html currentSlide.title}</h1>
-              {/if}
-              {#if deck.author}
-                <p class="title-author">{deck.author}</p>
-              {/if}
-              {#if !currentSlide.title && deck.title}
-                <h1 class="title-heading">{deck.title}</h1>
-              {/if}
-              {#if currentSlide.content}
-                <div class="slide-html title-subtitle">{@html currentSlide.content}</div>
-              {/if}
-            </div>
-          {:else if currentSlide?.kind === "section"}
-            <div class="slide-body section-layout">
-              {#if currentSlide.title}
-                <h1 class="section-heading">{@html currentSlide.title}</h1>
-              {/if}
-            </div>
-          {:else}
-            <div class="slide-body content-layout">
-              {#if currentSlide?.title}
-                <h2 class="content-heading">{@html currentSlide.title}</h2>
-              {/if}
-              <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
-            </div>
-          {/if}
-        </div>
-      {/key}
+    <div class="slide-container" bind:this={containerEl}>
+      <div class="slide-canvas" style="width:{SLIDE_W}px;height:{SLIDE_H}px;transform:scale({slideScale});left:{slideOffsetX}px;top:{slideOffsetY}px;">
+        {#key currentIndex}
+          <div
+            class="slide {slideClass(currentSlide?.kind ?? 'content')}"
+            style:--dir={direction}
+            bind:this={slideEl}
+          >
+            {#if currentSlide?.kind === "title"}
+              <div class="slide-body title-layout">
+                {#if currentSlide.title}
+                  <h1 class="title-heading">{@html currentSlide.title}</h1>
+                {/if}
+                {#if deck.author}
+                  <p class="title-author">{deck.author}</p>
+                {/if}
+                {#if !currentSlide.title && deck.title}
+                  <h1 class="title-heading">{deck.title}</h1>
+                {/if}
+                {#if currentSlide.content}
+                  <div class="slide-html title-subtitle">{@html currentSlide.content}</div>
+                {/if}
+              </div>
+            {:else if currentSlide?.kind === "section"}
+              <div class="slide-body section-layout">
+                {#if currentSlide.title}
+                  <h1 class="section-heading">{@html currentSlide.title}</h1>
+                {/if}
+              </div>
+            {:else}
+              <div class="slide-body content-layout">
+                {#if currentSlide?.title}
+                  <h2 class="content-heading">{@html currentSlide.title}</h2>
+                {/if}
+                <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
+              </div>
+            {/if}
+          </div>
+        {/key}
+      </div>
     </div>
     <div class="presentation-controls" class:visible={controlsVisible}>
       <button class="ctrl-btn" onclick={(e) => { e.stopPropagation(); prev(); }} disabled={currentIndex === 0} aria-label="Previous slide">
@@ -373,18 +266,22 @@
   .slide-container {
     flex: 1;
     width: 100%;
-    max-width: 1200px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 48px 64px 80px;
+    overflow: hidden;
     position: relative;
+  }
+
+  .slide-canvas {
+    position: absolute;
+    transform-origin: 0 0;
     overflow: hidden;
   }
 
   .slide {
-    width: 100%;
-    height: 100%;
+    width: 1024px;
+    height: 768px;
     display: flex;
     flex-direction: column;
     animation: slideIn 400ms var(--ease-out) forwards;
@@ -413,11 +310,11 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    gap: 24px;
+    gap: 16px;
   }
 
   .title-heading {
-    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-size: 52px;
     font-weight: 800;
     color: var(--text-primary);
     line-height: 1.1;
@@ -426,15 +323,15 @@
   }
 
   .title-author {
-    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-size: 20px;
     color: var(--text-tertiary);
     margin: 0;
   }
 
   .title-subtitle {
-    font-size: clamp(1rem, 1.5vw, 1.25rem);
+    font-size: 20px;
     color: var(--text-secondary);
-    max-width: 700px;
+    max-width: 600px;
     margin-top: 8px;
   }
 
@@ -447,7 +344,7 @@
   }
 
   .section-heading {
-    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-size: 42px;
     font-weight: 700;
     color: white;
     margin: 0;
@@ -461,7 +358,7 @@
   }
 
   .content-heading {
-    font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+    font-size: 28px;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0 0 6px;
@@ -473,7 +370,7 @@
 
   .slide-html {
     color: var(--text-primary);
-    font-size: clamp(1rem, 1.5vw, 1.3rem);
+    font-size: 18px;
     line-height: 1.6;
     flex-shrink: 1;
     min-height: 0;
@@ -492,12 +389,12 @@
   .slide-html :global(pre) {
     background: var(--bg-overlay);
     border-radius: var(--radius-md);
-    padding: 12px 16px;
+    padding: 10px 14px;
     overflow-x: auto;
     overflow-y: auto;
-    font-size: clamp(0.75rem, 1.1vw, 0.9em);
+    font-size: 14px;
     line-height: 1.4;
-    max-height: 55vh;
+    max-height: 400px;
     scrollbar-width: thin;
   }
   .slide-html :global(pre::-webkit-scrollbar) {
@@ -559,8 +456,8 @@
   }
 
   .slide-code .slide-html :global(pre) {
-    font-size: clamp(0.85rem, 1.3vw, 1.1rem);
-    padding: 24px 28px;
+    font-size: 16px;
+    padding: 20px 24px;
   }
 
   .slide-header {
