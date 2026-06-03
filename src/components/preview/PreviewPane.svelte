@@ -18,17 +18,6 @@
 
   type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github";
 
-const RENDER_TIMEOUT_MS = 10000;
-
-async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Render timed out after ${ms}ms`)), ms);
-    invoke<T>(cmd, args)
-      .then((result) => { clearTimeout(timer); resolve(result); })
-      .catch((err) => { clearTimeout(timer); reject(err); });
-  });
-}
-
   /** Cache of content → rendered HTML to avoid redundant re-renders.
    *  Implemented as an LRU (least-recently-used) Map with a max size. */
   const renderCache = new Map<string, string>();
@@ -101,7 +90,7 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
     timeout = setTimeout(async () => {
       try {
         const result = DOMPurify.sanitize(
-          await invokeWithTimeout<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path }, RENDER_TIMEOUT_MS)
+          await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path })
         );
         // Guard: the content we started rendering must still match the
         // current active document. If tabs were switched while we were
@@ -673,12 +662,12 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
       role="presentation"
       style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
     >
-      {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
-        <EmptyState
-          icon={Eye}
-          title="Nothing to preview"
-          subtitle="Open or create a document to see the live preview."
-        />
+  {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
+    <EmptyState
+      icon={Eye}
+      title="Nothing to preview"
+      subtitle="Open or create a document to see the live preview."
+    />
       {:else}
         {@html htmlContent}
       {/if}
