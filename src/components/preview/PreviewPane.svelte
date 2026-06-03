@@ -60,23 +60,21 @@
   $effect(() => {
     const content = $activeDocumentStore.content;
     const docPath = $activeDocumentStore.path;
-    const cacheKey = content;
-
+    const cacheKey = `${docPath ?? "null"}:${content}`;
     // Bump generation so stale async renders (from a previous content) don't
     // overwrite the result of a newer render request.
     const myGen = ++renderGen;
-
     // Clear cache on tab switch (path change) to prevent stale preview
     if (docPath !== lastPath) {
       renderCache.clear();
       lastPath = docPath;
+      htmlContent = "<p>Loading preview...</p>";
     }
     // Skip re-render if content hasn't actually changed
     if (cacheKey === lastCacheKey && htmlContent !== "<p>Loading preview...</p>") {
       return;
     }
     lastCacheKey = cacheKey;
-
     // Check cache — clear any pending render before returning
     const cached = renderCache.get(cacheKey);
     if (cached) {
@@ -84,13 +82,12 @@
       htmlContent = cached;
       return;
     }
-
     clearTimeout(timeout);
     isRendering = true;
     timeout = setTimeout(async () => {
       try {
         const result = DOMPurify.sanitize(
-          await invoke<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path })
+          await invoke<string>("render_preview", { markdown: content, docPath })
         );
         // Guard: the content we started rendering must still match the
         // current active document. If tabs were switched while we were
