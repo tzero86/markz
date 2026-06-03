@@ -67,10 +67,16 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
   let timeout: ReturnType<typeof setTimeout>;
   let lastCacheKey = "";
   let lastPath: string | null = null;
+  let renderGen = 0;
   $effect(() => {
     const content = $activeDocumentStore.content;
     const docPath = $activeDocumentStore.path;
     const cacheKey = content;
+
+    // Bump generation so stale async renders (from a previous content) don't
+    // overwrite the result of a newer render request.
+    const myGen = ++renderGen;
+
     // Clear cache on tab switch (path change) to prevent stale preview
     if (docPath !== lastPath) {
       renderCache.clear();
@@ -97,6 +103,8 @@ async function invokeWithTimeout<T>(cmd: string, args: Record<string, unknown>, 
         const result = DOMPurify.sanitize(
           await invokeWithTimeout<string>("render_preview", { markdown: content, docPath: $activeDocumentStore.path }, RENDER_TIMEOUT_MS)
         );
+        // Only apply if we're still the latest generation
+        if (myGen !== renderGen) return;
         htmlContent = result;
         // LRU insertion: delete old key first to bump to most-recent position
         renderCache.delete(cacheKey);

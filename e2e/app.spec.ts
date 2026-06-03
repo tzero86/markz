@@ -493,3 +493,51 @@ test("split pane divider maintains position after tab operations", async ({
   const afterClose = await divider.boundingBox();
   expect(afterClose?.width).toBeGreaterThan(0);
 });
+
+test("preview shows correct content when switching tabs rapidly", async ({
+  page,
+}) => {
+  async function getEditorText() {
+    return page.evaluate(() => {
+      const v = (window as any).EditorView?.findFromDOM(
+        document.querySelector(".cm-content")
+      );
+      return v ? v.state.doc.toString() : "";
+    });
+  }
+
+  async function setEditorText(text: string) {
+    await page.evaluate((t) => {
+      const v = (window as any).EditorView?.findFromDOM(
+        document.querySelector(".cm-content")
+      );
+      if (v)
+        v.dispatch({
+          changes: { from: 0, to: v.state.doc.length, insert: t },
+        });
+    }, text);
+  }
+
+  // Set first document content
+  await setEditorText("# First Doc\n\nContent of the first document.");
+  await page.waitForTimeout(300);
+  expect(await getEditorText()).toContain("First Doc");
+
+  // Create a new tab and set second content
+  await page.locator('button[aria-label="New tab"]').click();
+  await page.waitForTimeout(200);
+  await setEditorText("# Second Doc\n\nContent of the second document.");
+  await page.waitForTimeout(300);
+  expect(await getEditorText()).toContain("Second Doc");
+
+  // Switch back to first tab — editor should have first doc's content
+  const tabs = page.locator(".tab-bar .tab");
+  await tabs.nth(0).click();
+  await page.waitForTimeout(500);
+  expect(await getEditorText()).toContain("First Doc");
+
+  // Switch back to second tab — editor should have second doc's content
+  await tabs.nth(1).click();
+  await page.waitForTimeout(500);
+  expect(await getEditorText()).toContain("Second Doc");
+});
