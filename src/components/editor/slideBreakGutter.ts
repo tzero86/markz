@@ -1,8 +1,8 @@
+import { type Extension } from "@codemirror/state";
 import {
   gutter,
   GutterMarker,
   EditorView,
-  type Extension,
 } from "@codemirror/view";
 
 const breakIcon = new (class extends GutterMarker {

@@ -30,28 +30,50 @@
   let contextMenuWord = $state("");
   let slideBreakMode = $state(false);
 
+  function detectSlideBreaks(content: string): number[] {
+    const lines = content.split("\n");
+    const breaks: number[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (/^#{1,2}\s/.test(line)) breaks.push(i + 1);
+      else if (/^---\s*$/.test(line)) breaks.push(i + 1);
+    }
+    return breaks;
+  }
+
   function toggleSlideBreakMode() {
     slideBreakMode = !slideBreakMode;
+    if (!editorView) return;
+
+    const activeTab = tabStore.getActiveTab();
+    let breaks = activeTab?.slideBreaks;
+    if (breaks === undefined) {
+      breaks = detectSlideBreaks(editorView.state.doc.toString());
+      tabStore.setSlideBreaks(breaks);
+    }
+
+    setSlideBreaks(
+      editorView,
+      breaks ?? [],
+      handleSlideBreakToggle,
+      slideBreakMode
+    );
+  }
+
+  function handleSlideBreakToggle(line: number) {
+    const tab = tabStore.getActiveTab();
+    if (!tab) return;
+    const current = new Set(tab.slideBreaks ?? []);
+    if (current.has(line)) {
+      current.delete(line);
+    } else {
+      current.add(line);
+    }
+    const breaks = Array.from(current);
+    tabStore.setSlideBreaks(breaks);
+    // Re-apply so the gutter updates immediately
     if (editorView) {
-      const activeTab = tabStore.getActiveTab();
-      setSlideBreaks(
-        editorView,
-        activeTab?.slideBreaks ?? [],
-        (line) => {
-          const tab = tabStore.getActiveTab();
-          if (!tab) return;
-          const current = new Set(tab.slideBreaks ?? []);
-          if (current.has(line)) {
-            current.delete(line);
-          } else {
-            current.add(line);
-          }
-          tabStore.setSlideBreaks(Array.from(current));
-          // Re-apply so the gutter updates immediately
-          setSlideBreaks(editorView, Array.from(current), () => {}, slideBreakMode);
-        },
-        slideBreakMode
-      );
+      setSlideBreaks(editorView, breaks, handleSlideBreakToggle, slideBreakMode);
     }
   }
 
@@ -376,6 +398,13 @@
         editor.view.dispatch({
           changes: { from: 0, to: current.length, insert: doc.content },
         });
+      }
+      // Update slide-break gutter when switching tabs while mode is active
+      if (slideBreakMode && editorView) {
+        const breaks = doc.slideBreaks;
+        if (breaks !== undefined) {
+          setSlideBreaks(editorView, breaks, handleSlideBreakToggle, slideBreakMode);
+        }
       }
     });
 
