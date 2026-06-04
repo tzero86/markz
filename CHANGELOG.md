@@ -1,3 +1,22 @@
+## [0.8.40] - 2026-06-04
+
+### Changed
+- **SettingsModal refactor** — Split the 1,595-line monolithic SettingsModal into a thin shell + 6 focused category components:
+  - `GeneralSettings.svelte` — Appearance, Layout, Accessibility
+  - `EditorSettings.svelte` — Font, Editor behavior, Custom Dictionary
+  - `PreviewSettings.svelte` — Preview font, max width, embed images
+  - `ShortcutsSettings.svelte` — Keyboard shortcuts reference
+  - `AdvancedSettings.svelte` — Custom CSS, TTS, Auto Save, Export/Pandoc
+  - `AboutSettings.svelte` — Version, updates, credits, tech badges
+  - Shared styles extracted to `settings-shared.css` (scoped to `.settings-modal`)
+  - Shared types extracted to `src/lib/settingsTypes.ts` (`AppSettings` interface)
+  - Shell handles modal structure, sidebar nav, search, save/cancel, loading state
+  - No user-visible behavior change; all DOM selectors preserved for e2e compatibility
+
+### Fixed
+- **All 203 e2e tests passing.**
+
+
 ## [0.8.39] - 2026-06-04
 
 ### Added
