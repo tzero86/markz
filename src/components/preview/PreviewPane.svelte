@@ -317,15 +317,95 @@
     e.clipboardData?.setData("text/plain", selection.toString());
     e.preventDefault();
   }
+  /** Find the DOM child in `contentDiv` that corresponds to `breakLine`
+   *  (1-based) in the source markdown.  Uses text-content matching for
+   *  headings / paragraphs and falls back to a line-count heuristic. */
+  function findPreviewChildForLine(
+    children: Element[],
+    markdown: string,
+    breakLine: number
+  ): Element | null {
+    const lines = markdown.split("\n");
+    if (breakLine < 1 || breakLine > lines.length) return null;
+
+    const raw = lines[breakLine - 1];
+    const trimmed = raw.trim();
+
+    // Strip common Markdown prefix syntax to obtain the rendered text.
+    const cleanText = trimmed
+      .replace(/^#{1,6}\s+/, "")               // headings
+      .replace(/^>\s?/, "")                   // blockquotes
+      .replace(/^[-*+]\s+(\[[ x]\]\s+)?/, "") // list items / tasks
+      .replace(/^\d+\.\s+/, "")               // ordered list items
+      .replace(/^\s*```.*$/, "")              // code fence
+      .trim();
+
+    if (cleanText) {
+      // Search for a child whose text contains the cleaned text.
+      // Prefer the first match that starts with the text (exact heading
+      // match) but accept any inclusion as a fallback.
+      let bestIdx = -1;
+      let bestScore = 0;
+      for (let c = 0; c < children.length; c++) {
+        const text = children[c].textContent?.trim() ?? "";
+        if (!text) continue;
+        if (text.startsWith(cleanText)) {
+          return children[c]; // exact match
+        }
+        if (text.includes(cleanText) && cleanText.length > bestScore) {
+          bestScore = cleanText.length;
+          bestIdx = c;
+        }
+      }
+      if (bestIdx !== -1) return children[bestIdx];
+    }
+
+    // Fallback: count non-empty source lines and map proportionally
+    // to DOM children.  This is far more accurate than totalLines
+    // because empty lines do not produce DOM elements.
+    const nonEmptyLineIndices: number[] = [];
+    let inCode = false;
+    for (let i = 0; i < lines.length; i++) {
+      const t = lines[i].trim();
+      if (inCode) {
+        if (t.startsWith("```")) inCode = false;
+        continue;
+      }
+      if (t.startsWith("```")) {
+        inCode = true;
+        nonEmptyLineIndices.push(i + 1);
+        continue;
+      }
+      if (t !== "") nonEmptyLineIndices.push(i + 1);
+    }
+
+    // Find the position of breakLine among non-empty lines.
+    const pos = nonEmptyLineIndices.indexOf(breakLine);
+    if (pos === -1) {
+      // Break is on an empty/code line — use the nearest previous non-empty line.
+      let nearest = 0;
+      for (let i = 0; i < nonEmptyLineIndices.length; i++) {
+        if (nonEmptyLineIndices[i] <= breakLine) nearest = i;
+        else break;
+      }
+      return children[Math.min(nearest, children.length - 1)] ?? null;
+    }
+
+    const ratio = pos / Math.max(nonEmptyLineIndices.length - 1, 1);
+    const idx = Math.min(
+      Math.floor(ratio * children.length),
+      children.length - 1
+    );
+    return children[idx] ?? null;
+  }
+
   function updateSlideBreakMarkers() {
     if (!contentDiv) return;
     contentDiv.querySelectorAll(".slide-break-marker").forEach((el) => el.remove());
     if (!slideBreakMode || slideBreaks.length === 0) return;
     if (!$activeDocumentStore.path && !$activeDocumentStore.content) return;
 
-    const totalLines = ($activeDocumentStore.content || "").split("\n").length;
-    if (totalLines <= 0) return;
-
+    const markdown = $activeDocumentStore.content || "";
     const children = Array.from(contentDiv.children).filter(
       (el) => !el.classList.contains("slide-break-marker")
     );
@@ -335,12 +415,8 @@
     // Process in reverse so markers appear in correct order when inserted
     for (let i = sorted.length - 1; i >= 0; i--) {
       const line = sorted[i];
-      const ratio = Math.min((line - 1) / totalLines, 0.999);
-      const childIndex = Math.min(
-        Math.floor(ratio * children.length),
-        children.length - 1
-      );
-      const target = children[childIndex];
+      const target = findPreviewChildForLine(children, markdown, line);
+      if (!target) continue;
 
       const marker = document.createElement("div");
       marker.className = "slide-break-marker";
@@ -1170,7 +1246,7 @@
     cursor: pointer;
     transition: all 150ms ease;
   }
-  .slide-break-marker {
+  :global(.slide-break-marker) {
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -1181,10 +1257,10 @@
     opacity: 0.5;
     transition: opacity 200ms ease;
   }
-  .slide-break-marker:hover {
+  :global(.slide-break-marker:hover) {
     opacity: 0.85;
   }
-  .sbm-line {
+  :global(.sbm-line) {
     flex: 1;
     height: 2px;
     border-radius: 1px;
@@ -1196,7 +1272,7 @@
     min-width: 24px;
     opacity: 0.6;
   }
-  .sbm-badge {
+  :global(.sbm-badge) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1209,14 +1285,14 @@
       var(--slide-break-end) 0%,
       var(--slide-break-start) 100%
     );
-    color: #fff;
+    color: var(--text-inverse);
     font-size: 10px;
     font-weight: 700;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
     flex-shrink: 0;
   }
   @media print {
-    .slide-break-marker {
+    :global(.slide-break-marker) {
       display: none !important;
     }
   }

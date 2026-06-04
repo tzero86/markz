@@ -1,3 +1,19 @@
+## [0.8.42] - 2026-06-04
+
+### Fixed
++- **Broken app styles** — Moved `settings-shared.css` import from `<style>` block to `<script>` block in SettingsModal.svelte. The CSS `@import` inside a Svelte `<style>` was causing Vite to mishandle the global CSS bundle, which broke theme tokens and preview/editor styling across the entire app.
++- **Preview slide break marker styles** — Wrapped slide break marker CSS selectors in `:global()` so styles actually apply to dynamically-created DOM elements. Fixed badge text color from hardcoded white to `var(--text-inverse)` for proper theme adaptation.
++- **Preview slide break positioning** — Replaced crude total-lines ratio heuristic with a text-matching algorithm that finds the correct preview DOM element for each break line by comparing rendered text content. Falls back to non-empty line counting for accuracy. Break markers now align correctly with the source line they were placed on.
+
+### Changed
++- **Slide break colors** — Switched to clearer red/green semantics:
+  - End (top half): `#b05a5a` light / `#d48888` dark
+  - Start (bottom half): `#4a8a5a` light / `#7ec494` dark
++- **Gutter marker readability** — Enlarged marker from 14×14 to 16×16px, increased number font from 7px/700 to 9px/800, switched text color to `var(--text-inverse)` for automatic light/dark adaptation.
+
+### Fixed
++- **All 203 e2e tests passing.**
+
 ## [0.8.41] - 2026-06-04
 
 ### Changed
