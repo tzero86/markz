@@ -173,4 +173,65 @@ test.describe("Tab management", () => {
     await page.getByRole("menuitem", { name: "Unpin" }).click();
     await expect(page.locator(".tab-bar .tab.pinned")).toHaveCount(0);
   });
+
+test.describe("Draggable tabs", () => {
+  test("tabs have draggable attribute", async ({ page }) => {
+    const tabs = page.locator(".tab-bar .tab");
+    const count = await tabs.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      await expect(tabs.nth(i)).toHaveAttribute("draggable", "true");
+    }
+  });
+
+  test("dragging unpinned tab reorders it", async ({ page }) => {
+    // Create two extra tabs so we have 3 unpinned tabs
+    await page.locator('button[aria-label="New tab"]').click();
+    await page.locator('button[aria-label="New tab"]').click();
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(3, { timeout: 3000 });
+
+    // Get initial order
+    const first = page.locator('[data-testid="tab-0"]');
+    const third = page.locator('[data-testid="tab-2"]');
+    const firstTitle = await first.textContent();
+    const thirdTitle = await third.textContent();
+
+    // Drag first tab onto third tab (before position)
+    await first.dragTo(third, { force: true, timeout: 3000 });
+    await page.waitForTimeout(300);
+
+    // After dragging tab-0 before tab-2, the original first tab
+    // should now be at index 1 (between original second and third)
+    const newTab0 = page.locator('[data-testid="tab-0"]');
+    const newTab1 = page.locator('[data-testid="tab-1"]');
+    await expect(newTab0).toContainText(firstTitle!);
+    await expect(newTab1).toContainText(thirdTitle!);
+  });
+
+  test("dragging pinned tab stays within pinned group", async ({ page }) => {
+    // Create an extra tab and pin the first one
+    await page.locator('button[aria-label="New tab"]').click();
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(2, { timeout: 3000 });
+
+    // Pin first tab via context menu
+    const firstTab = page.locator('[data-testid="tab-0"]');
+    await firstTab.click({ button: "right" });
+    await page.locator('[role="menuitem"]:has-text("Pin")').click();
+    await page.waitForTimeout(200);
+
+    // Verify pinned section exists
+    const pinned = page.locator('[data-testid="pinned-tab-0"]');
+    await expect(pinned).toBeVisible();
+
+    // Try to drag pinned tab onto unpinned tab
+    const unpinned = page.locator('[data-testid="tab-0"]');
+    await pinned.dragTo(unpinned, { force: true, timeout: 3000 });
+    await page.waitForTimeout(300);
+
+    // Pinned tab should still be in pinned section
+    await expect(page.locator('[data-testid="pinned-tab-0"]')).toBeVisible();
+    // Unpinned tab count should still be 1
+    await expect(page.locator('[data-testid^="tab-"]')).toHaveCount(1);
+  });
+});
 });

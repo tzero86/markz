@@ -578,6 +578,25 @@ function createTabStore() {
     persistSession();
   }
 
+  function moveTab(fromIndex: number, toIndex: number) {
+    update((state) => {
+      if (
+        fromIndex < 0 ||
+        fromIndex >= state.tabs.length ||
+        toIndex < 0 ||
+        toIndex >= state.tabs.length ||
+        fromIndex === toIndex
+      ) {
+        return state;
+      }
+      const newTabs = [...state.tabs];
+      const [moved] = newTabs.splice(fromIndex, 1);
+      newTabs.splice(toIndex, 0, moved);
+      return { ...state, tabs: newTabs };
+    });
+    persistSession();
+  }
+
   async function restoreSession(
     openFile: (path: string) => Promise<void>,
     setActivePath: string | null = null
@@ -662,6 +681,7 @@ function createTabStore() {
     closeAll,
     switchTab,
     togglePin,
+    moveTab,
     getActiveTab,
     hasDirtyTabs,
     persistSession,

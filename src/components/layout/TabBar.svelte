@@ -12,6 +12,11 @@
   let canScrollLeft = $state(false);
   let canScrollRight = $state(false);
 
+  // Drag state
+  let draggingId: string | null = $state(null);
+  let dropTargetId: string | null = $state(null);
+  let dropAfter = $state(false);
+
   function handleSwitch(tab: Tab) {
     tabStore.switchTab(tab.id);
   }
@@ -91,6 +96,63 @@
     if (ctxTab) tabStore.togglePin(ctxTab.id);
     closeCtxMenu();
   }
+
+  // --- Drag & Drop ---
+  function getTabIndex(tabId: string): number {
+    return $tabStore.tabs.findIndex((t) => t.id === tabId);
+  }
+
+  function handleDragStart(e: DragEvent, tab: Tab) {
+    draggingId = tab.id;
+    e.dataTransfer?.setData("text/plain", tab.id);
+    e.dataTransfer!.effectAllowed = "move";
+  }
+
+  function handleDragOver(e: DragEvent, targetTab: Tab) {
+    e.preventDefault();
+    if (!draggingId || draggingId === targetTab.id) {
+      dropTargetId = null;
+      return;
+    }
+    const draggedTab = $tabStore.tabs.find((t) => t.id === draggingId);
+    if (!draggedTab) return;
+    // Prevent cross-group drag
+    if (draggedTab.pinned !== targetTab.pinned) return;
+
+    dropTargetId = targetTab.id;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    dropAfter = e.clientX > rect.left + rect.width / 2;
+    e.dataTransfer!.dropEffect = "move";
+  }
+
+  function handleDragLeave() {
+    dropTargetId = null;
+  }
+
+  function handleDrop(e: DragEvent, targetTab: Tab) {
+    e.preventDefault();
+    if (!draggingId || draggingId === targetTab.id) {
+      resetDrag();
+      return;
+    }
+    const draggedTab = $tabStore.tabs.find((t) => t.id === draggingId);
+    if (!draggedTab || draggedTab.pinned !== targetTab.pinned) {
+      resetDrag();
+      return;
+    }
+    const fromIndex = getTabIndex(draggingId);
+    let toIndex = getTabIndex(targetTab.id);
+    if (fromIndex < toIndex && dropAfter) toIndex++;
+    else if (fromIndex > toIndex && !dropAfter) toIndex--;
+    tabStore.moveTab(fromIndex, toIndex);
+    resetDrag();
+  }
+
+  function resetDrag() {
+    draggingId = null;
+    dropTargetId = null;
+    dropAfter = false;
+  }
 </script>
 
 <svelte:window onclick={() => { if (ctxMenuOpen) closeCtxMenu(); }} />
@@ -107,17 +169,27 @@
     </button>
   {/if}
   <div class="tab-scroll">
-    {#each $tabStore.tabs.filter((t) => t.pinned) as tab (tab.id)}
+    {#each $tabStore.tabs.filter((t) => t.pinned) as tab, i (tab.id)}
       <div
         class="tab pinned"
         class:active={tab.id === $tabStore.activeTabId}
+        class:dragging={draggingId === tab.id}
+        class:drop-target={dropTargetId === tab.id}
+        class:drop-after={dropTargetId === tab.id && dropAfter}
+        class:drop-before={dropTargetId === tab.id && !dropAfter}
+        draggable="true"
         onclick={() => handleSwitch(tab)}
         onkeydown={(e) => handleKeydown(e, tab)}
         oncontextmenu={(e) => handleContextMenu(e, tab)}
+        ondragstart={(e) => handleDragStart(e, tab)}
+        ondragover={(e) => handleDragOver(e, tab)}
+        ondragleave={handleDragLeave}
+        ondrop={(e) => handleDrop(e, tab)}
         role="tab"
         tabindex="0"
         aria-selected={tab.id === $tabStore.activeTabId}
         title={tab.path ?? tab.title}
+        data-testid="pinned-tab-{i}"
       >
         <div class="tab-content">
           <Pin size={10} strokeWidth={2} class="pin-icon" />
@@ -131,17 +203,27 @@
     {#if $tabStore.tabs.some((t) => t.pinned) && $tabStore.tabs.some((t) => !t.pinned)}
       <div class="tab-divider"></div>
     {/if}
-    {#each $tabStore.tabs.filter((t) => !t.pinned) as tab (tab.id)}
+    {#each $tabStore.tabs.filter((t) => !t.pinned) as tab, i (tab.id)}
       <div
         class="tab"
         class:active={tab.id === $tabStore.activeTabId}
+        class:dragging={draggingId === tab.id}
+        class:drop-target={dropTargetId === tab.id}
+        class:drop-after={dropTargetId === tab.id && dropAfter}
+        class:drop-before={dropTargetId === tab.id && !dropAfter}
+        draggable="true"
         onclick={() => handleSwitch(tab)}
         onkeydown={(e) => handleKeydown(e, tab)}
         oncontextmenu={(e) => handleContextMenu(e, tab)}
+        ondragstart={(e) => handleDragStart(e, tab)}
+        ondragover={(e) => handleDragOver(e, tab)}
+        ondragleave={handleDragLeave}
+        ondrop={(e) => handleDrop(e, tab)}
         role="tab"
         tabindex="0"
         aria-selected={tab.id === $tabStore.activeTabId}
         title={tab.path ?? tab.title}
+        data-testid="tab-{i}"
       >
         <div class="tab-content">
           <span class="tab-title">{tab.title}</span>
@@ -391,5 +473,38 @@
   .tab-scroll-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+  /* Drag & drop */
+  .tab.dragging {
+    opacity: 0.35;
+    cursor: grabbing;
+  }
+  .tab.drop-target {
+    position: relative;
+  }
+  .tab.drop-target::before,
+  .tab.drop-target::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent-default);
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 1px;
+  }
+  .tab.drop-before::before {
+    left: -1px;
+  }
+  .tab.drop-after::after {
+    right: -1px;
+  }
+  .tab[draggable="true"] {
+    cursor: grab;
+  }
+  .tab[draggable="true"]:active {
+    cursor: grabbing;
   }
 </style>

@@ -404,7 +404,7 @@ import Toast from "../ui/Toast.svelte";
       <button class="tool-btn" onclick={onOpenHelp} aria-label="Help" data-tooltip="Help (?)">
         <CircleHelp size={15} strokeWidth={2} />
       </button>
-      <button class="tool-btn" onclick={onOpenSettings} aria-label="Settings" data-tooltip="Settings">
+      <button class="tool-btn" onclick={onOpenSettings} aria-label="Settings" data-tooltip="Settings" data-testid="settings-button">
         <Settings size={15} strokeWidth={2} />
       </button>
       <button class="tool-btn" onclick={() => themeStore.cycle()} aria-label="Toggle theme" data-tooltip="Theme: {themeLabel($themeStore)} (click to cycle)">
