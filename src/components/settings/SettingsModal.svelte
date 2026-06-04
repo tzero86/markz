@@ -11,6 +11,7 @@
     Info,
     Search,
   } from "@lucide/svelte";
+  import "./settings-shared.css";
   import { get } from "svelte/store";
   import { themeStore, type Theme } from "../../lib/themeStore";
   import { ttsStore } from "../../lib/ttsStore";
@@ -252,7 +253,7 @@
 {/if}
 
 <style>
-  @import "./settings-shared.css";
+  /* settings-shared.css is imported globally in the script block */
 
   .modal-backdrop {
     position: fixed;
