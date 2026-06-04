@@ -92,6 +92,7 @@ Save any document as a reusable custom template.
 - **Word Wrap Toggle** — Per-document setting
 - **CodeMirror Minimap** — Optional overview map
 - **Vim Keybindings** — Optional Vim mode in the editor (toggle in Settings)
+- **Draggable Tabs** — Drag-and-drop to reorder tabs within pinned/unpinned groups; order persists across sessions
 - **Pin Tabs** — Right-click to pin tabs; pinned tabs survive Close All and won't close with `Ctrl+W`
 - **Vertical Split** — Toggle between horizontal and vertical editor/preview layout
 - **Custom Spellcheck Dictionary** — Manage per-user words; right-click to add words
@@ -99,6 +100,7 @@ Save any document as a reusable custom template.
 - **Text to Speech** — Dual-engine read-aloud (Edge streaming + Windows SAPI5 offline)
 - **Auto-Updater** — Built-in update check with dirty-tabs warning before restart
 - **Presentation Mode** (`F5`) — Convert Markdown to slide decks with heading-based boundaries
+- **Slide Break Editor** — Visual gutter markers to manually define slide boundaries; preview pane shows faint boundary lines; no special markdown syntax required
 
 ### Privacy
 - **Offline-First** — Works without network access

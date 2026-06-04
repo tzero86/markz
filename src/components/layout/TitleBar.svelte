@@ -58,14 +58,23 @@ import Toast from "../ui/Toast.svelte";
       .then((available) => { pandocAvailable = Boolean(available); })
       .catch(() => { pandocAvailable = false; });
 
-    // Re-check pandoc when settings change (user may have set a new pandoc path)
     const onSettingsChanged = () => {
       invoke("pandoc_available")
         .then((available) => { pandocAvailable = Boolean(available); })
         .catch(() => { pandocAvailable = false; });
     };
     window.addEventListener("markz:settings-changed", onSettingsChanged);
-    return () => window.removeEventListener("markz:settings-changed", onSettingsChanged);
+
+    function onTriggerCopy(e: Event) {
+      const d = (e as CustomEvent).detail;
+      handleCopy(d.command, d.label, d.mode, d.format);
+    }
+    window.addEventListener("markz:trigger-copy", onTriggerCopy);
+
+    return () => {
+      window.removeEventListener("markz:settings-changed", onSettingsChanged);
+      window.removeEventListener("markz:trigger-copy", onTriggerCopy);
+    };
   });
 
   const copyOptions = [

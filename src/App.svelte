@@ -253,6 +253,14 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       }
     };
     window.addEventListener("markz:start-presentation", handleStartPresentation);
+    const handleOpenTemplateBrowser = () => {
+      templateBrowserOpen = true;
+    };
+    window.addEventListener("markz:open-template-browser", handleOpenTemplateBrowser);
+    const handleOpenSaveTemplate = () => {
+      saveTemplateOpen = true;
+    };
+    window.addEventListener("markz:open-save-template", handleOpenSaveTemplate);
     const handleOpenSearch = () => {
       searchPanelOpen = true;
     };
@@ -271,6 +279,8 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       window.removeEventListener("markz:open-palette", handleOpenPalette);
       window.removeEventListener("markz:print-pdf", handlePrintPdf);
       window.removeEventListener("markz:start-presentation", handleStartPresentation);
+      window.removeEventListener("markz:open-template-browser", handleOpenTemplateBrowser);
+      window.removeEventListener("markz:open-save-template", handleOpenSaveTemplate);
       window.removeEventListener("markz:open-search", handleOpenSearch);
     };
   });

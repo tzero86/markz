@@ -2,8 +2,8 @@
 
 > This document tracks planned refactors, features, and bugfixes. Update as work progresses.
 >
-> **Current version:** v0.8.7+
-> **Last updated:** 2026-06-01
+> **Current version:** v0.8.39+
+> **Last updated:** 2026-06-04
 
 ---
 
@@ -150,11 +150,10 @@ Features that make MarkZ feel like a serious IDE for markdown.
 ## Phase 5: Polish & Ecosystem
 
 ### P2 — Draggable tabs
-- **Status:** `[ ]`
-- **Files:** `src/components/layout/TabBar.svelte`
-- **Scope:** Reorder tabs via drag-and-drop. Persist order in session.
+- **Status:** `[x]` Done
+- **Files:** `src/lib/tabStore.ts`, `src/components/layout/TabBar.svelte`
+- **Scope:** Reorder tabs via drag-and-drop within pinned/unpinned groups. Cross-group drag prevented. Visual feedback on drop target. Persist order in session.
 - **Effort:** Small (½ day)
-
 ### P2 — Split editor (two editor panes)
 - **Status:** `[ ]`
 - **Files:** `src/App.svelte`, `src/components/editor/EditorPane.svelte`
@@ -180,8 +179,7 @@ Features that make MarkZ feel like a serious IDE for markdown.
 |-------|--------|-------|
 | Activity bar unresponsive in production (v0.8.2) | `[x]` Done | Fix applied in `5baee85` (Svelte 5 prop destructuring workaround). Confirmed fixed. |
 | E2E `Ctrl+W` keyboard test | `[x]` Skipped | Playwright Chromium intercepts browser shortcut. Close-tab logic covered in `tabs.spec.ts`. |
-| Settings button lacks `data-testid` | `[ ]` | `screenshot-capture.spec.ts` uses `.locator('[data-testid="settings-button"]')` which fails; currently falls through silently. |
-| `documentStore` ↔ `tabStore` circular sync guard | `[x]` Done | `syncing` boolean removed when `documentStore` was eliminated. No longer an issue. |
+| Settings button lacks `data-testid` | `[x]` Done | Fixed in v0.8.37. Added `data-testid="settings-button"` to TitleBar settings button. |
 
 ---
 

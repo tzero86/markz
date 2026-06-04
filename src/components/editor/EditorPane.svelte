@@ -392,6 +392,11 @@
     loadFontSettings();
     startupCheckpoint("EditorPane mounted");
 
+    const onToggleSlideBreaks = () => {
+      toggleSlideBreakMode();
+    };
+    window.addEventListener("markz:toggle-slide-breaks", onToggleSlideBreaks);
+
     const observer = new MutationObserver(() => {
       const theme = document.documentElement.getAttribute("data-theme");
       const isDark =
@@ -433,10 +438,7 @@
     });
 
     return () => {
-      observer.disconnect();
-      unsub();
-      unsubZoom();
-      editor.destroy();
+      window.removeEventListener("markz:toggle-slide-breaks", onToggleSlideBreaks);
       window.removeEventListener(
         "markz:settings-changed",
         handleSettingsChanged as EventListener
@@ -445,6 +447,10 @@
         "markz:toggle-checkbox",
         handleToggleCheckbox as EventListener
       );
+      observer.disconnect();
+      unsub();
+      unsubZoom();
+      editor.destroy();
     };
   });
 </script>

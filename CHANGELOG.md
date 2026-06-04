@@ -1,3 +1,18 @@
+## [0.8.39] - 2026-06-04
+
+### Added
+- **Draggable tabs** — Drag-and-drop reordering within pinned/unpinned groups. Visual feedback (dimmed dragged tab, accent drop indicator). Cross-group drag prevention. Order persists in session storage.
+- **Slide Break Editor** — Visual gutter markers (like breakpoints) to manually define presentation slide boundaries. Auto-detects H1/H2/`---` boundaries on first toggle. Click to toggle breaks. Preview pane shows faint dotted boundary lines with `slide 01`, `slide 02` labels while in break mode. Breaks persist per-tab in session storage. No special markdown syntax required.
+- **Command Palette expansion** — New commands: Toggle Slide Break Mode, New from Template, Save as Template, Copy as JIRA, Copy as Confluence, Copy as Slack, Copy as GitHub, Copy as HTML. Fixed missing `X` icon for Close Tab command.
+
+### Changed
+- **About section redesign** — Compact layout that fits without scrolling. Removed features list. Added GitHub link. Minimalist update row (status + compact action button). Streamlined tech badges and credits.
+
+### Fixed
+- **Settings button `data-testid`** — Added `data-testid="settings-button"` to TitleBar settings button, fixing silently-failing screenshot-capture e2e test.
+- **All 203 e2e tests passing.**
+
+
 ## [0.8.12] - 2026-06-02
 
 ### Fixed

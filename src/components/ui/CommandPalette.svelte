@@ -1,6 +1,6 @@
 <script lang="ts">
   import { trapFocus } from "../../lib/focusTrap";
-  import { File, FolderOpen, FilePlus, Save, Search, Command, ListTree, Link2, GitBranch, Settings, HelpCircle, Type, Image, Table, Printer, Download, PanelLeft, Eye, EyeOff, Moon, Sun, ZoomIn, ZoomOut, RotateCcw, ChevronRight, Presentation } from "@lucide/svelte";
+  import { File, FolderOpen, FilePlus, Save, Search, Command, ListTree, Link2, GitBranch, Settings, HelpCircle, Type, Image, Table, Printer, Download, PanelLeft, Eye, EyeOff, Moon, Sun, ZoomIn, ZoomOut, RotateCcw, ChevronRight, Presentation, X, BookOpen, ClipboardCopy } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
   import { searchPalette, type PaletteItem, type PaletteMode, registerCommandPalette } from "../../lib/commandPalette";
   import { contentZoomStore } from "../../lib/contentZoomStore";
@@ -43,8 +43,10 @@
     sun: Sun,
     "zoom-in": ZoomIn,
     "zoom-out": ZoomOut,
-    "rotate-ccw": RotateCcw,
     presentation: Presentation,
+    x: X,
+    template: BookOpen,
+    "clipboard-copy": ClipboardCopy,
   };
 
   function buildCommands(): PaletteItem[] {
@@ -71,6 +73,14 @@
       { id: "export-docx", label: "Export to DOCX", detail: "Export current document as Word", icon: "download", action: () => { window.dispatchEvent(new CustomEvent("markz:export-docx")); onClose(); } },
       { id: "print-pdf", label: "Print to PDF", detail: "Print preview as PDF", icon: "printer", action: () => { window.dispatchEvent(new CustomEvent("markz:print-pdf")); onClose(); } },
       { id: "presentation", label: "Start Presentation", detail: "Present current document as slides", icon: "presentation", action: () => { window.dispatchEvent(new CustomEvent("markz:start-presentation")); onClose(); } },
+      { id: "toggle-slide-breaks", label: "Toggle Slide Break Mode", detail: "Edit slide boundaries in the gutter", icon: "presentation", action: () => { window.dispatchEvent(new CustomEvent("markz:toggle-slide-breaks")); onClose(); } },
+      { id: "new-from-template", label: "New from Template", detail: "Create a document from a template", icon: "template", action: () => { window.dispatchEvent(new CustomEvent("markz:open-template-browser")); onClose(); } },
+      { id: "save-as-template", label: "Save as Template", detail: "Save current document as a reusable template", icon: "template", action: () => { window.dispatchEvent(new CustomEvent("markz:open-save-template")); onClose(); } },
+      { id: "copy-jira", label: "Copy as JIRA", detail: "Copy document formatted for JIRA", icon: "clipboard-copy", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_jira", label: "Copy as JIRA", mode: "copy" } })); onClose(); } },
+      { id: "copy-confluence", label: "Copy as Confluence", detail: "Copy document formatted for Confluence", icon: "clipboard-copy", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_confluence", label: "Copy as Confluence", mode: "copy" } })); onClose(); } },
+      { id: "copy-slack", label: "Copy as Slack", detail: "Copy document formatted for Slack", icon: "clipboard-copy", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_slack", label: "Copy as Slack", mode: "copy" } })); onClose(); } },
+      { id: "copy-github", label: "Copy as GitHub", detail: "Copy document formatted for GitHub", icon: "clipboard-copy", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_github", label: "Copy as GitHub", mode: "copy" } })); onClose(); } },
+      { id: "copy-html", label: "Copy as HTML", detail: "Copy rendered HTML to clipboard", icon: "clipboard-copy", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "render_preview", label: "Copy as HTML", mode: "copy" } })); onClose(); } },
     ];
   }
 
