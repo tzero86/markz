@@ -344,8 +344,18 @@
 
       const marker = document.createElement("div");
       marker.className = "slide-break-marker";
-      marker.textContent = `slide ${String(i + 1).padStart(2, "0")}`;
       marker.setAttribute("aria-hidden", "true");
+      marker.setAttribute("data-slide", String(i + 1));
+
+      const rule = document.createElement("div");
+      rule.className = "sbm-line";
+
+      const badge = document.createElement("span");
+      badge.className = "sbm-badge";
+      badge.textContent = String(i + 1);
+
+      marker.appendChild(rule);
+      marker.appendChild(badge);
       contentDiv.insertBefore(marker, target);
     }
   }
@@ -1160,40 +1170,50 @@
     cursor: pointer;
     transition: all 150ms ease;
   }
-  .preview-search-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
-  mark.preview-search-match {
-    background: var(--accent-subtle);
-    color: inherit;
-    border-radius: 2px;
-    padding: 0 1px;
-  }
   .slide-break-marker {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    margin: var(--space-1) 0;
-    font-size: var(--text-xs);
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    opacity: 0.45;
+    margin: var(--space-2) 0;
+    position: relative;
     user-select: none;
     pointer-events: none;
+    opacity: 0.5;
     transition: opacity 200ms ease;
   }
-  .slide-break-marker::before,
-  .slide-break-marker::after {
-    content: "";
-    flex: 1;
-    border-top: 1px dotted var(--border-default);
-    min-width: 24px;
-  }
   .slide-break-marker:hover {
-    opacity: 0.7;
+    opacity: 0.85;
+  }
+  .sbm-line {
+    flex: 1;
+    height: 2px;
+    border-radius: 1px;
+    background: linear-gradient(
+      90deg,
+      var(--slide-break-end) 0%,
+      var(--slide-break-start) 100%
+    );
+    min-width: 24px;
+    opacity: 0.6;
+  }
+  .sbm-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+      135deg,
+      var(--slide-break-end) 0%,
+      var(--slide-break-start) 100%
+    );
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
   }
   @media print {
     .slide-break-marker {

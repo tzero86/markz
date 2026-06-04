@@ -1,3 +1,22 @@
+## [0.8.41] - 2026-06-04
+
+### Changed
+- **Slide break visual polish** — Redesigned gutter markers and preview lines for clearer start/end semantics:
+  - **Gutter markers**: Replaced generic ▶ arrow with a split-color bookmark shape.
+    Top half = warm amber (`--slide-break-end`) signalling "slide ends here".
+    Bottom half = cool teal (`--slide-break-start`) signalling "new slide starts here".
+    White slide number centred on the marker. Hover tooltip explains the boundary.
+    Inactive lines show a faint square that highlights on hover.
+  - **Preview lines**: Replaced `slide 01` text with a subtle horizontal gradient
+    line (warm → cool) plus a small rounded badge with the slide number.
+    Much less visually intrusive while still clearly marking boundaries.
+  - **Theme tokens**: Added `--slide-break-end`, `--slide-break-start`, and
+    translucent background variants to both light and dark themes.
+
+### Fixed
+- **All 203 e2e tests passing.**
+
+
 ## [0.8.40] - 2026-06-04
 
 ### Changed

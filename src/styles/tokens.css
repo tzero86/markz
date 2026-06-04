@@ -98,6 +98,12 @@
   --accent-subtle: #e6f5ee;
   --accent-muted: #b8decc;
 
+  /* Slide break colors — warm = end, cool = start */
+  --slide-break-end: #c27a00;
+  --slide-break-start: #0e8aaa;
+  --slide-break-end-bg: rgba(194, 122, 0, 0.12);
+  --slide-break-start-bg: rgba(14, 138, 170, 0.12);
+
   --error: #dc2626;
   --error-bg: #fef2f2;
   --warning: #d97706;
@@ -149,6 +155,12 @@
   --accent-hover: #5bdf9e;
   --accent-subtle: #1a3d2e;
   --accent-muted: #2a5c45;
+
+  /* Slide break colors — warm = end, cool = start */
+  --slide-break-end: #fbbf24;
+  --slide-break-start: #67e8f9;
+  --slide-break-end-bg: rgba(251, 191, 36, 0.15);
+  --slide-break-start-bg: rgba(103, 232, 249, 0.15);
 
   --error: #f87171;
   --error-bg: #3d1515;
