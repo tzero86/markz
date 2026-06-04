@@ -39,6 +39,8 @@
   let previewSearchTotal = $state(0);
   let searchBarRef: HTMLDivElement | undefined = $state();
   let syncFeedback = $state(false);
+  let slideBreakMode = $state(false);
+  let slideBreaks = $state<number[]>([]);
 
   const copyFormats: { id: CopyFormat; label: string }[] = [
     { id: "html", label: "Copy as HTML" },
@@ -315,6 +317,45 @@
     e.clipboardData?.setData("text/plain", selection.toString());
     e.preventDefault();
   }
+  function updateSlideBreakMarkers() {
+    if (!contentDiv) return;
+    contentDiv.querySelectorAll(".slide-break-marker").forEach((el) => el.remove());
+    if (!slideBreakMode || slideBreaks.length === 0) return;
+    if (!$activeDocumentStore.path && !$activeDocumentStore.content) return;
+
+    const totalLines = ($activeDocumentStore.content || "").split("\n").length;
+    if (totalLines <= 0) return;
+
+    const children = Array.from(contentDiv.children).filter(
+      (el) => !el.classList.contains("slide-break-marker")
+    );
+    if (children.length === 0) return;
+
+    const sorted = [...slideBreaks].sort((a, b) => a - b);
+    // Process in reverse so markers appear in correct order when inserted
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const line = sorted[i];
+      const ratio = Math.min((line - 1) / totalLines, 0.999);
+      const childIndex = Math.min(
+        Math.floor(ratio * children.length),
+        children.length - 1
+      );
+      const target = children[childIndex];
+
+      const marker = document.createElement("div");
+      marker.className = "slide-break-marker";
+      marker.textContent = `slide ${String(i + 1).padStart(2, "0")}`;
+      marker.setAttribute("aria-hidden", "true");
+      contentDiv.insertBefore(marker, target);
+    }
+  }
+
+  $effect(() => {
+    const _mode = slideBreakMode;
+    const _breaks = slideBreaks;
+    const _html = htmlContent;
+    requestAnimationFrame(() => updateSlideBreakMarkers());
+  });
 
   async function copyOutput(format: CopyFormat = "html") {
     try {
@@ -545,7 +586,16 @@
       }
     }
     window.addEventListener("markz:print", onPrint);
-    return () => window.removeEventListener("markz:print", onPrint);
+    function onSlideBreaksChanged(e: Event) {
+      const d = (e as CustomEvent).detail;
+      slideBreakMode = d.enabled;
+      slideBreaks = d.breaks;
+    }
+    window.addEventListener("markz:slide-breaks-changed", onSlideBreaksChanged);
+    return () => {
+      window.removeEventListener("markz:print", onPrint);
+      window.removeEventListener("markz:slide-breaks-changed", onSlideBreaksChanged);
+    };
   });
 
 </script>
@@ -1119,5 +1169,35 @@
     color: inherit;
     border-radius: 2px;
     padding: 0 1px;
+  }
+  .slide-break-marker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-1) 0;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.45;
+    user-select: none;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  .slide-break-marker::before,
+  .slide-break-marker::after {
+    content: "";
+    flex: 1;
+    border-top: 1px dotted var(--border-default);
+    min-width: 24px;
+  }
+  .slide-break-marker:hover {
+    opacity: 0.7;
+  }
+  @media print {
+    .slide-break-marker {
+      display: none !important;
+    }
   }
 </style>

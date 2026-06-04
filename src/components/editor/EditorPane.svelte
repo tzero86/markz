@@ -41,6 +41,14 @@
     return breaks;
   }
 
+  function notifySlideBreaks(breaks: number[], enabled: boolean) {
+    window.dispatchEvent(
+      new CustomEvent("markz:slide-breaks-changed", {
+        detail: { breaks: [...breaks].sort((a, b) => a - b), enabled },
+      })
+    );
+  }
+
   function toggleSlideBreakMode() {
     slideBreakMode = !slideBreakMode;
     if (!editorView) return;
@@ -58,6 +66,7 @@
       handleSlideBreakToggle,
       slideBreakMode
     );
+    notifySlideBreaks(breaks ?? [], slideBreakMode);
   }
 
   function handleSlideBreakToggle(line: number) {
@@ -75,6 +84,7 @@
     if (editorView) {
       setSlideBreaks(editorView, breaks, handleSlideBreakToggle, slideBreakMode);
     }
+    notifySlideBreaks(breaks, slideBreakMode);
   }
 
   function getWordAtPoint(x: number, y: number): string | null {
@@ -404,6 +414,7 @@
         const breaks = doc.slideBreaks;
         if (breaks !== undefined) {
           setSlideBreaks(editorView, breaks, handleSlideBreakToggle, slideBreakMode);
+          notifySlideBreaks(breaks, slideBreakMode);
         }
       }
     });
