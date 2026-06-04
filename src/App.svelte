@@ -230,8 +230,20 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       const doc = tabStore.getActiveTab();
       if (!doc) return;
       try {
+        let markdown = doc.content;
+        if (doc.slideBreaks && doc.slideBreaks.length > 0) {
+          const lines = markdown.split("\n");
+          // Sort descending so insertions don't shift indices
+          const sorted = [...doc.slideBreaks].sort((a, b) => b - a);
+          for (const lineNum of sorted) {
+            if (lineNum > 1 && lineNum <= lines.length) {
+              lines.splice(lineNum - 1, 0, "---");
+            }
+          }
+          markdown = lines.join("\n");
+        }
         const deck = await invoke<any>("render_slides", {
-          markdown: doc.content,
+          markdown,
           docPath: doc.path,
         });
         slideDeck = deck;

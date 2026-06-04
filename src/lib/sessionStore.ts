@@ -6,6 +6,8 @@ export interface SessionTab {
   title: string;
   isDirty: boolean;
   pinned?: boolean;
+  /** 1-based line numbers where manual slide breaks are set. */
+  slide_breaks?: number[];
 }
 
 export interface SessionState {
@@ -26,6 +28,7 @@ export async function saveSession(
       title: t.title,
       is_dirty: t.isDirty,
       pinned: t.pinned ?? false,
+      slide_breaks: t.slide_breaks,
     })),
     active_tab_path: activeTabPath,
     workspace_path: workspacePath,
@@ -40,6 +43,7 @@ export async function getSession(): Promise<SessionState | null> {
       title: string;
       is_dirty: boolean;
       pinned?: boolean;
+      slide_breaks?: number[];
     }>;
     active_tab_path: string | null;
     workspace_path: string | null;
@@ -54,6 +58,7 @@ export async function getSession(): Promise<SessionState | null> {
       title: t.title,
       isDirty: t.is_dirty,
       pinned: t.pinned ?? false,
+      slide_breaks: t.slide_breaks,
     })),
     activeTabPath: result.active_tab_path,
     workspacePath: result.workspace_path,

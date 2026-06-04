@@ -30,13 +30,16 @@
     Table,
     GitBranch,
     PanelBottom,
+    Presentation,
   } from "@lucide/svelte";
 
   interface Props {
     view: EditorView | null;
+    slideBreakMode?: boolean;
+    onToggleSlideBreakMode?: () => void;
   }
 
-  let { view }: Props = $props();
+  let { view, slideBreakMode = false, onToggleSlideBreakMode }: Props = $props();
 
   let showTableDialog = $state(false);
   let tableRows = $state(3);
@@ -109,6 +112,17 @@
       {/each}
     </div>
   {/each}
+  <div class="tool-group">
+    <button
+      class="tool-btn"
+      class:active={slideBreakMode}
+      onclick={() => onToggleSlideBreakMode?.()}
+      title={slideBreakMode ? "Exit slide break mode" : "Edit slide breaks"}
+      type="button"
+    >
+      <Presentation size={13} strokeWidth={1.5} />
+    </button>
+  </div>
 </div>
 
 {#if showTableDialog}
@@ -186,6 +200,10 @@
   }
   .tool-btn:active {
     transform: scale(0.96);
+  }
+  .tool-btn.active {
+    background: var(--accent-subtle);
+    color: var(--accent-default);
   }
 
   .table-dialog-backdrop {

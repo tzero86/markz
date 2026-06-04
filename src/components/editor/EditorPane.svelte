@@ -5,7 +5,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck, setCustomDictionary, setVimMode } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck, setCustomDictionary, setVimMode, setSlideBreaks } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
@@ -28,6 +28,32 @@
   let contextMenuX = $state(0);
   let contextMenuY = $state(0);
   let contextMenuWord = $state("");
+  let slideBreakMode = $state(false);
+
+  function toggleSlideBreakMode() {
+    slideBreakMode = !slideBreakMode;
+    if (editorView) {
+      const activeTab = tabStore.getActiveTab();
+      setSlideBreaks(
+        editorView,
+        activeTab?.slideBreaks ?? [],
+        (line) => {
+          const tab = tabStore.getActiveTab();
+          if (!tab) return;
+          const current = new Set(tab.slideBreaks ?? []);
+          if (current.has(line)) {
+            current.delete(line);
+          } else {
+            current.add(line);
+          }
+          tabStore.setSlideBreaks(Array.from(current));
+          // Re-apply so the gutter updates immediately
+          setSlideBreaks(editorView, Array.from(current), () => {}, slideBreakMode);
+        },
+        slideBreakMode
+      );
+    }
+  }
 
   function getWordAtPoint(x: number, y: number): string | null {
     const range = (document as any).caretRangeFromPoint?.(x, y)
@@ -272,7 +298,6 @@
       setCustomDictionary(editorView, detail.customDictionary);
     }
   }
-
   function handleToggleCheckbox(event: CustomEvent<{ index: number }>) {
     if (!editorView) return;
     const { index } = event.detail;
@@ -295,7 +320,6 @@
       count++;
     }
   }
-
   onMount(() => {
     startupCheckpoint("EditorPane mounting");
     const editor = initEditor(container, $activeDocumentStore.content, {
@@ -304,7 +328,18 @@
       lineHeight: baseLineHeight,
       showMinimap,
       customDictionary: [],
-      // vimMode: vimModeEnabled,
+      slideBreaks: $activeDocumentStore.slideBreaks,
+      onSlideBreakToggle: (line) => {
+        const tab = tabStore.getActiveTab();
+        if (!tab) return;
+        const current = new Set(tab.slideBreaks ?? []);
+        if (current.has(line)) {
+          current.delete(line);
+        } else {
+          current.add(line);
+        }
+        tabStore.setSlideBreaks(Array.from(current));
+      },
       onChange: (newContent) => {
         tabStore.setContent(newContent);
       },
@@ -374,7 +409,7 @@
   });
 </script>
 <div class="editor-pane">
-  <Toolbar view={editorView} />
+  <Toolbar view={editorView} slideBreakMode={slideBreakMode} onToggleSlideBreakMode={toggleSlideBreakMode} />
   <div class="editor-area">
     {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
       <div class="editor-empty-hint">

@@ -302,3 +302,50 @@ test.describe("Content completeness", () => {
     expect(hasOverflow).toBe(true);
   });
 });
+
+test.describe("Slide breaks", () => {
+  test("toolbar has slide break toggle button", async ({ page }) => {
+    const btn = page.locator('.tool-btn[title="Edit slide breaks"]');
+    await expect(btn).toBeVisible();
+  });
+
+  test("slide break mode toggle activates the button", async ({ page }) => {
+    const btn = page.locator('.tool-btn[title="Edit slide breaks"]');
+    await btn.click();
+    // Title changes to "Exit..." when active; use a stable locator for the second click
+    const activeBtn = page.locator('.tool-btn[title="Exit slide break mode"]');
+    await expect(activeBtn).toBeVisible();
+    await activeBtn.click();
+    await expect(page.locator('.tool-btn[title="Edit slide breaks"]')).toBeVisible();
+  });
+
+  test("manual slide breaks are persisted and presentation starts", async ({ page }) => {
+    // Set content with two sections
+    await page.evaluate(() => {
+      const store = (window as any).__markz_tabStore;
+      const tab = store.getActiveTab();
+      if (tab) {
+        store.setContent("# Title\n\nPara 1\n\n## Section A\n\nPara 2\n\nPara 3\n\n## Section B\n\nPara 4\n");
+      }
+    });
+    await page.waitForTimeout(200);
+
+    // Set a slide break before "Para 3" (line 9) to split Section A
+    await page.evaluate(() => {
+      const store = (window as any).__markz_tabStore;
+      store.setSlideBreaks([9]);
+    });
+    await page.waitForTimeout(100);
+
+    // Verify breaks are persisted
+    const breaks = await page.evaluate(() => {
+      const store = (window as any).__markz_tabStore;
+      return store.getActiveTab()?.slideBreaks;
+    });
+    expect(breaks).toContain(9);
+
+    // Start presentation — should not crash
+    await page.keyboard.press("F5");
+    await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
+  });
+});

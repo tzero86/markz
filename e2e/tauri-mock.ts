@@ -511,8 +511,8 @@ export const tauriMockScriptString = `
         author: null,
         theme: "default",
         slides: [
-          { kind: "title", title: title, content: "\u003cp\u003eWelcome\u003c/p\u003e", level: 1, index: 0 },
-          { kind: "content", title: "Slide 2", content: "\u003cp\u003eContent here\u003c/p\u003e", level: 2, index: 1 },
+          { kind: "title", title: title, content: "<p>Welcome</p>", level: 1, index: 0 },
+          { kind: "content", title: "Slide 2", content: "<p>Content here</p>", level: 2, index: 1 },
         ],
       });
     },

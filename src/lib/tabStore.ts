@@ -11,6 +11,8 @@ export interface Tab {
   isDirty: boolean;
   isLoading: boolean;
   pinned?: boolean;
+  /** 1-based line numbers where manual slide breaks are set. */
+  slideBreaks?: number[];
 }
 
 interface TabState {
@@ -369,6 +371,7 @@ function createTabStore() {
       title: t.title,
       isDirty: t.isDirty,
       pinned: t.pinned,
+      slide_breaks: t.slideBreaks,
     }));
     const ws = get(workspaceStore);
     saveSession(sessionTabs, activeTab?.path ?? null, ws.rootPath);
@@ -436,6 +439,16 @@ function createTabStore() {
       if (idx === -1) return state;
       const newTabs = [...state.tabs];
       newTabs[idx] = { ...newTabs[idx], isDirty: true };
+      return { ...state, tabs: newTabs };
+    });
+    persistSession();
+  }
+  function setSlideBreaks(lines: number[]) {
+    update((state) => {
+      const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
+      if (idx === -1) return state;
+      const newTabs = [...state.tabs];
+      newTabs[idx] = { ...newTabs[idx], slideBreaks: [...lines].sort((a, b) => a - b) };
       return { ...state, tabs: newTabs };
     });
     persistSession();
@@ -576,6 +589,12 @@ function createTabStore() {
     set({ tabs: [], activeTabId: "" });
 
     const seenPaths = new Set<string>();
+    const breaksByPath = new Map<string, number[]>();
+    for (const tab of session.tabs) {
+      if (tab.path && tab.slide_breaks) {
+        breaksByPath.set(tab.path, tab.slide_breaks);
+      }
+    }
     for (const tab of session.tabs) {
       if (tab.path) {
         if (seenPaths.has(tab.path)) continue;
@@ -594,12 +613,28 @@ function createTabStore() {
           isDirty: tab.isDirty,
           isLoading: false,
           pinned: tab.pinned ?? false,
+          slideBreaks: tab.slide_breaks,
         };
         update((state) => ({
           tabs: [...state.tabs, restored],
           activeTabId: restored.id,
         }));
       }
+    }
+
+    // Restore slide breaks for file tabs
+    if (breaksByPath.size > 0) {
+      update((state) => {
+        let changed = false;
+        const newTabs = state.tabs.map((t) => {
+          if (t.path && breaksByPath.has(t.path)) {
+            changed = true;
+            return { ...t, slideBreaks: breaksByPath.get(t.path) };
+          }
+          return t;
+        });
+        return changed ? { ...state, tabs: newTabs } : state;
+      });
     }
 
     const state = get({ subscribe });
@@ -639,6 +674,7 @@ function createTabStore() {
     markClean,
     markDirty,
     setLoading,
+    setSlideBreaks,
   };
 }
 export const autoSaveFlash = writable(false);
@@ -661,6 +697,7 @@ export const activeDocumentStore = derived(tabStore, ($tabStore) => {
       title: active.title,
       isDirty: active.isDirty,
       isLoading: active.isLoading,
+      slideBreaks: active.slideBreaks,
     };
   }
   return {
@@ -669,5 +706,6 @@ export const activeDocumentStore = derived(tabStore, ($tabStore) => {
     title: "Untitled",
     isDirty: false,
     isLoading: false,
+    slideBreaks: undefined,
   };
 });

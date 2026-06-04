@@ -26,6 +26,7 @@ import { snippetKeymap, cycleSnippetTabStops } from "./snippets";
 import { markdownLinter, spellcheckFacet } from "./markdownLinter";
 import { closeBrackets } from "@codemirror/autocomplete";
 import { vim } from "@replit/codemirror-vim";
+import { createSlideBreakExtension } from "./slideBreakGutter";
 
 /** Smart list continuation: pressing Enter on a list item continues the list.
  *  If the line is empty (only the marker), removes the marker and exits the list. */
@@ -67,7 +68,6 @@ function smartListEnter(view: EditorView): boolean {
   return true;
 }
 
-
 const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
 const wrapCompartment = new Compartment();
@@ -75,6 +75,7 @@ const minimapCompartment = new Compartment();
 const spellcheckCompartment = new Compartment();
 const dictionaryCompartment = new Compartment();
 const vimCompartment = new Compartment();
+const slideBreakCompartment = new Compartment();
 
 function buildDictionaryPlugin(words: string[]): Extension {
   if (words.length === 0) return [];
@@ -209,6 +210,8 @@ export interface EditorConfig {
   lineHeight?: number;
   showMinimap?: boolean;
   customDictionary?: string[];
+  slideBreaks?: number[];
+  onSlideBreakToggle?: (line: number) => void;
   onChange: (content: string) => void;
   onCursorChange?: (pos: CursorPosition) => void;
   onScroll?: () => void;
@@ -276,6 +279,13 @@ export function initEditor(
     markdownLinter,
     spellcheckCompartment.of(spellcheckFacet),
     dictionaryCompartment.of(buildDictionaryPlugin(config.customDictionary ?? [])),
+    slideBreakCompartment.of(
+      createSlideBreakExtension(
+        config.slideBreaks ?? [],
+        config.onSlideBreakToggle ?? (() => {}),
+        (config.slideBreaks?.length ?? 0) > 0 || !!config.onSlideBreakToggle
+      )
+    ),
     closeBrackets(),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
@@ -375,5 +385,18 @@ export function setCustomDictionary(view: EditorView, words: string[]) {
 export function setVimMode(view: EditorView, enabled: boolean) {
   view.dispatch({
     effects: vimCompartment.reconfigure(enabled ? vim() : []),
+  });
+}
+
+export function setSlideBreaks(
+  view: EditorView,
+  breaks: number[],
+  onToggle: (line: number) => void,
+  enabled: boolean
+) {
+  view.dispatch({
+    effects: slideBreakCompartment.reconfigure(
+      createSlideBreakExtension(breaks, onToggle, enabled)
+    ),
   });
 }
