@@ -139,20 +139,17 @@ pub fn parse_slides(markdown: &str) -> SlideDeck {
         );
     }
 
-
-    // Split long slides into shorter ones so content fits the viewport
-    let mut split_blocks: Vec<Vec<Block>> = Vec::new();
-    for blocks in &slide_blocks {
-        let (kind, _, _) = determine_slide_meta(blocks, 0, &deck.title);
-        if kind == SlideKind::Content || kind == SlideKind::Code {
-            let sub = split_blocks_for_slide(blocks);
-            split_blocks.extend(sub);
-        } else {
-            split_blocks.push(blocks.clone());
-        }
+    // If there are no headings at all, the whole doc becomes one title slide.
+    if slide_blocks.is_empty() && !doc.blocks.is_empty() {
+        slide_blocks.push(
+            doc.blocks
+                .iter()
+                .filter(|b| !matches!(b, Block::ThematicBreak))
+                .cloned()
+                .collect(),
+        );
     }
-
-    for (idx, blocks) in split_blocks.iter().enumerate() {
+    for (idx, blocks) in slide_blocks.iter().enumerate() {
         let (kind, title, level) = determine_slide_meta(blocks, idx, &deck.title);
         let content = render_slide_blocks(blocks);
         deck.slides.push(Slide {
@@ -163,7 +160,6 @@ pub fn parse_slides(markdown: &str) -> SlideDeck {
             index: idx,
         });
     }
-
     deck
 }
 
@@ -240,130 +236,6 @@ fn is_mostly_image(blocks: &[Block]) -> bool {
     img_count * 2 >= total
 }
 
-/// Split a slide's blocks into smaller groups so each fits on screen.
-/// Targets roughly 15 visual lines per slide. Code blocks are split at
-/// line granularity when they exceed ~12 lines.
-/// Slides below MIN_SLIDE_LINES are merged back to avoid one-liner slides.
-const MAX_SLIDE_LINES: usize = 15;
-const MIN_SLIDE_LINES: usize = 4;
-const MAX_CODE_LINES: usize = 12;
-
-fn estimated_lines(blocks: &[Block]) -> usize {
-    let mut total = 0usize;
-    for block in blocks {
-        match block {
-            Block::CodeBlock { content, .. } => {
-                let line_count = content.lines().count();
-                // Add 2 for the header/frame
-                total += (line_count + 2).min(MAX_CODE_LINES + 2);
-            }
-            Block::Paragraph { text } => {
-                let raw = inlines_to_plain(text);
-                total += 1 + raw.len() / 80;
-            }
-            Block::List { items, .. } => {
-                total += items.len().max(1);
-            }
-            Block::Table { rows, .. } => {
-                total += rows.len() + 1;
-            }
-            Block::BlockQuote { blocks: sub } => {
-                total += estimated_lines(sub).max(2);
-            }
-            Block::Heading { .. } => total += 1,
-            _ => total += 1,
-        }
-    }
-    total
-}
-
-/// Split blocks into smaller groups, keeping headings with their content.
-fn split_blocks_for_slide(blocks: &[Block]) -> Vec<Vec<Block>> {
-    let est = estimated_lines(blocks);
-    if est <= MAX_SLIDE_LINES {
-        return vec![blocks.to_vec()];
-    }
-
-    let mut result: Vec<Vec<Block>> = Vec::new();
-    let mut current: Vec<Block> = Vec::new();
-    let mut current_lines = 0usize;
-
-    for block in blocks {
-        let block_lines = match block {
-            Block::CodeBlock { content, .. } => content.lines().count() + 2,
-            Block::Paragraph { text } => 1 + inlines_to_plain(text).len() / 80,
-            Block::List { items, .. } => items.len().max(1),
-            Block::Table { rows, .. } => rows.len() + 1,
-            Block::BlockQuote { blocks: sub } => estimated_lines(sub).max(2),
-            Block::Heading { .. } => 1,
-            _ => 1,
-        };
-
-        // If this is a code block, split it by line groups
-        if let Block::CodeBlock { content, language } = block {
-            let lines: Vec<&str> = content.lines().collect();
-            if lines.len() > MAX_CODE_LINES {
-                // Flush any pending content first
-                if !current.is_empty() {
-                    result.push(current);
-                    current = Vec::new();
-                    current_lines = 0;
-                }
-                // Split code block into groups of MAX_CODE_LINES
-                // Only create separate slide if chunk has meaningful content
-                for chunk in lines.chunks(MAX_CODE_LINES) {
-                    let sub_content = chunk.join("\n");
-                    if sub_content.trim().is_empty() { continue; }
-                    current.push(Block::CodeBlock {
-                        language: language.clone(),
-                        content: sub_content,
-                    });
-                    // Flush this chunk as its own slide
-                    result.push(current);
-                    current = Vec::new();
-                    current_lines = 0;
-                }
-                continue;
-            }
-        }
-
-        // Check if adding this block would overflow the current slide
-        if current_lines + block_lines > MAX_SLIDE_LINES && !current.is_empty() {
-            result.push(current);
-            current = Vec::new();
-            current_lines = 0;
-        }
-
-        current.push(block.clone());
-        current_lines += block_lines;
-    }
-
-    if !current.is_empty() {
-        result.push(current);
-    }
-
-    // Merge very small slides back into previous to avoid one-liner slides
-    let mut merged: Vec<Vec<Block>> = Vec::new();
-    for group in result {
-        let est = estimated_lines(&group);
-        if est < MIN_SLIDE_LINES && !merged.is_empty() {
-            if let Some(last) = merged.last_mut() {
-                // Only merge if it wouldn't make the last slide too large
-                if estimated_lines(last) + est <= MAX_SLIDE_LINES + 4 {
-                    last.extend(group);
-                    continue;
-                }
-            }
-        }
-        merged.push(group);
-    }
-
-    if merged.is_empty() {
-        vec![blocks.to_vec()]
-    } else {
-        merged
-    }
-}
 
 fn inlines_to_plain(inlines: &[Inline]) -> String {
     let mut s = String::new();

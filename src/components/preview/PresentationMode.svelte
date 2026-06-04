@@ -8,6 +8,7 @@
     content: string;
     level: number;
     index: number;
+    overflow?: boolean;
   }
 
   export interface SlideDeck {
@@ -128,64 +129,221 @@
    *  1024x768 canvas, and return slides that each fit within the canvas.
    *  The heading is stripped from content since it's shown separately in the
    *  .content-heading element. */
-  function splitSlideContent(content: string, title: string | null): { title: string | null; content: string }[] {
+  function splitSlideContent(content: string, title: string | null): { title: string | null; content: string; overflow?: boolean }[] {
     const m = getMeasurer();
-
-    // Parse content into block-level HTML chunks; strip leading heading block
-    // (it repeats what .content-heading already shows)
-    const re = /(<(?:p|h[1-6]|pre|ul|ol|blockquote|table|hr)\b[^>]*>[\s\S]*?<\/(?:p|h[1-6]|pre|ul|ol|blockquote|table)>|<hr\s*\/?>)/gi;
-    let blocks: string[] = [];
-    let match;
-    let lastIdx = 0;
-    while ((match = re.exec(content)) !== null) {
-      if (match.index > lastIdx) {
-        const text = content.slice(lastIdx, match.index).trim();
-        if (text) blocks.push(text);
-      }
-      blocks.push(match[0]);
-      lastIdx = re.lastIndex;
-    }
-    if (lastIdx < content.length) {
-      const rest = content.slice(lastIdx).trim();
-      if (rest) blocks.push(rest);
-    }
-
-    // Strip any leading heading block — it's already shown as .content-heading
-    while (blocks.length > 0 && (blocks[0].startsWith("<h1") || blocks[0].startsWith("<h2") || blocks[0].startsWith("<h3"))) {
-      blocks = blocks.slice(1);
+    // Parse content into DOM and strip all headings (shown in .content-heading)
+    const temp = document.createElement("div");
+    temp.innerHTML = content;
+    temp.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(h => h.remove());
+    const blocks: string[] = [];
+    for (const child of temp.children) {
+      const tag = child.tagName.toLowerCase();
+      if (tag === "script" || tag === "style") continue;
+      blocks.push(child.outerHTML);
     }
     if (blocks.length === 0) return [{ title, content: "" }];
-
     // Build heading HTML if present
     let headingHtml = "";
     if (title) {
       headingHtml = `<h2 style="font-size:28px;font-weight:700;margin:0 0 6px;border-bottom:2px solid var(--accent-default);padding-bottom:8px;">${title}</h2>`;
     }
-
     // Pack blocks into slides, measuring total height after each addition
-    const results: { title: string | null; content: string }[] = [];
+    const results: { title: string | null; content: string; overflow?: boolean }[] = [];
     let currentBlocks: string[] = [];
-
     for (const block of blocks) {
       const candidateHtml = headingHtml + [...currentBlocks, block].join("");
       m.innerHTML = candidateHtml;
-      const totalH = m.getBoundingClientRect().height;
-
+      const totalH = m.scrollHeight;
       if (totalH <= 768) {
         currentBlocks = [...currentBlocks, block];
       } else {
         if (currentBlocks.length > 0) {
           results.push({ title, content: currentBlocks.join("\n") });
+          currentBlocks = [];
         }
-        currentBlocks = [block];
+        // Check if this single block fits by itself
+        m.innerHTML = headingHtml + block;
+        const singleH = m.scrollHeight;
+        if (singleH <= 768) {
+          currentBlocks = [block];
+        } else {
+          // Single block overflows — try to split it
+          const subBlocks = trySplitBlock(block, headingHtml);
+          for (const sub of subBlocks) {
+            if (sub.overflow) {
+              if (currentBlocks.length > 0) {
+                results.push({ title, content: currentBlocks.join("\n") });
+                currentBlocks = [];
+              }
+              results.push(sub);
+            } else {
+              const subCandidate = headingHtml + [...currentBlocks, sub.content].join("");
+              m.innerHTML = subCandidate;
+              const subH = m.scrollHeight;
+              if (subH <= 768) {
+                currentBlocks.push(sub.content);
+              } else {
+                if (currentBlocks.length > 0) {
+                  results.push({ title, content: currentBlocks.join("\n") });
+                  currentBlocks = [];
+                }
+                currentBlocks = [sub.content];
+              }
+            }
+          }
+        }
       }
     }
     if (currentBlocks.length > 0) {
       results.push({ title, content: currentBlocks.join("\n") });
     }
-
     m.innerHTML = "";
     return results.length > 0 ? results : [{ title, content }];
+  }
+  function trySplitBlock(blockHtml: string, headingHtml: string): { content: string; overflow?: boolean }[] {
+    const m = getMeasurer();
+    const temp = document.createElement("div");
+    temp.innerHTML = blockHtml;
+    const el = temp.firstElementChild;
+    if (!el) return [{ content: blockHtml }];
+    const tag = el.tagName.toLowerCase();
+    if (tag === "pre") {
+      return trySplitCodeBlock(el as HTMLPreElement, headingHtml);
+    }
+    if (tag === "p") {
+      return trySplitParagraph(el as HTMLParagraphElement, headingHtml);
+    }
+    if (tag === "ul" || tag === "ol") {
+      return trySplitList(el as HTMLUListElement | HTMLOListElement, headingHtml);
+    }
+    // Atomic: can't split
+    return [{ content: blockHtml, overflow: true }];
+  }
+  function trySplitParagraph(p: HTMLParagraphElement, headingHtml: string): { content: string; overflow?: boolean }[] {
+    const text = p.textContent || "";
+    if (!text.trim()) return [{ content: p.outerHTML }];
+    const m = getMeasurer();
+    // Binary search for character count that fits
+    let low = 0, high = text.length;
+    let best = 0;
+    const testP = document.createElement("p");
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      testP.textContent = text.slice(0, mid);
+      m.innerHTML = headingHtml + testP.outerHTML;
+      const h = m.scrollHeight;
+      if (h <= 768) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    // Find word boundary near best
+    let splitAt = best;
+    while (splitAt > 0 && !/\s/.test(text[splitAt])) splitAt--;
+    if (splitAt < 1) splitAt = best;
+    const first = p.cloneNode(true) as HTMLParagraphElement;
+    first.textContent = text.slice(0, splitAt).trimEnd();
+    const rest = text.slice(splitAt).trimStart();
+    if (!rest) return [{ content: first.outerHTML }];
+    const second = p.cloneNode(true) as HTMLParagraphElement;
+    second.textContent = rest;
+    m.innerHTML = headingHtml + second.outerHTML;
+    const h2 = m.scrollHeight;
+    const results: { content: string; overflow?: boolean }[] = [{ content: first.outerHTML }];
+    if (h2 > 768) {
+      results.push(...trySplitParagraph(second, headingHtml));
+    } else {
+      results.push({ content: second.outerHTML });
+    }
+    return results;
+  }
+  function trySplitCodeBlock(pre: HTMLPreElement, headingHtml: string): { content: string; overflow?: boolean }[] {
+    const code = pre.querySelector("code");
+    const text = code?.textContent || pre.textContent || "";
+    const lines = text.split("\n");
+    if (lines.length <= 1) return [{ content: pre.outerHTML, overflow: true }];
+    const m = getMeasurer();
+    // Binary search for line count that fits
+    let low = 1, high = lines.length;
+    let best = 1;
+    const testPre = pre.cloneNode(true) as HTMLPreElement;
+    const testCode = testPre.querySelector("code") || testPre;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      testCode.textContent = lines.slice(0, mid).join("\n");
+      m.innerHTML = headingHtml + testPre.outerHTML;
+      const h = m.scrollHeight;
+      if (h <= 768) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    const first = pre.cloneNode(true) as HTMLPreElement;
+    const firstCode = first.querySelector("code") || first;
+    firstCode.textContent = lines.slice(0, best).join("\n");
+    const rest = lines.slice(best).join("\n").trim();
+    if (!rest) return [{ content: first.outerHTML }];
+    const second = pre.cloneNode(true) as HTMLPreElement;
+    const secondCode = second.querySelector("code") || second;
+    secondCode.textContent = rest;
+    m.innerHTML = headingHtml + second.outerHTML;
+    const h2 = m.scrollHeight;
+    const results: { content: string; overflow?: boolean }[] = [{ content: first.outerHTML }];
+    if (h2 > 768) {
+      results.push(...trySplitCodeBlock(second, headingHtml));
+    } else {
+      results.push({ content: second.outerHTML });
+    }
+    return results;
+  }
+  function trySplitList(list: HTMLUListElement | HTMLOListElement, headingHtml: string): { content: string; overflow?: boolean }[] {
+    const items = Array.from(list.children).filter(c => c.tagName === "LI");
+    if (items.length <= 1) return [{ content: list.outerHTML, overflow: true }];
+    const m = getMeasurer();
+    // Binary search for item count that fits
+    let low = 1, high = items.length;
+    let best = 1;
+    const testList = list.cloneNode() as HTMLUListElement | HTMLOListElement;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      testList.innerHTML = "";
+      for (let i = 0; i < mid; i++) {
+        testList.appendChild(items[i].cloneNode(true));
+      }
+      m.innerHTML = headingHtml + testList.outerHTML;
+      const h = m.scrollHeight;
+      if (h <= 768) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    const first = list.cloneNode() as HTMLUListElement | HTMLOListElement;
+    first.innerHTML = "";
+    for (let i = 0; i < best; i++) {
+      first.appendChild(items[i].cloneNode(true));
+    }
+    const restItems = items.slice(best);
+    if (restItems.length === 0) return [{ content: first.outerHTML }];
+    const second = list.cloneNode() as HTMLUListElement | HTMLOListElement;
+    second.innerHTML = "";
+    for (const item of restItems) {
+      second.appendChild(item.cloneNode(true));
+    }
+    m.innerHTML = headingHtml + second.outerHTML;
+    const h2 = m.scrollHeight;
+    const results: { content: string; overflow?: boolean }[] = [{ content: first.outerHTML }];
+    if (h2 > 768) {
+      results.push(...trySplitList(second, headingHtml));
+    } else {
+      results.push({ content: second.outerHTML });
+    }
+    return results;
   }
 
   let fittedSlides = $state<Slide[]>([]);
@@ -201,7 +359,7 @@
       }
       const parts = splitSlideContent(slide.content, slide.title);
       for (const part of parts) {
-        split.push({ ...slide, title: part.title, content: part.content, index: split.length });
+        split.push({ ...slide, title: part.title, content: part.content, overflow: part.overflow, index: split.length });
       }
     }
     fittedSlides = split;
@@ -335,7 +493,7 @@
                 <h2 class="content-heading">{@html currentSlide?.title ?? ""}</h2>
                 <span class="content-slide-num">{displayNumber}</span>
               </div>
-              <div class="slide-html">{@html currentSlide?.content ?? ""}</div>
+              <div class="slide-html" class:overflow={currentSlide?.overflow}>{@html currentSlide?.content ?? ""}</div>
             </div>
             {/if}
           </div>
@@ -500,6 +658,24 @@
     flex-shrink: 1;
     min-height: 0;
     overflow: hidden;
+  }
+  .slide-html.overflow {
+    border: 2px dashed var(--error, #f87171);
+    border-radius: var(--radius-md);
+    position: relative;
+  }
+  .slide-html.overflow::after {
+    content: "⚠ Overflow";
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--error, #f87171);
+    background: var(--bg-base);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    pointer-events: none;
   }
 
   .slide-html :global(p) { margin: 0.4em 0; }

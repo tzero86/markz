@@ -238,4 +238,67 @@ test.describe("Content completeness", () => {
       if (i < total - 1) await page.keyboard.press("ArrowRight");
     }
   });
+  test("long paragraph is split across slides without losing text", async ({ page }) => {
+    // Create a paragraph long enough that it won't fit on a single 1024x768 slide
+    const words = [];
+    for (let i = 1; i <= 600; i++) {
+      words.push("word" + i);
+    }
+    const longPara = words.join(" ");
+    const deck = [
+      { kind: "title", title: "Long Paragraph", content: "<p>Intro.</p>", level: 1, index: 0 },
+      { kind: "content", title: "Details", content: "<p>" + longPara + "</p>", level: 2, index: 1 },
+    ];
+    const total = await startWithDeck(page, deck);
+    // Should have split into multiple slides (title + at least 2 content slides)
+    expect(total).toBeGreaterThanOrEqual(3);
+    let allText = "";
+    for (let i = 0; i < total; i++) {
+      allText += await page.locator(".slide-body").innerText() + "\n";
+      if (i < total - 1) await page.keyboard.press("ArrowRight");
+    }
+    // All words should be present
+    for (let i = 1; i <= 600; i++) {
+      expect(allText).toContain("word" + i);
+    }
+  });
+  test("long list is split across slides without losing items", async ({ page }) => {
+    const items = [];
+    for (let i = 1; i <= 30; i++) {
+      items.push("<li>Item number " + i + " with some extra text to make it longer</li>");
+    }
+    const deck = [
+      { kind: "title", title: "Long List", content: "<p>Intro.</p>", level: 1, index: 0 },
+      { kind: "content", title: "Items", content: "<ul>" + items.join("") + "</ul>", level: 2, index: 1 },
+    ];
+    const total = await startWithDeck(page, deck);
+    expect(total).toBeGreaterThanOrEqual(3);
+    let allText = "";
+    for (let i = 0; i < total; i++) {
+      allText += await page.locator(".slide-body").innerText() + "\n";
+      if (i < total - 1) await page.keyboard.press("ArrowRight");
+    }
+    for (let i = 1; i <= 30; i++) {
+      expect(allText).toContain("Item number " + i);
+    }
+  });
+  test("oversized table gets overflow warning instead of being silently cut off", async ({ page }) => {
+    // A very tall table that exceeds the canvas height
+    const rows = [];
+    for (let i = 1; i <= 50; i++) {
+      rows.push("<tr><td>Row " + i + " A</td><td>Row " + i + " B</td></tr>");
+    }
+    const deck = [
+      { kind: "title", title: "Big Table", content: "<p>Intro.</p>", level: 1, index: 0 },
+      { kind: "content", title: "Data", content: "<table><thead><tr><th>A</th><th>B</th></tr></thead><tbody>" + rows.join("") + "</tbody></table>", level: 2, index: 1 },
+    ];
+    const total = await startWithDeck(page, deck);
+    expect(total).toBeGreaterThanOrEqual(2);
+    // Navigate to the content slide(s)
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(200);
+    // At least one slide should have the overflow indicator
+    const hasOverflow = await page.locator(".slide-html.overflow").count() > 0;
+    expect(hasOverflow).toBe(true);
+  });
 });
