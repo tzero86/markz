@@ -188,18 +188,11 @@ test.describe("About category", () => {
     await expect(modal.locator('.about-description')).toBeVisible();
   });
 
-  test("shows features list", async ({ page }) => {
-    const modal = await openAbout(page);
-    await expect(modal.locator('.about-features li')).toHaveCount(6);
-    await expect(modal.locator('li:has-text("Live preview")')).toBeVisible();
-    await expect(modal.locator('li:has-text("Export to JIRA")')).toBeVisible();
-  });
-
   test("shows tech stack badges", async ({ page }) => {
     const modal = await openAbout(page);
     const badges = modal.locator('.tech-badge');
     await expect(badges).toHaveCount(6);
-    await expect(modal.locator('.tech-badge:has-text("Tauri v2")')).toBeVisible();
+    await expect(modal.locator('.tech-badge:has-text("Tauri")')).toBeVisible();
     await expect(modal.locator('.tech-badge:has-text("Svelte 5")')).toBeVisible();
     await expect(modal.locator('.tech-badge:has-text("Rust")')).toBeVisible();
   });
@@ -210,9 +203,16 @@ test.describe("About category", () => {
     await expect(modal.locator('a[href="https://github.com/tzero86"]')).toBeVisible();
   });
 
+  test("shows GitHub link", async ({ page }) => {
+    const modal = await openAbout(page);
+    const link = modal.locator('a[href="https://github.com/tzero86/markz"]');
+    await expect(link).toBeVisible();
+    await expect(link).toContainText("GitHub");
+  });
+
   test("update check button is present and clickable", async ({ page }) => {
     const modal = await openAbout(page);
-    const updateBtn = modal.locator('.update-btn').filter({ hasText: /Check for Updates/ });
+    const updateBtn = modal.locator('.update-btn').filter({ hasText: /Check/ });
     await expect(updateBtn).toBeVisible();
     await expect(updateBtn).toBeEnabled();
   });

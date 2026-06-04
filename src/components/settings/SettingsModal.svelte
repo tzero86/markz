@@ -12,6 +12,7 @@
     Info,
     RotateCcw,
     Search,
+    ExternalLink,
   } from "@lucide/svelte";
   import { getVersion } from "@tauri-apps/api/app";
   import { ttsStore, type TtsEngine } from "../../lib/ttsStore";
@@ -820,74 +821,63 @@
                     <span class="logo-version">v{appVersion}</span>
                   </div>
                   <p class="about-description">
-                    A dual-pane Markdown editor for engineers. Built with Tauri, Svelte 5, CodeMirror 6, and Rust.
+                    A dual-pane Markdown editor for engineers.
                   </p>
 
                   <div class="about-updates">
-                    <h4>Updates</h4>
-                    <div class="update-row">
-                      <span
-                        class="update-status"
-                        class:ready={$updateStatus === "ready"}
-                        class:error={$updateStatus === "error"}
-                      >
-                        {statusLabel($updateStatus)}
-                        {#if $updateVersion && ($updateStatus === "available" || $updateStatus === "downloading" || $updateStatus === "ready")}
-                          <span class="update-version">(v{$updateVersion})</span>
-                        {/if}
-                      </span>
-                      {#if $updateStatus === "ready"}
-                        <button class="update-btn primary" onclick={confirmAndRestart}>Restart to Update</button>
-                      {:else if $updateStatus === "downloading" || $updateStatus === "checking"}
-                        <button class="update-btn" disabled>Checking…</button>
-                      {:else}
-                        <button class="update-btn" onclick={handleCheckUpdate}>Check for Updates</button>
+                    <span
+                      class="update-status"
+                      class:ready={$updateStatus === "ready"}
+                      class:error={$updateStatus === "error"}
+                    >
+                      {statusLabel($updateStatus)}
+                      {#if $updateVersion && ($updateStatus === "available" || $updateStatus === "downloading" || $updateStatus === "ready")}
+                        <span class="update-version">(v{$updateVersion})</span>
                       {/if}
-                    </div>
-                    {#if $updateError}
-                      <p class="update-error">{$updateError}</p>
+                    </span>
+                    {#if $updateStatus === "ready"}
+                      <button class="update-btn primary" onclick={confirmAndRestart}>Restart</button>
+                    {:else if $updateStatus === "downloading" || $updateStatus === "checking"}
+                      <button class="update-btn" disabled>Checking…</button>
+                    {:else}
+                      <button class="update-btn" onclick={handleCheckUpdate}>Check</button>
                     {/if}
                   </div>
 
-                  <div class="about-features">
-                    <h4>Features</h4>
-                    <ul>
-                      <li>Live preview with math, Mermaid diagrams, and syntax highlighting</li>
-                      <li>Export to JIRA, Confluence, Slack, GitHub, and DOCX</li>
-                      <li>Built-in engineering templates (RFC, ADR, Bug Report, etc.)</li>
-                      <li>Image paste & drag-and-drop support</li>
-                      <li>Dark / light / system themes</li>
-                      <li>Multi-tab editing with unsaved change warnings</li>
-                    </ul>
+                  <div class="about-links">
+                    <a
+                      href="https://github.com/tzero86/markz"
+                      target="_blank"
+                      rel="noopener"
+                      class="about-link"
+                    >
+                      <ExternalLink size={14} strokeWidth={2} />
+                      GitHub
+                    </a>
                   </div>
 
-                  <div class="about-tech">
-                    <h4>Tech Stack</h4>
-                    <div class="tech-grid">
-                      <span class="tech-badge">Tauri v2</span>
-                      <span class="tech-badge">Svelte 5</span>
-                      <span class="tech-badge">CodeMirror 6</span>
-                      <span class="tech-badge">Rust</span>
-                      <span class="tech-badge">TypeScript</span>
-                      <span class="tech-badge">Vite</span>
-                    </div>
+                  <div class="tech-grid">
+                    <span class="tech-badge">Tauri</span>
+                    <span class="tech-badge">Svelte 5</span>
+                    <span class="tech-badge">CodeMirror 6</span>
+                    <span class="tech-badge">Rust</span>
+                    <span class="tech-badge">TypeScript</span>
+                    <span class="tech-badge">Vite</span>
                   </div>
 
-                  <div class="about-credits">
-                    <h4>Credits</h4>
-                    <p class="credits-text">
-                      Built by <a href="https://github.com/tzero86" target="_blank" rel="noopener">tzero86</a>.
-                      Powered by open source — thank you to the teams behind
-                      <a href="https://tauri.app" target="_blank" rel="noopener">Tauri</a>,
-                      <a href="https://svelte.dev" target="_blank" rel="noopener">Svelte</a>,
-                      <a href="https://codemirror.net" target="_blank" rel="noopener">CodeMirror</a>,
-                      <a href="https://pulldown-cmark.rs" target="_blank" rel="noopener">pulldown-cmark</a>,
-                      <a href="https://katex.org" target="_blank" rel="noopener">KaTeX</a>,
-                      <a href="https://mermaid.js.org" target="_blank" rel="noopener">Mermaid</a>,
-                      <a href="https://highlightjs.org" target="_blank" rel="noopener">highlight.js</a>,
-                      and <a href="https://docx-rs.rs" target="_blank" rel="noopener">docx-rs</a>.
-                    </p>
-                  </div>
+                  <p class="about-credits">
+                    Built by <a href="https://github.com/tzero86" target="_blank" rel="noopener">tzero86</a>. Powered by open source — thank you to
+                    <a href="https://tauri.app" target="_blank" rel="noopener">Tauri</a>,
+                    <a href="https://svelte.dev" target="_blank" rel="noopener">Svelte</a>,
+                    <a href="https://codemirror.net" target="_blank" rel="noopener">CodeMirror</a>,
+                    <a href="https://katex.org" target="_blank" rel="noopener">KaTeX</a>,
+                    <a href="https://mermaid.js.org" target="_blank" rel="noopener">Mermaid</a>,
+                    and <a href="https://docx-rs.rs" target="_blank" rel="noopener">docx-rs</a>.
+                  </p>
+
+                  {#if $updateError}
+                    <p class="update-error">{$updateError}</p>
+                  {/if}
                 </div>
               {/if}
             {/if}
@@ -1398,7 +1388,7 @@
   .about-content {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-4);
   }
   .about-logo {
     display: flex;
@@ -1406,12 +1396,12 @@
     gap: var(--space-3);
   }
   .about-logo-img {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-md);
   }
   .logo-text {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 800;
     color: var(--accent-default);
     letter-spacing: -0.03em;
@@ -1424,57 +1414,20 @@
   .about-description {
     font-size: var(--text-sm);
     color: var(--text-secondary);
-    line-height: 1.6;
+    line-height: 1.5;
     margin: 0;
-  }
-  .about-features h4,
-  .about-tech h4,
-  .about-updates h4,
-  .about-credits h4 {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin: 0 0 var(--space-2) 0;
-  }
-  .about-features ul {
-    margin: 0;
-    padding-left: var(--space-5);
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    line-height: 1.7;
-  }
-  .about-features li {
-    margin: var(--space-1) 0;
-  }
-  .tech-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  .tech-badge {
-    padding: 4px 10px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-secondary);
   }
 
-  /* Updates */
+  /* Minimal update row */
   .about-updates {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    padding: var(--space-3);
-  }
-  .update-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
   }
   .update-status {
     font-size: var(--text-sm);
@@ -1495,20 +1448,21 @@
     font-weight: 400;
   }
   .update-btn {
-    padding: 6px 14px;
-    background: var(--bg-base);
+    padding: 4px 12px;
+    background: transparent;
     border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
-    font-size: var(--text-sm);
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    transition: all 150ms ease;
     white-space: nowrap;
   }
   .update-btn:hover:not(:disabled) {
     background: var(--bg-hover);
     color: var(--text-primary);
+    border-color: var(--border-default);
   }
   .update-btn:disabled {
     opacity: 0.5;
@@ -1525,27 +1479,62 @@
   .update-error {
     font-size: 12px;
     color: #ef4444;
-    margin: var(--space-2) 0 0 0;
+    margin: 0;
+  }
+
+  /* GitHub link */
+  .about-links {
+    display: flex;
+    gap: var(--space-3);
+  }
+  .about-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 150ms ease;
+  }
+  .about-link:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-default);
+  }
+
+  /* Tech badges */
+  .tech-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .tech-badge {
+    padding: 3px 8px;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
   }
 
   /* Credits */
   .about-credits {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    padding: var(--space-3);
-  }
-  .credits-text {
     font-size: var(--text-sm);
     color: var(--text-secondary);
-    line-height: 1.6;
+    line-height: 1.5;
     margin: 0;
   }
-  .credits-text a {
+  .about-credits a {
     color: var(--accent-default);
     text-decoration: none;
   }
-  .credits-text a:hover {
+  .about-credits a:hover {
     text-decoration: underline;
   }
 
