@@ -13,6 +13,7 @@
   import { FORMAT_ICONS } from "../../lib/formatIcons";
   import logo from "../../assets/logo.png";
 import Toast from "../ui/Toast.svelte";
+  import { logOperationStart, logOperationEnd, logError } from "../../lib/debugLogStore";
 
   interface Props {
     onOpenSettings: () => void;
@@ -124,42 +125,45 @@ import Toast from "../ui/Toast.svelte";
   }
 
   async function handleCopy(command: string, label: string, mode: "copy" | "export" | "print", format?: string) {
-    try {
-      const doc = tabStore.getActiveTab();
-      if (!doc) {
-        showToast("No active document", "error");
+    const doc = tabStore.getActiveTab();
+    if (!doc) {
+      showToast("No active document", "error");
+      dropdownOpen = false;
+      activeIndex = -1;
+      return;
+    }
+    if (mode === "print") {
+      logOperationStart("export", `Print: ${doc.title || "untitled"}`);
+      window.dispatchEvent(new CustomEvent("markz:print"));
+      showToast("Printing...", "info");
+      dropdownOpen = false;
+      activeIndex = -1;
+      triggerRef?.focus();
+      return;
+    }
+    if (mode === "export") {
+      const defaultName = doc.title ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "document";
+      let ext = "docx";
+      let filterName = "Word Document";
+      let filterExtensions = ["docx"];
+      if (command === "export_via_pandoc") {
+        ext = format ?? "docx";
+        filterName = ext === "docx" ? "Word Document" : ext === "pdf" ? "PDF Document" : ext === "html" ? "HTML Document" : "EPUB Document";
+        filterExtensions = [ext];
+      }
+      const outputPath = await invoke<string | null>("save_file_dialog", {
+        defaultName: `${defaultName}.${ext}`,
+        filterName,
+        filterExtensions,
+      });
+      if (!outputPath) {
+        logOperationEnd("export", `${label}`, "cancelled");
         dropdownOpen = false;
         activeIndex = -1;
         return;
       }
-      if (mode === "print") {
-        window.dispatchEvent(new CustomEvent("markz:print"));
-        showToast("Printing...", "info");
-        dropdownOpen = false;
-        activeIndex = -1;
-        triggerRef?.focus();
-        return;
-      }
-      if (mode === "export") {
-        const defaultName = doc.title ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "document";
-        let ext = "docx";
-        let filterName = "Word Document";
-        let filterExtensions = ["docx"];
-        if (command === "export_via_pandoc") {
-          ext = format ?? "docx";
-          filterName = ext === "docx" ? "Word Document" : ext === "pdf" ? "PDF Document" : ext === "html" ? "HTML Document" : "EPUB Document";
-          filterExtensions = [ext];
-        }
-        const outputPath = await invoke<string | null>("save_file_dialog", {
-          defaultName: `${defaultName}.${ext}`,
-          filterName,
-          filterExtensions,
-        });
-        if (!outputPath) {
-          dropdownOpen = false;
-          activeIndex = -1;
-          return;
-        }
+      logOperationStart("export", `${label} → ${outputPath}`);
+      try {
         if (command === "export_via_pandoc") {
           showToast("Exporting...", "info");
           await invoke("export_via_pandoc", {
@@ -177,18 +181,26 @@ import Toast from "../ui/Toast.svelte";
             outputPath,
           });
         }
+        logOperationEnd("export", `${label} → ${outputPath}`);
         showToast(`Exported ${label}`, "success");
-      } else {
+      } catch (e) {
+        logError("export", `${label} → ${outputPath} failed`, String(e));
+        showToast(`Failed to ${label.toLowerCase()}`, "error");
+      }
+    } else {
+      logOperationStart("copy", label);
+      try {
         const result = await invoke<string>(command, {
           markdown: doc.content,
           docPath: doc.path,
         });
         await navigator.clipboard.writeText(result);
+        logOperationEnd("copy", label);
         showToast(label, "success");
+      } catch (e) {
+        logError("copy", `${label} failed`, String(e));
+        showToast(`Failed to ${label.toLowerCase()}`, "error");
       }
-    } catch (e) {
-      console.error("Copy/export failed:", e);
-      showToast(`Failed to ${label.toLowerCase()}`, "error");
     }
     dropdownOpen = false;
     activeIndex = -1;

@@ -25,4 +25,10 @@ export interface AppSettings {
   vim_mode: boolean;
   auto_open_folder: boolean;
   enable_spellcheck: boolean;
+  /** Debug panel collapsed state */
+  debug_panel_collapsed: boolean;
+  /** Debug panel height in pixels */
+  debug_panel_height: number;
+  /** Debug log minimum level filter */
+  debug_log_filter: string;
 }

@@ -1,5 +1,6 @@
 import { writable, get } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
+import { logOperationStart, logOperationEnd, logError, logWarn } from "./debugLogStore";
 
 export interface FileTreeNode {
   name: string;
@@ -36,12 +37,17 @@ function createWorkspaceStore() {
   });
 
   async function openWorkspace() {
+    logOperationStart("workspace", "Open workspace folder");
     const path = await invoke<string | null>("open_folder_dialog");
-    if (!path) return;
+    if (!path) {
+      logOperationEnd("workspace", "Open workspace folder", "cancelled");
+      return;
+    }
     await loadWorkspace(path);
   }
 
   async function loadWorkspace(path: string) {
+    logOperationStart("workspace", `Load workspace: ${path}`);
     // Stop any previous watcher
     await invoke("unwatch_workspace").catch(() => {});
 
@@ -49,23 +55,26 @@ function createWorkspaceStore() {
     try {
       const tree = await invoke<FileTreeNode[]>("list_workspace_files", { root: path });
       update((s) => ({ ...s, fileTree: tree }));
+      logOperationEnd("workspace", `Load workspace: ${path}`, `${tree.length} top-level items`);
       // Start watching for external changes
       await invoke("watch_workspace", { path }).catch((e) => {
-        console.warn("Failed to start workspace watcher:", e);
+        logWarn("workspace", "Failed to start workspace watcher", String(e));
       });
     } catch (e) {
-      console.error("Failed to load workspace:", e);
+      logError("workspace", `Failed to load workspace: ${path}`, String(e));
     }
   }
 
   async function refresh() {
     const state = get({ subscribe });
     if (!state.rootPath) return;
+    logOperationStart("workspace", "Refresh workspace");
     try {
       const tree = await invoke<FileTreeNode[]>("list_workspace_files", { root: state.rootPath });
       update((s) => ({ ...s, fileTree: tree }));
+      logOperationEnd("workspace", "Refresh workspace", `${tree.length} top-level items`);
     } catch (e) {
-      console.error("Failed to refresh workspace:", e);
+      logError("workspace", "Failed to refresh workspace", String(e));
     }
   }
 
@@ -94,13 +103,15 @@ function createWorkspaceStore() {
         query: query.trim(),
       });
       update((s) => ({ ...s, searchResults: results, searchLoading: false }));
+      logOperationEnd("workspace", `Search: "${query.trim()}"`, `${results.length} results`);
     } catch (e) {
-      console.error("Search failed:", e);
+      logError("workspace", `Search failed: "${query.trim()}"`, String(e));
       update((s) => ({ ...s, searchResults: [], searchLoading: false }));
     }
   }
 
   async function closeWorkspace() {
+    logOperationStart("workspace", "Close workspace");
     await invoke("unwatch_workspace").catch(() => {});
     set({
       rootPath: null,
@@ -110,6 +121,7 @@ function createWorkspaceStore() {
       searchResults: [],
       searchLoading: false,
     });
+    logOperationEnd("workspace", "Close workspace");
   }
 
   return {

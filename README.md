@@ -101,6 +101,7 @@ Save any document as a reusable custom template.
 - **Auto-Updater** — Built-in update check with dirty-tabs warning before restart
 - **Presentation Mode** (`F5`) — Convert Markdown to slide decks with heading-based boundaries
 - **Slide Break Editor** — Visual gutter markers to manually define slide boundaries; preview pane shows faint boundary lines; no special markdown syntax required
+- **Debug Log Panel** (`Ctrl+Shift+Y`) — Collapsible bottom panel showing operational logs for exports, file I/O, workspace ops, and errors
 
 ### Privacy
 - **Offline-First** — Works without network access
@@ -161,6 +162,7 @@ The built installer will be in `src-tauri/target/release/bundle/`.
 | `Ctrl+0` | Reset zoom |
 | `Ctrl+Shift+P` | Command Palette |
 | `Ctrl+P` | Quick Open / Recent Files |
+| `Ctrl+Shift+Y` | Toggle Debug Panel |
 | `F5` | Start Presentation Mode |
 | `Esc` | Close modal / dropdown |
 

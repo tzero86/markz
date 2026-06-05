@@ -1,3 +1,19 @@
+## [0.8.43] - 2026-06-04
+
+### Added
+- **Debug Log Panel** — Collapsible bottom panel (like VS Code's terminal) showing operational logs for all app activity. Toggle with `Ctrl+Shift+Y` or via Command Palette.
+  - **Resizable height** with drag handle
+  - **Level filtering** — Trace / Debug / Info / Warn / Error tabs
+  - **Error badge** — Shows unread warning/error count when collapsed
+  - **Ring buffer** — 500 entries max, auto-evicts oldest
+  - **Persisted state** — Collapsed/expanded, height, and filter level saved to settings
+  - **Instrumented operations** — All exports (DOCX, Pandoc, Print), file open/save, workspace load/refresh/search, and copy-to-clipboard operations log start/end/failure
+  - **Global error capture** — Unhandled exceptions and promise rejections are automatically logged
+- **Command Palette** — New "Toggle Debug Panel" command for discoverability
+
+### Changed
+- **Keyboard shortcuts** — Added `Ctrl+Shift+Y` (macOS: `Cmd+Shift+Y`) to toggle the debug panel
+
 ## [0.8.42] - 2026-06-04
 
 ### Fixed

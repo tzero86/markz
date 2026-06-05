@@ -67,6 +67,7 @@
       { id: "zoom-in", label: "Zoom In", detail: "Increase content zoom", icon: "zoom-in", action: () => { contentZoomStore.increase(); onClose(); } },
       { id: "zoom-out", label: "Zoom Out", detail: "Decrease content zoom", icon: "zoom-out", action: () => { contentZoomStore.decrease(); onClose(); } },
       { id: "zoom-reset", label: "Reset Zoom", detail: "Reset zoom to 100%", icon: "rotate-ccw", action: () => { contentZoomStore.reset(); onClose(); } },
+      { id: "toggle-debug-panel", label: "Toggle Debug Panel", detail: "Show or hide the debug log panel (Ctrl+Shift+Y)", icon: "bug", action: () => { window.dispatchEvent(new CustomEvent("markz:toggle-debug-panel")); onClose(); } },
       { id: "git-diff", label: "Git Diff", detail: "Open the git diff panel", icon: "git", action: () => { window.dispatchEvent(new CustomEvent("markz:open-git-diff")); onClose(); } },
       { id: "settings", label: "Settings", detail: "Open the settings modal", icon: "settings", action: () => { window.dispatchEvent(new CustomEvent("markz:open-settings")); onClose(); } },
       { id: "help", label: "Help", detail: "Open the help modal", icon: "help", action: () => { window.dispatchEvent(new CustomEvent("markz:open-help")); onClose(); } },

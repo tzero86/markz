@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { debugLogStore } from "./debugLogStore";
 
 let initialized = false;
 
@@ -8,18 +9,16 @@ export function initDebugLogging() {
 
   // Global error handlers
   window.onerror = (msg, url, line, col, err) => {
-    invoke("log_frontend", {
-      level: "error",
-      message: `[window.onerror] ${msg} at ${url}:${line}:${col} ${err?.stack || ""}`,
-    }).catch(() => {});
+    const detail = `[window.onerror] ${msg} at ${url}:${line}:${col} ${err?.stack || ""}`;
+    debugLogStore.add("error", "frontend", detail);
+    invoke("log_frontend", { level: "error", message: detail }).catch(() => {});
     return false;
   };
 
   window.onunhandledrejection = (event) => {
-    invoke("log_frontend", {
-      level: "error",
-      message: `[unhandledrejection] ${event.reason?.stack || event.reason || ""}`,
-    }).catch(() => {});
+    const detail = `[unhandledrejection] ${event.reason?.stack || event.reason || ""}`;
+    debugLogStore.add("error", "frontend", detail);
+    invoke("log_frontend", { level: "error", message: detail }).catch(() => {});
   };
 
   // Startup trace — use raw console to avoid recursion issues
@@ -31,5 +30,16 @@ export function initDebugLogging() {
 
 export function startupCheckpoint(label: string) {
   console.info(`[startup] ${label}`);
+  debugLogStore.add("info", "startup", label);
   invoke("log_frontend", { level: "info", message: `[startup] ${label}` }).catch(() => {});
 }
+
+/** Re-export convenience helpers from the store */
+export {
+  logOperation,
+  logOperationResult,
+  logOperationStart,
+  logOperationEnd,
+  logError,
+  logWarn,
+} from "./debugLogStore";
