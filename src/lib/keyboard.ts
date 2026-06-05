@@ -4,6 +4,7 @@ import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
 import { contentZoomStore } from "./contentZoomStore";
 import { workspaceStore } from "./workspaceStore";
+import { logOperationStart, logOperationEnd, logError } from "./debugLogStore";
 
 export async function saveDocument() {
   const doc = tabStore.getActiveTab();
@@ -19,26 +20,35 @@ export async function saveDocument() {
       filterName: "Markdown",
       filterExtensions: ["md", "mdx", "txt"],
     });
-    if (!path) return;
+    if (!path) {
+      logOperationEnd("file", "Save document", "cancelled");
+      return;
+    }
   }
 
+  logOperationStart("file", `Save: ${path}`);
   try {
     await invoke("save_document", { path, content: doc.content });
     tabStore.markClean();
     if (!doc.path) tabStore.setPath(path);
     addRecentFile(path);
     await maybeOpenFolder(path);
+    logOperationEnd("file", `Save: ${path}`);
   } catch (e) {
-    console.error("Save failed:", e);
+    logError("file", `Save failed: ${path}`, String(e));
     alert("Save failed: " + String(e));
   }
 }
 
 export async function openDocument() {
+  logOperationStart("file", "Open document dialog");
   const result = await invoke<{ path: string; content: string } | null>(
     "open_file_dialog"
   );
-  if (!result) return;
+  if (!result) {
+    logOperationEnd("file", "Open document dialog", "cancelled");
+    return;
+  }
 
   const active = tabStore.getActiveTab();
   const shouldReplace =
@@ -48,6 +58,7 @@ export async function openDocument() {
     active.content.trim() === "";
 
   tabStore.setLoading(true);
+  logOperationStart("file", `Open: ${result.path}`);
   try {
     if (shouldReplace) {
       tabStore.loadDocument(result.content, result.path);
@@ -56,8 +67,9 @@ export async function openDocument() {
     }
     addRecentFile(result.path);
     await maybeOpenFolder(result.path);
+    logOperationEnd("file", `Open: ${result.path}`);
   } catch (e) {
-    console.error("Open failed:", e);
+    logError("file", `Open failed: ${result.path}`, String(e));
     alert("Open failed: " + String(e));
   } finally {
     tabStore.setLoading(false);
@@ -73,6 +85,7 @@ export async function openDocumentByPath(path: string) {
     active.content.trim() === "";
 
   tabStore.setLoading(true);
+  logOperationStart("file", `Open: ${path}`);
   try {
     const info = await invoke<{ content: string; path: string }>(
       "open_document",
@@ -85,8 +98,9 @@ export async function openDocumentByPath(path: string) {
     }
     addRecentFile(path);
     await maybeOpenFolder(path);
+    logOperationEnd("file", `Open: ${path}`);
   } catch (e) {
-    console.error("Open failed:", e);
+    logError("file", `Open failed: ${path}`, String(e));
     alert("Open failed: " + String(e));
   } finally {
     tabStore.setLoading(false);
@@ -109,9 +123,7 @@ async function maybeOpenFolder(filePath: string | null) {
 }
 
 export async function openFolder() {
-  console.log("[keyboard] openFolder called");
   await workspaceStore.openWorkspace();
-  console.log("[keyboard] openWorkspace done");
 }
 
 export function newDocument() {
@@ -176,6 +188,11 @@ export function initKeyboardShortcuts() {
     if (mod && e.shiftKey && key === "f") {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent("markz:open-search"));
+      return;
+    }
+    if (mod && e.shiftKey && key === "y") {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("markz:toggle-debug-panel"));
       return;
     }
     if (!mod) return;

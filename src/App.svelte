@@ -15,6 +15,8 @@
   import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
   import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
 import SearchPanel from "./components/layout/SearchPanel.svelte";
+  import DebugPanel from "./components/layout/DebugPanel.svelte";
+  import { debugLogStore } from "./lib/debugLogStore";
   import { initKeyboardShortcuts, newDocument, openDocumentByPath } from "./lib/keyboard";
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
@@ -78,6 +80,10 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         s.auto_save ?? s.autoSave ?? true,
         s.auto_save_interval_seconds ?? s.autoSaveIntervalSeconds ?? 30
       );
+      // Initialize debug panel state from saved preferences
+      debugLogStore.setCollapsed(s.debug_panel_collapsed ?? true);
+      debugLogStore.setHeight(s.debug_panel_height ?? 180);
+      debugLogStore.setFilter(s.debug_log_filter ?? "info");
     })
     .catch(() => {});
   /* Adaptive layout — responsive breakpoints */
@@ -101,6 +107,26 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     if (!autoCollapseSidebar) {
       userToggledSidebar = false;
     }
+  });
+  /* Persist debug panel state */
+  $effect(() => {
+    const collapsed = $debugLogStore.collapsed;
+    const height = $debugLogStore.height;
+    const filter = $debugLogStore.filter;
+    // Debounce persistence slightly
+    const timeout = setTimeout(() => {
+      invoke("get_settings")
+        .then((s: any) => {
+          if (s) {
+            s.debug_panel_collapsed = collapsed;
+            s.debug_panel_height = height;
+            s.debug_log_filter = filter;
+            invoke("update_settings", { settings: s }).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 500);
+    return () => clearTimeout(timeout);
   });
 
   let forceSinglePane = $derived(windowWidth > 0 && windowWidth < 900);
@@ -265,6 +291,10 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       searchPanelOpen = true;
     };
     window.addEventListener("markz:open-search", handleOpenSearch);
+    const handleToggleDebugPanel = () => {
+      debugLogStore.toggleCollapsed();
+    };
+    window.addEventListener("markz:toggle-debug-panel", handleToggleDebugPanel);
     return () => {
       removeShortcuts();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
@@ -282,6 +312,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       window.removeEventListener("markz:open-template-browser", handleOpenTemplateBrowser);
       window.removeEventListener("markz:open-save-template", handleOpenSaveTemplate);
       window.removeEventListener("markz:open-search", handleOpenSearch);
+      window.removeEventListener("markz:toggle-debug-panel", handleToggleDebugPanel);
     };
   });
 </script>
@@ -354,6 +385,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       </div>
     {/if}
   </div>
+  <DebugPanel />
   <StatusBar {viewMode} {splitDirection} onSetViewMode={(mode) => (viewMode = mode)} onToggleSplitDirection={() => {
     const order: ("horizontal" | "vertical" | "vertical-reversed")[] = ["horizontal", "vertical", "vertical-reversed"];
     const idx = order.indexOf(splitDirection);

@@ -2,9 +2,8 @@
 
 > This document tracks planned refactors, features, and bugfixes. Update as work progresses.
 >
-> **Current version:** v0.8.39+
+> **Current version:** v0.8.43
 > **Last updated:** 2026-06-04
-
 ---
 
 ## Legend
@@ -148,12 +147,18 @@ Features that make MarkZ feel like a serious IDE for markdown.
 ---
 
 ## Phase 5: Polish & Ecosystem
-
 ### P2 — Draggable tabs
 - **Status:** `[x]` Done
 - **Files:** `src/lib/tabStore.ts`, `src/components/layout/TabBar.svelte`
 - **Scope:** Reorder tabs via drag-and-drop within pinned/unpinned groups. Cross-group drag prevented. Visual feedback on drop target. Persist order in session.
 - **Effort:** Small (½ day)
+
+### P2 — Debug Log Panel
+- **Status:** `[x]` Done
+- **Files:** `src/lib/debugLogStore.ts`, `src/components/layout/DebugPanel.svelte`, `src/lib/debug.ts`
+- **Scope:** Collapsible bottom panel (VS Code terminal-style) showing operational logs. Resizable, level-filtered, ring-buffered (500 entries). Instruments exports, file I/O, workspace ops. Keyboard shortcut `Ctrl+Shift+Y`. Persisted state. Foundation for future plugin extensibility.
+- **Effort:** Small (½ day)
+
 ### P2 — Split editor (two editor panes)
 - **Status:** `[ ]`
 - **Files:** `src/App.svelte`, `src/components/editor/EditorPane.svelte`
@@ -188,9 +193,6 @@ Features that make MarkZ feel like a serious IDE for markdown.
 | Feature | Reason |
 |---------|--------|
 | Plugin system (user-facing) | Architecture not ready; user base too small. Obsidian's took years. |
-| Cloud sync | Antithetical to offline-first, zero-telemetry brand. Users can use Dropbox/OneDrive on markdown files. |
-| Real-time collaboration (OT) | Engineers collaborate via Git, not operational transforms. |
-| Replace native DOCX with Pandoc | Native converter is a differentiator for users without Pandoc. Pandoc is an *option*, not a replacement. |
 | Mobile app | Out of scope for a desktop engineering tool. |
 
 ---
@@ -199,6 +201,7 @@ Features that make MarkZ feel like a serious IDE for markdown.
 
 | Date | Change |
 |------|--------|
+| 2026-06-04 | Debug Log Panel — collapsible bottom panel with resizable height, level filtering, error badge, and instrumented operation logging. |
 | 2026-05-30 | Settings/Help/About modal redesign — CSS grid field layout, consistent input widths, categorized shortcuts, removed unused HelpModal.svelte. |
 | 2026-05-30 | Command Palette (`Ctrl+Shift+P`) and Quick Open (`Ctrl+P`) shipped. |
 | 2026-05-28 | Initial roadmap created after codebase audit. |
