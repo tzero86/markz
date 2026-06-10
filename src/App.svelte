@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { invoke } from "@tauri-apps/api/core";
   import EditorPane from "./components/editor/EditorPane.svelte";
   import PreviewPane from "./components/preview/PreviewPane.svelte";
@@ -27,6 +28,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   import { getSession } from "./lib/sessionStore";
   import { workspaceStore } from "./lib/workspaceStore";
 
+  import { confirm } from "@tauri-apps/plugin-dialog";
   // Always start at 100% zoom — prevents stale localStorage values
   // (e.g.: 160% left over from a previous session) from persisting.
   contentZoomStore.reset();
@@ -128,7 +130,47 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     }, 500);
     return () => clearTimeout(timeout);
   });
+  /* Sync directory panel to active file's folder and file watcher */
+  let lastActivePath: string | null = null;
+  const externallyModifiedPaths = new Set<string>();
 
+  async function checkExternalChanges(path: string) {
+    if (!externallyModifiedPaths.has(path)) return;
+    externallyModifiedPaths.delete(path);
+    const proceed = await confirm(
+      `"${path.split(/[\\/]/).pop()}" has been modified externally. Reload it?`,
+      { title: "File Changed", kind: "warning" }
+    );
+    if (!proceed) return;
+    try {
+      const info = await invoke<{ content: string; path: string }>("open_document", { path });
+      tabStore.loadDocument(info.content, info.path);
+    } catch (e) {
+      console.error("Failed to reload externally changed file:", e);
+    }
+  }
+
+  const unsubscribeWorkspaceSync = tabStore.subscribe((state) => {
+    const active = state.tabs.find((t) => t.id === state.activeTabId);
+    const path = active?.path ?? null;
+
+    // Sync file watcher with all open file paths
+    const openPaths = state.tabs.map((t) => t.path).filter((p): p is string => !!p);
+    invoke("watch_open_files", { paths: openPaths }).catch(() => {});
+
+    if (path === lastActivePath) return;
+    lastActivePath = path;
+    if (!path) {
+      workspaceStore.closeWorkspace();
+      return;
+    }
+    const parent = path.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+    if (parent && parent !== get(workspaceStore).rootPath) {
+      workspaceStore.loadWorkspace(parent).catch(() => {});
+    }
+    // If we switched to a file that was externally modified, prompt to reload
+    checkExternalChanges(path);
+  });
   let forceSinglePane = $derived(windowWidth > 0 && windowWidth < 900);
   let effectiveViewMode = $derived(
     forceSinglePane ? "editor" : viewMode
@@ -190,7 +232,9 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       splash.classList.add("fade-out");
       setTimeout(() => splash.remove(), 350);
     }
+  });
 
+  $effect(() => {
     const removeShortcuts = initKeyboardShortcuts();
 
     const handleToggleSidebar = () => {
@@ -209,22 +253,22 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     };
     window.addEventListener("markz:settings-changed", handleSettingsChanged);
 
-    const handleOpenGitDiff = () => {
-      gitDiffOpen = true;
+    const handleFileExternallyChanged = (e: Event) => {
+      const path = (e as CustomEvent).detail as string;
+      if (!path || tabStore.isRecentlySaved(path)) return;
+      externallyModifiedPaths.add(path);
+      // If the changed file is currently active, prompt immediately
+      const active = tabStore.getActiveTab();
+      if (active?.path === path) {
+        checkExternalChanges(path);
+      }
     };
-    window.addEventListener("markz:open-git-diff", handleOpenGitDiff);
-
-    const handleWorkspaceChanged = () => {
-      workspaceStore.refresh();
-    };
-    window.addEventListener("markz:workspace-changed", handleWorkspaceChanged);
-
+    window.addEventListener("markz:file-externally-changed", handleFileExternallyChanged);
     const handleSetActivity = (e: Event) => {
       activeActivity = (e as CustomEvent).detail;
       userToggledSidebar = true;
       sidebarPanelVisible = true;
     };
-    window.addEventListener("markz:set-activity", handleSetActivity);
     const handleSetViewMode = (e: Event) => {
       viewMode = (e as CustomEvent).detail;
     };
@@ -295,24 +339,36 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       debugLogStore.toggleCollapsed();
     };
     window.addEventListener("markz:toggle-debug-panel", handleToggleDebugPanel);
+    const handleWindowFocus = () => {
+      const active = tabStore.getActiveTab();
+      if (active?.path) checkExternalChanges(active.path);
+    };
+    window.addEventListener("focus", handleWindowFocus);
+    const handleOpenGitDiff = () => {
+      gitDiffOpen = true;
+    };
+    window.addEventListener("markz:open-git-diff", handleOpenGitDiff);
+    const handleWorkspaceChanged = () => {
+      workspaceStore.refresh().catch(() => {});
+    };
+    window.addEventListener("markz:workspace-changed", handleWorkspaceChanged);
     return () => {
       removeShortcuts();
+      unsubscribeWorkspaceSync();
       window.removeEventListener("markz:toggle-sidebar", handleToggleSidebar);
       window.removeEventListener("markz:settings-changed", handleSettingsChanged);
       window.removeEventListener("markz:open-git-diff", handleOpenGitDiff);
       window.removeEventListener("markz:workspace-changed", handleWorkspaceChanged);
-      window.removeEventListener("markz:set-activity", handleSetActivity);
+      window.removeEventListener("markz:file-externally-changed", handleFileExternallyChanged);
       window.removeEventListener("markz:set-view-mode", handleSetViewMode);
       window.removeEventListener("markz:open-settings", handleOpenSettings);
       window.removeEventListener("markz:open-help", handleOpenHelp);
       window.removeEventListener("markz:export-docx", handleExportDocx);
-      window.removeEventListener("markz:open-palette", handleOpenPalette);
-      window.removeEventListener("markz:print-pdf", handlePrintPdf);
-      window.removeEventListener("markz:start-presentation", handleStartPresentation);
+      window.removeEventListener("markz:toggle-debug-panel", handleToggleDebugPanel);
+      window.removeEventListener("focus", handleWindowFocus);
       window.removeEventListener("markz:open-template-browser", handleOpenTemplateBrowser);
       window.removeEventListener("markz:open-save-template", handleOpenSaveTemplate);
       window.removeEventListener("markz:open-search", handleOpenSearch);
-      window.removeEventListener("markz:toggle-debug-panel", handleToggleDebugPanel);
     };
   });
 </script>
@@ -323,7 +379,6 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     onOpenTemplateBrowser={() => (templateBrowserOpen = true)}
     onOpenSaveTemplate={() => (saveTemplateOpen = true)}
     onOpenHelp={() => { settingsInitialTab = "help"; settingsOpen = true; }}
-    onOpenGitDiff={() => { gitDiffOpen = true; }}
   />
   <TabBar onNewTab={newDocument} />
   <div class="workspace">

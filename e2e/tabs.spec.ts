@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { tauriMockScriptString } from "./tauri-mock";
+import { tauriMockInitFunc } from "./tauri-mock"
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(tauriMockScriptString);
+  await page.addInitScript(tauriMockInitFunc);
   await page.goto("/");
   await page.waitForSelector(".app", { timeout: 10000 });
 });
@@ -232,6 +232,88 @@ test.describe("Draggable tabs", () => {
     await expect(page.locator('[data-testid="pinned-tab-0"]')).toBeVisible();
     // Unpinned tab count should still be 1
     await expect(page.locator('[data-testid^="tab-"]')).toHaveCount(1);
+  });
+});
+
+test.describe("External file changes", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+  });
+  test("newly opened file is not marked dirty", async ({ page }) => {
+    await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      ts.newTab("# Test\n\nHello world.", undefined, "/test/file.md");
+    });
+    await page.waitForSelector('.tab:has-text("file.md")', { timeout: 5000 });
+
+    const isDirty = await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      const tab = ts.getActiveTab();
+      return tab?.isDirty ?? true;
+    });
+    expect(isDirty).toBe(false);
+  });
+
+  test("closing a non-dirty file tab does not prompt to save", async ({ page }) => {
+    await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      ts.newTab("# Test\n\nHello world.", undefined, "/test/file.md");
+    });
+    await page.waitForSelector('.tab:has-text("file.md")', { timeout: 5000 });
+
+    // Close the file tab — should immediately create a fresh untitled tab
+    await page.locator('.tab:has-text("file.md") .tab-close').click();
+    await expect(page.locator('.tab.active')).toContainText("Untitled");
+  });
+  test("prompts to reload when file changes externally", async ({ page }) => {
+    // Ensure Tauri mock is present (addInitScript can be flaky across reloads)
+    await page.evaluate(() => {
+      if (typeof window.__TAURI_INTERNALS__ === "undefined") {
+        window.__TAURI_INTERNALS__ = {
+          invoke: function(cmd: string, args?: any) {
+            if (cmd === "plugin:dialog|message") return Promise.resolve("Ok");
+            if (cmd === "open_document") {
+              const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");
+              const path = args?.path || "/test.md";
+              const content = fileOverrides[path] || "# Test\n\nHello world.";
+              return Promise.resolve({ path, content });
+            }
+            return Promise.resolve(null);
+          },
+          convertFileSrc: function(path: string) { return path; },
+        } as any;
+      }
+    });
+
+    // Create a file tab directly via store API
+    await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      ts.newTab("# Original content\n\nHello.", undefined, "/workspace/file.md");
+    });
+    await page.waitForSelector('.tab:has-text("file.md")', { timeout: 5000 });
+
+    // Override what open_document returns for reload
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_file_contents", JSON.stringify({ "/workspace/file.md": "# Modified\n\nNew." }));
+    });
+
+    // Dispatch external change event
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("markz:file-externally-changed", {
+        detail: "/workspace/file.md"
+      }));
+    });
+
+    // Wait for async reload
+    await page.waitForTimeout(1000);
+
+    // Content should have been reloaded (mock confirm always returns true)
+    const newContent = await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      const tab = ts.getActiveTab();
+      return tab?.content ?? "";
+    });
+    expect(newContent).toContain("Modified");
   });
 });
 });

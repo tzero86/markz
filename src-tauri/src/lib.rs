@@ -201,9 +201,10 @@ pub fn run() {
             commands::workspace::open_folder_dialog,
             commands::workspace::list_workspace_files,
             commands::workspace::search_workspace,
-            commands::workspace::read_file_text,
             commands::watcher::watch_workspace,
             commands::watcher::unwatch_workspace,
+            commands::watcher::watch_open_files,
+            commands::watcher::unwatch_open_files,
             commands::presentation::render_slides,
         ])
         .run(tauri::generate_context!())
