@@ -33,6 +33,7 @@ pub struct Settings {
     pub debug_panel_collapsed: bool,
     pub debug_panel_height: u16,
     pub debug_log_filter: String,
+  pub theme_preset: String,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -90,6 +91,7 @@ impl Default for Settings {
             debug_panel_collapsed: true,
             debug_panel_height: 180,
             debug_log_filter: "info".to_string(),
+            theme_preset: String::new(),
         }
     }
 }

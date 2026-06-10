@@ -31,4 +31,6 @@ export interface AppSettings {
   debug_panel_height: number;
   /** Debug log minimum level filter */
   debug_log_filter: string;
+  /** Color theme preset — overrides default palette when non-default */
+  theme_preset: string;
 }

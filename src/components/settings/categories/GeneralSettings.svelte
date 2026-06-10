@@ -1,5 +1,6 @@
 <script lang="ts">
   import { RotateCcw } from "@lucide/svelte";
+  import { presetStore, PRESET_OPTIONS } from "../../../lib/themeStore";
   import type { AppSettings } from "../../../lib/settingsTypes";
 
   let {
@@ -15,7 +16,10 @@
   function resetAppearance() {
     if (!settings) return;
     settings.theme = "system";
+    settings.theme_preset = "default";
+    presetStore.clear();
   }
+
   function resetLayout() {
     if (!settings) return;
     settings.view_mode = "split";
@@ -29,7 +33,7 @@
 </script>
 
 {#if settings}
-  {#if !searching || sectionMatches(["theme", "appearance", "color", "dark", "light", "system"])}
+  {#if !searching || sectionMatches(["theme", "appearance", "color", "dark", "light", "system", "preset", "nord", "dracula", "tokyo", "gruvbox", "solarized", "contrast"])}
     <div class="settings-section">
       <div class="section-header">
         <h3>Appearance</h3>
@@ -43,6 +47,18 @@
           <option value="system">System</option>
           <option value="light">Light</option>
           <option value="dark">Dark</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label class="field-label" for="theme-preset-select">Color Preset</label>
+        <select
+          id="theme-preset-select"
+          bind:value={settings.theme_preset}
+          onchange={() => presetStore.set(settings.theme_preset as import("../../../lib/themeStore").ThemePreset)}
+        >
+          {#each PRESET_OPTIONS as opt}
+            <option value={opt.value}>{opt.label}</option>
+          {/each}
         </select>
       </div>
     </div>
