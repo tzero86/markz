@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
-import { tauriMockScriptString } from "./tauri-mock";
+import { tauriMockInitFunc } from "./tauri-mock"
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(tauriMockScriptString);
+  await page.addInitScript(tauriMockInitFunc);
   await page.goto("/");
   await page.waitForSelector(".app", { timeout: 10000 });
 });

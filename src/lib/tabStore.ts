@@ -329,6 +329,18 @@ function createTabStore() {
   let autoSaveIntervalMs = 30000;
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // --- Recently saved tracking (to ignore self-triggered file-watch events) ---
+  const recentlySavedPaths = new Set<string>();
+
+  function addRecentlySaved(path: string) {
+    recentlySavedPaths.add(path);
+    setTimeout(() => recentlySavedPaths.delete(path), 2000);
+  }
+
+  function isRecentlySaved(path: string): boolean {
+    return recentlySavedPaths.has(path);
+  }
+
   function setAutoSave(enabled: boolean, intervalSeconds: number) {
     autoSaveEnabled = enabled;
     autoSaveIntervalMs = Math.max(intervalSeconds, 1) * 1000;
@@ -342,6 +354,7 @@ function createTabStore() {
     if (!autoSaveEnabled) return;
     const doc = getActiveTab();
     if (!doc || !doc.isDirty || !doc.path) return;
+    addRecentlySaved(doc.path);
     try {
       await invoke("save_document", { path: doc.path, content: doc.content });
       markClean();
@@ -474,7 +487,7 @@ function createTabStore() {
       title:
         title ??
         (path ? path.split(/[\\/]/).pop() || "Untitled" : "Untitled"),
-      isDirty: content ? true : false,
+      isDirty: false,
       isLoading: false,
       pinned: false,
     };
@@ -669,7 +682,6 @@ function createTabStore() {
         update((s) => ({ ...s, activeTabId: target.id }));
       }
     }
-
     return true;
   }
 
@@ -687,6 +699,8 @@ function createTabStore() {
     persistSession,
     restoreSession,
     setAutoSave,
+    addRecentlySaved,
+    isRecentlySaved,
     // Active-tab mutations
     setContent,
     loadDocument,

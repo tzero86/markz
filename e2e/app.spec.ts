@@ -1,11 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { tauriMockScriptString } from "./tauri-mock";
+import { tauriMockInitFunc } from "./tauri-mock";
 
 test.beforeEach(async ({ page }) => {
-  // Inject Tauri mock before the app loads
-  await page.addInitScript(tauriMockScriptString);
+  await page.addInitScript(tauriMockInitFunc);
   await page.goto("/");
-  // Wait for the app to mount
   await page.waitForSelector(".app", { timeout: 10000 });
 });
 
@@ -269,8 +267,8 @@ test("no console errors on startup", async ({ page }) => {
     }
   });
 
-  // Reload to capture startup errors (re-inject mock first)
-  await page.addInitScript(tauriMockScriptString);
+  // Reload to capture startup errors (re-inject mock before reload)
+  await page.addInitScript(tauriMockInitFunc);
   await page.reload();
   await page.waitForSelector(".app", { timeout: 10000 });
   await page.waitForTimeout(500);

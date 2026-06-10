@@ -63,6 +63,7 @@
       }).join('\n');
 
       if (newContent !== content) {
+        tabStore.addRecentlySaved(path);
         try {
           await invoke("save_document", { path, content: newContent });
         } catch (e) {

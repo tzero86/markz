@@ -10,30 +10,22 @@ export async function saveDocument() {
   const doc = tabStore.getActiveTab();
   if (!doc) return;
   let path = doc.path;
-
   if (!path) {
-    const defaultName = doc.title
-      ? doc.title.replace(/[^a-zA-Z0-9_-]/g, "_") + ".md"
-      : "untitled.md";
-    path = await invoke<string | null>("save_file_dialog", {
-      defaultName,
+    const result = await invoke<string | null>("save_file_dialog", {
+      defaultName: doc.title === "Untitled" ? "untitled.md" : doc.title,
       filterName: "Markdown",
-      filterExtensions: ["md", "mdx", "txt"],
+      filterExtensions: ["md", "markdown", "txt"],
     });
-    if (!path) {
-      logOperationEnd("file", "Save document", "cancelled");
-      return;
-    }
+    if (!result) return;
+    path = result;
   }
-
-  logOperationStart("file", `Save: ${path}`);
+  tabStore.addRecentlySaved(path);
   try {
     await invoke("save_document", { path, content: doc.content });
     tabStore.markClean();
     if (!doc.path) tabStore.setPath(path);
     addRecentFile(path);
-    await maybeOpenFolder(path);
-    logOperationEnd("file", `Save: ${path}`);
+    logOperationEnd("file", `Saved: ${path}`);
   } catch (e) {
     logError("file", `Save failed: ${path}`, String(e));
     alert("Save failed: " + String(e));

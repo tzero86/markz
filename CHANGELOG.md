@@ -1,3 +1,20 @@
+## [0.8.44] - 2026-06-10
+
+### Added
+- **Directory tree follows active file** — The workspace panel now auto-syncs to the parent folder of the currently active file tab. Switching tabs across different directories updates the tree; closing all file tabs clears it.
+- **External file change detection** — Files modified outside MarkZ trigger a confirmation dialog. Confirming reloads the latest content via the file watcher.
+- **E2E coverage** — Added tests for directory tree sync and external file change prompts.
+
+### Fixed
+- **Newly opened files no longer marked dirty immediately** — Removed `isDirty: content ? true : false` from `newTab()` so opening an existing file starts in a clean state.
+- **Closing non-dirty file tabs no longer prompts to save** — Closing a file that hasn't been edited skips the confirmation dialog.
+- **Editor `suppressChange` guard** — Programmatic content swaps (tab switches) no longer incorrectly re-mark tabs as dirty.
+- **Self-triggered save events ignored** — Added `recentlySavedPaths` with 2-second TTL to prevent the file watcher from prompting reload after the app's own save operation.
+- **Rust warnings** — Removed unused `HashSet` import in `watcher.rs` and unused `read_file_text` in `workspace.rs`.
+- **App.svelte event handler scope** — Fixed `handleOpenGitDiff`, `handleWorkspaceChanged`, `removeShortcuts`, `handleToggleSidebar`, and `handleSettingsChanged` reference errors in the cleanup function.
+- **E2E mock injection reliability** — Replaced broken 22KB string-based `addInitScript` with a `new Function()` approach that correctly serializes large inline data via `Function.prototype.toString()`. Fixes all tests that rely on `invoke()` during page load (app preview, presentation mode, session restore).
+
+
 ## [0.8.43] - 2026-06-04
 
 ### Added

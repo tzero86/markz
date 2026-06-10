@@ -487,6 +487,475 @@ export const FORMATTING_TEST_MD = [
   "*Welcome to MarkZ — 2026-01-01*",
 ].join("\n");
 
+export function injectTauriMock() {
+  const responses: Record<string, (args?: unknown) => unknown> = {
+    get_settings: () => MOCK_SETTINGS,
+    update_settings: () => null,
+    get_version: () => "0.1.12",
+    render_preview: () => Promise.resolve(MOCK_HTML),
+    render_slides: (args) => {
+      const override = localStorage.getItem("__e2e_slides_override");
+      if (override) {
+        try {
+          return JSON.parse(override);
+        } catch {
+          /* fall through */
+        }
+      }
+      const md = (args as { markdown?: string })?.markdown || "";
+      const title = md.match(/^#\s+(.+)$/m)?.[1] || "Presentation";
+      return Promise.resolve({
+        title,
+        author: null,
+        theme: "default",
+        slides: [
+          { kind: "title", title, content: "<p>Welcome</p>", level: 1, index: 0 },
+          { kind: "content", title: "Slide 2", content: "<p>Content here</p>", level: 2, index: 1 },
+        ],
+      });
+    },
+    convert_to_jira: (args) =>
+      "h1. Welcome to MarkZ\n\n" +
+      ((args as { markdown?: string })?.markdown?.slice(0, 100) || ""),
+    convert_to_confluence: (args) =>
+      "<h1>Welcome to MarkZ</h1>\n<p>" +
+      ((args as { markdown?: string })?.markdown?.slice(0, 100) || "") +
+      "</p>",
+    convert_to_slack: (args) =>
+      "*Welcome to MarkZ*\n\n" +
+      ((args as { markdown?: string })?.markdown?.slice(0, 100) || ""),
+    convert_to_github: (args) => (args as { markdown?: string })?.markdown || "",
+    list_templates: () => [
+      { id: "rfc", name: "RFC", category: "Engineering", description: "Request for Comments", builtin: true },
+      { id: "adr", name: "ADR", category: "Engineering", description: "Architecture Decision Record", builtin: true },
+      { id: "formatting-test", name: "Getting Started", category: "Test", description: "Welcome showcase and comprehensive formatting reference for MarkZ", builtin: true },
+    ],
+    get_template: (args) => {
+      if ((args as { id?: string })?.id === "formatting-test") {
+        return {
+          id: "formatting-test",
+          name: "Getting Started",
+          category: "Test",
+          description: "Welcome showcase and comprehensive formatting reference for MarkZ",
+          content: FORMATTING_TEST_MD,
+          builtin: true,
+        };
+      }
+      if ((args as { id?: string })?.id === "rfc") {
+        return {
+          id: "rfc",
+          name: "RFC",
+          category: "Engineering",
+          description: "RFC template",
+          content: "# RFC: Title\n\n## Summary\n\n## Motivation\n",
+          builtin: true,
+        };
+      }
+      return null;
+    },
+    save_template: () => null,
+    delete_template: () => null,
+    apply_template: (args) => {
+      if ((args as { id?: string })?.id === "formatting-test") return FORMATTING_TEST_MD;
+      if ((args as { id?: string })?.id === "rfc") return "# RFC: Title\n\n## Summary\n\n## Motivation\n";
+      return "";
+    },
+    log_frontend: () => null,
+    generate_toc: () => [],
+    open_file_dialog: () => {
+      const override = localStorage.getItem("__e2e_open_file_result");
+      if (override) return { path: override };
+      return null;
+    },
+    save_file_dialog: (args) => {
+      const exts = (args as { filterExtensions?: string[] })?.filterExtensions || [];
+      if (exts.includes("docx")) return "/tmp/test-export.docx";
+      if (exts.includes("pdf")) return "/tmp/test-export.pdf";
+      if (exts.includes("html")) return "/tmp/test-export.html";
+      if (exts.includes("epub")) return "/tmp/test-export.epub";
+      return null;
+    },
+    save_document: () => null,
+    open_document: (args) => {
+      const rejectPaths = JSON.parse(localStorage.getItem("__e2e_reject_paths") || "[]");
+      if (rejectPaths.includes((args as { path?: string })?.path)) {
+        return Promise.reject(new Error("File not found"));
+      }
+      const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");
+      const path = (args as { path?: string })?.path || "/test.md";
+      const content = fileOverrides[path] || "# Test\n\nHello world.";
+      return { path, content };
+    },
+    process_pasted_image: () => ({
+      relative_path: "images/test.png",
+      absolute_path: "/tmp/images/test.png",
+      filename: "test.png",
+    }),
+    process_dropped_image: () => ({
+      relative_path: "images/test.png",
+      absolute_path: "/tmp/images/test.png",
+      filename: "test.png",
+    }),
+    git_status: (args) => {
+      const path = (args as { docPath?: string })?.docPath || "";
+      if (!path || path.includes("no-git")) {
+        return { is_repo: false, is_modified: false, branch: null, ahead_behind: null };
+      }
+      return {
+        is_repo: true,
+        is_modified: path.includes("modified"),
+        branch: "main",
+        ahead_behind: path.includes("ahead") ? "2 ahead, 0 behind" : null,
+      };
+    },
+    git_diff: (args) => {
+      const path = (args as { docPath?: string })?.docPath || "";
+      if (!path || path.includes("no-git")) return "";
+      if (!path.includes("modified")) return "";
+      return (
+        "diff --git a/test.md b/test.md\n" +
+        "index 1234..5678 100644\n" +
+        "--- a/test.md\n" +
+        "+++ b/test.md\n" +
+        "@@ -1,2 +1,3 @@\n" +
+        " # Test\n" +
+        "-Hello world.\n" +
+        "+Hello modified world.\n" +
+        "+New line.\n"
+      );
+    },
+    open_folder_dialog: () => {
+      const override = localStorage.getItem("__e2e_open_folder_result");
+      if (override) return override;
+      return null;
+    },
+    list_workspace_files: (args) => {
+      const root = (args as { root?: string })?.root || "";
+      if (!root) return [];
+      const override = localStorage.getItem("__e2e_workspace_files");
+      if (override) {
+        try {
+          return JSON.parse(override);
+        } catch {
+          /* fall through */
+        }
+      }
+      return [
+        {
+          name: "docs",
+          path: root + "/docs",
+          rel_path: "docs",
+          is_dir: true,
+          children: [
+            { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
+          ],
+        },
+        { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+      ];
+    },
+    search_workspace: (args) => {
+      const root = (args as { root?: string })?.root || "";
+      const query = ((args as { query?: string })?.query || "").toLowerCase();
+      if (!root || !query) return [];
+      return [
+        { path: root + "/notes.md", rel_path: "notes.md", line_number: 1, context: "Hello " + query + " world" },
+      ];
+    },
+    pandoc_available: () => true,
+    export_via_pandoc: (args) => {
+      const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));
+      return null;
+    },
+    export_to_docx: (args) => {
+      const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_export_docx_calls", JSON.stringify(calls));
+      return null;
+    },
+    save_session: (args) => {
+      localStorage.setItem(
+        "markz-session",
+        JSON.stringify({
+          tabs: (args as { tabs?: unknown[] })?.tabs || [],
+          activeTabPath: (args as { active_tab_path?: string })?.active_tab_path || null,
+          workspacePath: (args as { workspace_path?: string })?.workspace_path || null,
+        })
+      );
+      return null;
+    },
+    load_session: () => {
+      const raw = localStorage.getItem("markz-session");
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        return {
+          tabs: (parsed.tabs || []).map(
+            (t: { content?: string; path?: string | null; title?: string; isDirty?: boolean; is_dirty?: boolean; pinned?: boolean }) => ({
+              content: t.content || "",
+              path: t.path || null,
+              title: t.title || "Untitled",
+              is_dirty: t.isDirty ?? t.is_dirty ?? false,
+              pinned: t.pinned ?? false,
+            })
+          ),
+          active_tab_path: parsed.activeTabPath ?? parsed.active_tab_path ?? null,
+          workspace_path: parsed.workspacePath ?? parsed.workspace_path ?? null,
+        };
+      } catch {
+        return null;
+      }
+    },
+    clear_session_disk: () => {
+      localStorage.removeItem("markz-session");
+      return null;
+    },
+    watch_workspace: () => null,
+    unwatch_workspace: () => null,
+    watch_open_files: () => null,
+    unwatch_open_files: () => null,
+    "plugin:app|version": () => "0.1.12",
+  };
+
+  responses["plugin:dialog|confirm"] = () => true;
+  responses["plugin:dialog|message"] = () => "Ok";
+  responses["plugin:dialog|open"] = () => null;
+  responses["plugin:dialog|save"] = () => null;
+
+  (window as unknown as { __TAURI_INTERNALS__?: { invoke: unknown; convertFileSrc: unknown } }).__TAURI_INTERNALS__ = {
+    invoke: function (cmd: string, args?: unknown) {
+      const handler = responses[cmd];
+      if (!handler) {
+        console.warn("[E2E Mock] Unhandled command:", cmd, args);
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(handler(args));
+    },
+    convertFileSrc: function (path: string) {
+      return path;
+    },
+  };
+
+  if (!navigator.clipboard) {
+    (navigator as unknown as { clipboard?: unknown }).clipboard = {};
+  }
+  (navigator.clipboard as { writeText?: (text: string) => Promise<void> }).writeText = function (text: string) {
+    return Promise.resolve();
+  };
+}
+
+/** Self-contained function for page.addInitScript().
+ *  Inlines all data so serialization via Function.prototype.toString() works.
+ */
+export const tauriMockInitFunc = new Function(
+  'const MOCK_SETTINGS = ' + JSON.stringify(MOCK_SETTINGS) + ';\n' +
+  'const MOCK_HTML = ' + JSON.stringify(MOCK_HTML) + ';\n' +
+  'const FORMATTING_TEST_MD = ' + JSON.stringify(FORMATTING_TEST_MD) + ';\n' +
+  '\n' +
+  'const responses = {\n' +
+  '  get_settings: () => MOCK_SETTINGS,\n' +
+  '  update_settings: () => null,\n' +
+  '  get_version: () => "0.1.12",\n' +
+  '  render_preview: () => Promise.resolve(MOCK_HTML),\n' +
+  '  render_slides: (args) => {\n' +
+  '    const override = localStorage.getItem("__e2e_slides_override");\n' +
+  '    if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }\n' +
+  '    const md = args?.markdown || "";\n' +
+  '    const title = md.match(/^#\\s+(.+)$/m)?.[1] || "Presentation";\n' +
+  '    return Promise.resolve({\n' +
+  '      title: title,\n' +
+  '      author: null,\n' +
+  '      theme: "default",\n' +
+  '      slides: [\n' +
+  '        { kind: "title", title: title, content: "<p>Welcome</p>", level: 1, index: 0 },\n' +
+  '        { kind: "content", title: "Slide 2", content: "<p>Content here</p>", level: 2, index: 1 },\n' +
+  '      ],\n' +
+  '    });\n' +
+  '  },\n' +
+  '  convert_to_jira: (args) => "h1. Welcome to MarkZ\\n\\n" + (args?.markdown?.slice(0, 100) || ""),\n' +
+  '  convert_to_confluence: (args) => "<h1>Welcome to MarkZ</h1>\\n<p>" + (args?.markdown?.slice(0, 100) || "") + "</p>",\n' +
+  '  convert_to_slack: (args) => "*Welcome to MarkZ*\\n\\n" + (args?.markdown?.slice(0, 100) || ""),\n' +
+  '  convert_to_github: (args) => args?.markdown || "",\n' +
+  '  list_templates: () => [\n' +
+  '    { id: "rfc", name: "RFC", category: "Engineering", description: "Request for Comments", builtin: true },\n' +
+  '    { id: "adr", name: "ADR", category: "Engineering", description: "Architecture Decision Record", builtin: true },\n' +
+  '    { id: "formatting-test", name: "Getting Started", category: "Test", description: "Welcome showcase and comprehensive formatting reference for MarkZ", builtin: true },\n' +
+  '  ],\n' +
+  '  get_template: (args) => {\n' +
+  '    if (args?.id === "formatting-test") {\n' +
+  '      return { id: "formatting-test", name: "Getting Started", category: "Test", description: "Welcome showcase and comprehensive formatting reference for MarkZ", content: FORMATTING_TEST_MD, builtin: true };\n' +
+  '    }\n' +
+  '    if (args?.id === "rfc") {\n' +
+  '      return { id: "rfc", name: "RFC", category: "Engineering", description: "RFC template", content: "# RFC: Title\\n\\n## Summary\\n\\n## Motivation\\n", builtin: true };\n' +
+  '    }\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  save_template: () => null,\n' +
+  '  delete_template: () => null,\n' +
+  '  apply_template: (args) => {\n' +
+  '    if (args?.id === "formatting-test") return FORMATTING_TEST_MD;\n' +
+  '    if (args?.id === "rfc") return "# RFC: Title\\n\\n## Summary\\n\\n## Motivation\\n";\n' +
+  '    return "";\n' +
+  '  },\n' +
+  '  log_frontend: () => null,\n' +
+  '  generate_toc: () => [],\n' +
+  '  open_file_dialog: () => {\n' +
+  '    const override = localStorage.getItem("__e2e_open_file_result");\n' +
+  '    if (override) return { path: override };\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  save_file_dialog: (args) => {\n' +
+  '    const exts = args?.filterExtensions || [];\n' +
+  '    if (exts.includes("docx")) return "/tmp/test-export.docx";\n' +
+  '    if (exts.includes("pdf")) return "/tmp/test-export.pdf";\n' +
+  '    if (exts.includes("html")) return "/tmp/test-export.html";\n' +
+  '    if (exts.includes("epub")) return "/tmp/test-export.epub";\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  save_document: () => null,\n' +
+  '  open_document: (args) => {\n' +
+  '    const rejectPaths = JSON.parse(localStorage.getItem("__e2e_reject_paths") || "[]");\n' +
+  '    if (rejectPaths.includes(args?.path)) {\n' +
+  '      return Promise.reject(new Error("File not found"));\n' +
+  '    }\n' +
+  '    const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");\n' +
+  '    const path = args?.path || "/test.md";\n' +
+  '    const content = fileOverrides[path] || "# Test\\n\\nHello world.";\n' +
+  '    return { path, content };\n' +
+  '  },\n' +
+  '  process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),\n' +
+  '  process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),\n' +
+  '  git_status: (args) => {\n' +
+  '    const path = args?.docPath || "";\n' +
+  '    if (!path || path.includes("no-git")) {\n' +
+  '      return { is_repo: false, is_modified: false, branch: null, ahead_behind: null };\n' +
+  '    }\n' +
+  '    return {\n' +
+  '      is_repo: true,\n' +
+  '      is_modified: path.includes("modified"),\n' +
+  '      branch: "main",\n' +
+  '      ahead_behind: path.includes("ahead") ? "2 ahead, 0 behind" : null,\n' +
+  '    };\n' +
+  '  },\n' +
+  '  git_diff: (args) => {\n' +
+  '    const path = args?.docPath || "";\n' +
+  '    if (!path || path.includes("no-git")) return "";\n' +
+  '    if (!path.includes("modified")) return "";\n' +
+  '    return "diff --git a/test.md b/test.md\\n" +\n' +
+  '      "index 1234..5678 100644\\n" +\n' +
+  '      "--- a/test.md\\n" +\n' +
+  '      "+++ b/test.md\\n" +\n' +
+  '      "@@ -1,2 +1,3 @@\\n" +\n' +
+  '      " # Test\\n" +\n' +
+  '      "-Hello world.\\n" +\n' +
+  '      "+Hello modified world.\\n" +\n' +
+  '      "+New line.\\n";\n' +
+  '  },\n' +
+  '  open_folder_dialog: () => {\n' +
+  '    const override = localStorage.getItem("__e2e_open_folder_result");\n' +
+  '    if (override) return override;\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  list_workspace_files: (args) => {\n' +
+  '    const root = args?.root || "";\n' +
+  '    if (!root) return [];\n' +
+  '    const override = localStorage.getItem("__e2e_workspace_files");\n' +
+  '    if (override) {\n' +
+  '      try { return JSON.parse(override); } catch { /* fall through */ }\n' +
+  '    }\n' +
+  '    return [\n' +
+  '      { name: "docs", path: root + "/docs", rel_path: "docs", is_dir: true, children: [\n' +
+  '        { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },\n' +
+  '      ]},\n' +
+  '      { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },\n' +
+  '    ];\n' +
+  '  },\n' +
+  '  search_workspace: (args) => {\n' +
+  '    const root = args?.root || "";\n' +
+  '    const query = (args?.query || "").toLowerCase();\n' +
+  '    if (!root || !query) return [];\n' +
+  '    return [\n' +
+  '      { path: root + "/notes.md", rel_path: "notes.md", line_number: 1, context: "Hello " + query + " world" },\n' +
+  '    ];\n' +
+  '  },\n' +
+  '  pandoc_available: () => true,\n' +
+  '  export_via_pandoc: (args) => {\n' +
+  '    const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");\n' +
+  '    calls.push(args);\n' +
+  '    localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  export_to_docx: (args) => {\n' +
+  '    const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");\n' +
+  '    calls.push(args);\n' +
+  '    localStorage.setItem("__e2e_export_docx_calls", JSON.stringify(calls));\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  save_session: (args) => {\n' +
+  '    localStorage.setItem("markz-session", JSON.stringify({\n' +
+  '      tabs: args?.tabs || [],\n' +
+  '      activeTabPath: args?.active_tab_path || null,\n' +
+  '      workspacePath: args?.workspace_path || null,\n' +
+  '    }));\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  load_session: () => {\n' +
+  '    const raw = localStorage.getItem("markz-session");\n' +
+  '    if (!raw) return null;\n' +
+  '    try {\n' +
+  '      const parsed = JSON.parse(raw);\n' +
+  '      return {\n' +
+  '        tabs: (parsed.tabs || []).map((t) => ({\n' +
+  '          content: t.content || "",\n' +
+  '          path: t.path || null,\n' +
+  '          title: t.title || "Untitled",\n' +
+  '          is_dirty: t.isDirty ?? t.is_dirty ?? false,\n' +
+  '          pinned: t.pinned ?? false,\n' +
+  '        })),\n' +
+  '        active_tab_path: parsed.activeTabPath ?? parsed.active_tab_path ?? null,\n' +
+  '        workspace_path: parsed.workspacePath ?? parsed.workspace_path ?? null,\n' +
+  '      };\n' +
+  '    } catch {\n' +
+  '      return null;\n' +
+  '    }\n' +
+  '  },\n' +
+  '  clear_session_disk: () => {\n' +
+  '    localStorage.removeItem("markz-session");\n' +
+  '    return null;\n' +
+  '  },\n' +
+  '  watch_workspace: () => null,\n' +
+  '  unwatch_workspace: () => null,\n' +
+  '  watch_open_files: () => null,\n' +
+  '  unwatch_open_files: () => null,\n' +
+  '  "plugin:app|version": () => "0.1.12",\n' +
+  '};\n' +
+  '\n' +
+  'responses["plugin:dialog|confirm"] = () => true;\n' +
+  'responses["plugin:dialog|message"] = () => "Ok";\n' +
+  'responses["plugin:dialog|open"] = () => null;\n' +
+  'responses["plugin:dialog|save"] = () => null;\n' +
+  '\n' +
+  'window.__TAURI_INTERNALS__ = {\n' +
+  '  invoke: function(cmd, args) {\n' +
+  '    const handler = responses[cmd];\n' +
+  '    if (!handler) {\n' +
+  '      console.warn("[E2E Mock] Unhandled command:", cmd, args);\n' +
+  '      return Promise.resolve(null);\n' +
+  '    }\n' +
+  '    return Promise.resolve(handler(args));\n' +
+  '  },\n' +
+  '  convertFileSrc: function(path) { return path; },\n' +
+  '};\n' +
+  '\n' +
+  'if (!navigator.clipboard) {\n' +
+  '  navigator.clipboard = {};\n' +
+  '}\n' +
+  'navigator.clipboard.writeText = function(text) {\n' +
+  '  return Promise.resolve();\n' +
+  '};\n'
+);
+
 export const tauriMockScriptString = `
 (function() {
   const MOCK_SETTINGS = ${JSON.stringify(MOCK_SETTINGS)};
@@ -564,7 +1033,7 @@ export const tauriMockScriptString = `
       }
       const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");
       const path = args?.path || "/test.md";
-      const content = fileOverrides[path] || "# Test\\n\\nHello world.";
+      const content = fileOverrides[path] || "# Test\n\nHello world.";
       return { path, content };
     },
     process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
@@ -670,6 +1139,8 @@ export const tauriMockScriptString = `
     },
     watch_workspace: () => null,
     unwatch_workspace: () => null,
+    watch_open_files: () => null,
+    unwatch_open_files: () => null,
     "plugin:app|version": () => "0.1.12",
   };
   // Mock dialog plugin commands used by @tauri-apps/plugin-dialog

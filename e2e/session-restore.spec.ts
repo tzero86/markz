@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { tauriMockScriptString } from "./tauri-mock";
+import { tauriMockInitFunc } from "./tauri-mock"
 
 test.describe("Session restore", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(tauriMockScriptString);
+    await page.addInitScript(tauriMockInitFunc);
   });
 
   test("restores previously opened file tabs on reload", async ({ page }) => {

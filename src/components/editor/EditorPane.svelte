@@ -352,6 +352,7 @@
       count++;
     }
   }
+  let suppressChange = false;
   onMount(() => {
     startupCheckpoint("EditorPane mounting");
     const editor = initEditor(container, $activeDocumentStore.content, {
@@ -373,6 +374,7 @@
         tabStore.setSlideBreaks(Array.from(current));
       },
       onChange: (newContent) => {
+        if (suppressChange) return;
         tabStore.setContent(newContent);
       },
       onCursorChange: (pos) => {
@@ -410,9 +412,11 @@
     const unsub = activeDocumentStore.subscribe((doc) => {
       const current = editor.view.state.doc.toString();
       if (current !== doc.content) {
+        suppressChange = true;
         editor.view.dispatch({
           changes: { from: 0, to: current.length, insert: doc.content },
         });
+        suppressChange = false;
       }
       // Update slide-break gutter when switching tabs while mode is active
       if (slideBreakMode && editorView) {

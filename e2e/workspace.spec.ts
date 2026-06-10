@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { tauriMockScriptString } from "./tauri-mock";
+import { tauriMockInitFunc } from "./tauri-mock";
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(tauriMockScriptString);
+  await page.addInitScript(tauriMockInitFunc);
   await page.goto("/");
   await page.waitForSelector(".app", { timeout: 10000 });
 });
@@ -95,6 +95,95 @@ test.describe("Workspace file tree", () => {
     await expect(page.locator('.tab:has-text("notes.md")')).toBeVisible();
   });
 });
+
+test.describe("Directory tree follows active file", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+  });
+  test("switches folder when switching tabs from different directories", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/workspace-a/file-a.md");
+    });
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("file-a.md")', { timeout: 5000 });
+
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/workspace-b/file-b.md");
+    });
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("file-b.md")', { timeout: 5000 });
+
+    // Switch back to folder A tab
+    await page.locator('.tab:has-text("file-a.md")').click();
+    await expect(page.locator('.tab.active')).toContainText("file-a.md");
+
+    await page.click('.activity-btn[aria-label="Files"]');
+    await expect(page.locator(".file-tree-root")).toContainText("workspace-a");
+
+    // Switch to folder B tab
+    await page.locator('.tab:has-text("file-b.md")').click();
+    await expect(page.locator('.tab.active')).toContainText("file-b.md");
+
+    await expect(page.locator(".file-tree-root")).toContainText("workspace-b");
+  });
+
+  test("clears directory tree when all file tabs are closed", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/workspace-a/file-a.md");
+    });
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("file-a.md")', { timeout: 5000 });
+
+    // Close the file tab (mock confirm always returns true)
+    await page.locator('.tab:has-text("file-a.md") .tab-close').click();
+    await expect(page.locator('.tab.active')).toContainText("Untitled");
+
+    await page.click('.activity-btn[aria-label="Files"]');
+    await expect(page.locator(".file-tree-scroller .empty-state")).toBeVisible();
+  });
+
+  test("updates directory tree when closing a tab and falling back to another file", async ({ page }) => {
+    // Close all tabs and the fresh empty tab so we have a clean slate
+    await page.evaluate(async () => {
+      const ts = (window as any).__markz_tabStore;
+      await ts.closeAll();
+      let state: any;
+      const unsub = ts.subscribe((s: any) => { state = s; });
+      unsub();
+      const untitled = state.tabs.find((t: any) => t.title === "Untitled");
+      if (untitled) await ts.closeTab(untitled.id);
+    });
+
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/workspace-a/file-a.md");
+    });
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("file-a.md")', { timeout: 5000 });
+
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/workspace-b/file-b.md");
+    });
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("file-b.md")', { timeout: 5000 });
+
+    // Close active tab (file-b), should fall back to file-a
+    await page.evaluate(async () => {
+      const ts = (window as any).__markz_tabStore;
+      let state: any;
+      const unsub = ts.subscribe((s: any) => { state = s; });
+      unsub();
+      const fileB = state.tabs.find((t: any) => t.title === "file-b.md");
+      if (fileB) await ts.closeTab(fileB.id);
+    });
+    await expect(page.locator('.tab.active')).toContainText("file-a.md");
+
+    await page.click('.activity-btn[aria-label="Files"]');
+    await expect(page.locator(".file-tree-root")).toContainText("workspace-a");
+  });
+});
+
 
 test.describe("Open folder keyboard shortcut", () => {
   test("Ctrl+Shift+O triggers open folder dialog", async ({ page }) => {
