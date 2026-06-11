@@ -1,0 +1,597 @@
+/* ==========================================================================
+   Theme Presets — Curated Color Palettes
+   Applied via data-theme-preset on <html>. Imported after tokens.css
+   so these rules win by cascade order (same specificity as base theme).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Nord — Arctic North-Bluish (dark)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="nord"] {
+  --bg-base: #2E3440;
+  --bg-surface: #3B4252;
+  --bg-elevated: #434C5E;
+  --bg-hover: #434C5E;
+  --bg-active: #4C566A;
+  --bg-subtle: #3B4252;
+  --bg-pressed: #4C566A;
+  --border-default: #434C5E;
+  --border-subtle: #3B4252;
+  --border-focus: #4C566A;
+
+  --text-primary: #D8DEE9;
+  --text-secondary: #E5E9F0;
+  --text-tertiary: #88C0D0;
+  --text-muted: #5E81AC;
+  --text-inverse: #2E3440;
+  --text-accent: #88C0D0;
+
+  --accent-default: #88C0D0;
+  --accent-hover: #8FBCBB;
+  --accent-subtle: rgba(136, 192, 208, 0.12);
+  --accent-muted: rgba(136, 192, 208, 0.25);
+
+  --slide-break-end: #BF616A;
+  --slide-break-start: #A3BE8C;
+  --slide-break-end-bg: rgba(191, 97, 106, 0.15);
+  --slide-break-start-bg: rgba(163, 190, 140, 0.15);
+
+  --error: #BF616A;
+  --error-bg: rgba(191, 97, 106, 0.12);
+  --warning: #EBCB8B;
+  --warning-bg: rgba(235, 203, 139, 0.12);
+  --success: #A3BE8C;
+  --info: #81A1C1;
+  --info-bg: rgba(129, 161, 193, 0.12);
+
+  --syntax-keyword: #81A1C1;
+  --syntax-string: #A3BE8C;
+  --syntax-number: #B48EAD;
+  --syntax-comment: #616E88;
+  --syntax-function: #88C0D0;
+  --syntax-type: #8FBCBB;
+  --syntax-variable: #D8DEE9;
+  --syntax-operator: #81A1C1;
+  --syntax-property: #5E81AC;
+  --syntax-regexp: #A3BE8C;
+  --syntax-deleted: #BF616A;
+  --syntax-inserted: #A3BE8C;
+  --syntax-changed: #EBCB8B;
+  --syntax-meta: #616E88;
+  --syntax-tag: #8FBCBB;
+  --syntax-attr-name: #81A1C1;
+  --syntax-attr-value: #A3BE8C;
+  --syntax-builtin: #88C0D0;
+  --syntax-heading: #D8DEE9;
+  --syntax-bold: #D8DEE9;
+  --syntax-italic: #D8DEE9;
+  --syntax-quote: #616E88;
+  --syntax-link: #88C0D0;
+  --syntax-code-bg: #2E3440;
+  --editor-cursor: #88C0D0;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(136, 192, 208, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Dracula — Popular purple-tinted dark
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="dracula"] {
+  --bg-base: #282A36;
+  --bg-surface: #44475A;
+  --bg-elevated: #6272A4;
+  --bg-hover: #44475A;
+  --bg-active: #6272A4;
+  --bg-subtle: #44475A;
+  --bg-pressed: #6272A4;
+  --border-default: #44475A;
+  --border-subtle: #3A3D4D;
+  --border-focus: #6272A4;
+
+  --text-primary: #F8F8F2;
+  --text-secondary: #E6E6E0;
+  --text-tertiary: #BD93F9;
+  --text-muted: #6272A4;
+  --text-inverse: #282A36;
+  --text-accent: #BD93F9;
+
+  --accent-default: #BD93F9;
+  --accent-hover: #FF79C6;
+  --accent-subtle: rgba(189, 147, 249, 0.12);
+  --accent-muted: rgba(189, 147, 249, 0.25);
+
+  --slide-break-end: #FF5555;
+  --slide-break-start: #50FA7B;
+  --slide-break-end-bg: rgba(255, 85, 85, 0.15);
+  --slide-break-start-bg: rgba(80, 250, 123, 0.15);
+
+  --error: #FF5555;
+  --error-bg: rgba(255, 85, 85, 0.12);
+  --warning: #FFB86C;
+  --warning-bg: rgba(255, 184, 108, 0.12);
+  --success: #50FA7B;
+  --info: #8BE9FD;
+  --info-bg: rgba(139, 233, 253, 0.12);
+
+  --syntax-keyword: #FF79C6;
+  --syntax-string: #F1FA8C;
+  --syntax-number: #BD93F9;
+  --syntax-comment: #6272A4;
+  --syntax-function: #50FA7B;
+  --syntax-type: #8BE9FD;
+  --syntax-variable: #F8F8F2;
+  --syntax-operator: #FF79C6;
+  --syntax-property: #BD93F9;
+  --syntax-regexp: #F1FA8C;
+  --syntax-deleted: #FF5555;
+  --syntax-inserted: #50FA7B;
+  --syntax-changed: #FFB86C;
+  --syntax-meta: #6272A4;
+  --syntax-tag: #8BE9FD;
+  --syntax-attr-name: #50FA7B;
+  --syntax-attr-value: #F1FA8C;
+  --syntax-builtin: #8BE9FD;
+  --syntax-heading: #F8F8F2;
+  --syntax-bold: #F8F8F2;
+  --syntax-italic: #F8F8F2;
+  --syntax-quote: #6272A4;
+  --syntax-link: #8BE9FD;
+  --syntax-code-bg: #44475A;
+  --editor-cursor: #BD93F9;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(189, 147, 249, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Tokyo Night — VS Code favourite, deep blue-purple dark
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="tokyo-night"] {
+  --bg-base: #1A1B26;
+  --bg-surface: #24283B;
+  --bg-elevated: #414868;
+  --bg-hover: #24283B;
+  --bg-active: #414868;
+  --bg-subtle: #1F2335;
+  --bg-pressed: #414868;
+  --border-default: #24283B;
+  --border-subtle: #1A1B26;
+  --border-focus: #414868;
+
+  --text-primary: #A9B1D6;
+  --text-secondary: #9AA5CE;
+  --text-tertiary: #7AA2F7;
+  --text-muted: #565F89;
+  --text-inverse: #1A1B26;
+  --text-accent: #7AA2F7;
+
+  --accent-default: #7AA2F7;
+  --accent-hover: #BB9AF7;
+  --accent-subtle: rgba(122, 162, 247, 0.12);
+  --accent-muted: rgba(122, 162, 247, 0.25);
+
+  --slide-break-end: #F7768E;
+  --slide-break-start: #9ECE6A;
+  --slide-break-end-bg: rgba(247, 118, 142, 0.15);
+  --slide-break-start-bg: rgba(158, 206, 106, 0.15);
+
+  --error: #F7768E;
+  --error-bg: rgba(247, 118, 142, 0.12);
+  --warning: #FF9E64;
+  --warning-bg: rgba(255, 158, 100, 0.12);
+  --success: #9ECE6A;
+  --info: #7DCFFF;
+  --info-bg: rgba(125, 207, 255, 0.12);
+
+  --syntax-keyword: #BB9AF7;
+  --syntax-string: #9ECE6A;
+  --syntax-number: #FF9E64;
+  --syntax-comment: #565F89;
+  --syntax-function: #7AA2F7;
+  --syntax-type: #2AC3DE;
+  --syntax-variable: #A9B1D6;
+  --syntax-operator: #BB9AF7;
+  --syntax-property: #7AA2F7;
+  --syntax-regexp: #9ECE6A;
+  --syntax-deleted: #F7768E;
+  --syntax-inserted: #9ECE6A;
+  --syntax-changed: #E0AF68;
+  --syntax-meta: #565F89;
+  --syntax-tag: #2AC3DE;
+  --syntax-attr-name: #7AA2F7;
+  --syntax-attr-value: #9ECE6A;
+  --syntax-builtin: #2AC3DE;
+  --syntax-heading: #A9B1D6;
+  --syntax-bold: #A9B1D6;
+  --syntax-italic: #A9B1D6;
+  --syntax-quote: #565F89;
+  --syntax-link: #7AA2F7;
+  --syntax-code-bg: #16161E;
+  --editor-cursor: #7AA2F7;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(122, 162, 247, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Gruvbox Dark — Retro warm dark
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="gruvbox-dark"] {
+  --bg-base: #282828;
+  --bg-surface: #3C3836;
+  --bg-elevated: #504945;
+  --bg-hover: #3C3836;
+  --bg-active: #504945;
+  --bg-subtle: #32302F;
+  --bg-pressed: #504945;
+  --border-default: #504945;
+  --border-subtle: #3C3836;
+  --border-focus: #665C54;
+
+  --text-primary: #FBF1C7;
+  --text-secondary: #EBDBB2;
+  --text-tertiary: #D79921;
+  --text-muted: #928374;
+  --text-inverse: #282828;
+  --text-accent: #D79921;
+
+  --accent-default: #D79921;
+  --accent-hover: #FABD2F;
+  --accent-subtle: rgba(215, 153, 33, 0.12);
+  --accent-muted: rgba(215, 153, 33, 0.25);
+
+  --slide-break-end: #FB4934;
+  --slide-break-start: #B8BB26;
+  --slide-break-end-bg: rgba(251, 73, 52, 0.15);
+  --slide-break-start-bg: rgba(184, 187, 38, 0.15);
+
+  --error: #FB4934;
+  --error-bg: rgba(251, 73, 52, 0.12);
+  --warning: #FABD2F;
+  --warning-bg: rgba(250, 189, 47, 0.12);
+  --success: #B8BB26;
+  --info: #83A598;
+  --info-bg: rgba(131, 165, 152, 0.12);
+
+  --syntax-keyword: #FB4934;
+  --syntax-string: #B8BB26;
+  --syntax-number: #D3869B;
+  --syntax-comment: #928374;
+  --syntax-function: #FABD2F;
+  --syntax-type: #8EC07C;
+  --syntax-variable: #FBF1C7;
+  --syntax-operator: #FB4934;
+  --syntax-property: #D79921;
+  --syntax-regexp: #B8BB26;
+  --syntax-deleted: #FB4934;
+  --syntax-inserted: #B8BB26;
+  --syntax-changed: #FABD2F;
+  --syntax-meta: #928374;
+  --syntax-tag: #8EC07C;
+  --syntax-attr-name: #83A598;
+  --syntax-attr-value: #B8BB26;
+  --syntax-builtin: #8EC07C;
+  --syntax-heading: #FBF1C7;
+  --syntax-bold: #FBF1C7;
+  --syntax-italic: #EBDBB2;
+  --syntax-quote: #928374;
+  --syntax-link: #83A598;
+  --syntax-code-bg: #3C3836;
+  --editor-cursor: #D79921;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.65);
+  --shadow-focus: 0 0 0 3px rgba(215, 153, 33, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Gruvbox Light — Retro warm light
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="gruvbox-light"] {
+  --bg-base: #FBF1C7;
+  --bg-surface: #EBDBB2;
+  --bg-elevated: #D5C4A1;
+  --bg-hover: #EBDBB2;
+  --bg-active: #D5C4A1;
+  --bg-subtle: #F2E5BC;
+  --bg-pressed: #D5C4A1;
+  --border-default: #D5C4A1;
+  --border-subtle: #EBDBB2;
+  --border-focus: #BDAE93;
+
+  --text-primary: #282828;
+  --text-secondary: #3C3836;
+  --text-tertiary: #9D0006;
+  --text-muted: #928374;
+  --text-inverse: #FBF1C7;
+  --text-accent: #9D0006;
+
+  --accent-default: #9D0006;
+  --accent-hover: #CC241D;
+  --accent-subtle: rgba(157, 0, 6, 0.08);
+  --accent-muted: rgba(157, 0, 6, 0.18);
+
+  --slide-break-end: #CC241D;
+  --slide-break-start: #79740E;
+  --slide-break-end-bg: rgba(204, 36, 29, 0.08);
+  --slide-break-start-bg: rgba(121, 116, 14, 0.08);
+
+  --error: #CC241D;
+  --error-bg: rgba(204, 36, 29, 0.06);
+  --warning: #B57614;
+  --warning-bg: rgba(181, 118, 20, 0.06);
+  --success: #79740E;
+  --info: #076678;
+  --info-bg: rgba(7, 102, 120, 0.06);
+
+  --syntax-keyword: #9D0006;
+  --syntax-string: #79740E;
+  --syntax-number: #8F3F71;
+  --syntax-comment: #928374;
+  --syntax-function: #B57614;
+  --syntax-type: #427B58;
+  --syntax-variable: #282828;
+  --syntax-operator: #9D0006;
+  --syntax-property: #AF3A03;
+  --syntax-regexp: #79740E;
+  --syntax-deleted: #CC241D;
+  --syntax-inserted: #79740E;
+  --syntax-changed: #B57614;
+  --syntax-meta: #928374;
+  --syntax-tag: #427B58;
+  --syntax-attr-name: #076678;
+  --syntax-attr-value: #79740E;
+  --syntax-builtin: #427B58;
+  --syntax-heading: #282828;
+  --syntax-bold: #282828;
+  --syntax-italic: #3C3836;
+  --syntax-quote: #928374;
+  --syntax-link: #076678;
+  --syntax-code-bg: #EBDBB2;
+  --editor-cursor: #9D0006;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.18);
+  --shadow-focus: 0 0 0 3px rgba(157, 0, 6, 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   Solarized Dark — Ethan Schoonover classic
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="solarized-dark"] {
+  --bg-base: #002B36;
+  --bg-surface: #073642;
+  --bg-elevated: #0A3949;
+  --bg-hover: #073642;
+  --bg-active: #0A3949;
+  --bg-subtle: #00212B;
+  --bg-pressed: #0A3949;
+  --border-default: #073642;
+  --border-subtle: #002B36;
+  --border-focus: #586E75;
+
+  --text-primary: #93A1A1;
+  --text-secondary: #839496;
+  --text-tertiary: #268BD2;
+  --text-muted: #586E75;
+  --text-inverse: #002B36;
+  --text-accent: #268BD2;
+
+  --accent-default: #268BD2;
+  --accent-hover: #2AA198;
+  --accent-subtle: rgba(38, 139, 210, 0.12);
+  --accent-muted: rgba(38, 139, 210, 0.25);
+
+  --slide-break-end: #DC322F;
+  --slide-break-start: #859900;
+  --slide-break-end-bg: rgba(220, 50, 47, 0.15);
+  --slide-break-start-bg: rgba(133, 153, 0, 0.15);
+
+  --error: #DC322F;
+  --error-bg: rgba(220, 50, 47, 0.12);
+  --warning: #CB4B16;
+  --warning-bg: rgba(203, 75, 22, 0.12);
+  --success: #859900;
+  --info: #2AA198;
+  --info-bg: rgba(42, 161, 152, 0.12);
+
+  --syntax-keyword: #859900;
+  --syntax-string: #2AA198;
+  --syntax-number: #D33682;
+  --syntax-comment: #586E75;
+  --syntax-function: #268BD2;
+  --syntax-type: #B58900;
+  --syntax-variable: #93A1A1;
+  --syntax-operator: #859900;
+  --syntax-property: #268BD2;
+  --syntax-regexp: #2AA198;
+  --syntax-deleted: #DC322F;
+  --syntax-inserted: #859900;
+  --syntax-changed: #B58900;
+  --syntax-meta: #586E75;
+  --syntax-tag: #B58900;
+  --syntax-attr-name: #268BD2;
+  --syntax-attr-value: #2AA198;
+  --syntax-builtin: #B58900;
+  --syntax-heading: #93A1A1;
+  --syntax-bold: #93A1A1;
+  --syntax-italic: #839496;
+  --syntax-quote: #586E75;
+  --syntax-link: #268BD2;
+  --syntax-code-bg: #00212B;
+  --editor-cursor: #268BD2;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(38, 139, 210, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Solarized Light — Ethan Schoonover classic
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="solarized-light"] {
+  --bg-base: #FDF6E3;
+  --bg-surface: #EEE8D5;
+  --bg-elevated: #E8DFC8;
+  --bg-hover: #EEE8D5;
+  --bg-active: #E8DFC8;
+  --bg-subtle: #FAF3DD;
+  --bg-pressed: #E8DFC8;
+  --border-default: #EEE8D5;
+  --border-subtle: #FDF6E3;
+  --border-focus: #93A1A1;
+
+  --text-primary: #586E75;
+  --text-secondary: #657B83;
+  --text-tertiary: #268BD2;
+  --text-muted: #93A1A1;
+  --text-inverse: #FDF6E3;
+  --text-accent: #268BD2;
+
+  --accent-default: #268BD2;
+  --accent-hover: #2AA198;
+  --accent-subtle: rgba(38, 139, 210, 0.08);
+  --accent-muted: rgba(38, 139, 210, 0.18);
+
+  --slide-break-end: #DC322F;
+  --slide-break-start: #859900;
+  --slide-break-end-bg: rgba(220, 50, 47, 0.08);
+  --slide-break-start-bg: rgba(133, 153, 0, 0.08);
+
+  --error: #DC322F;
+  --error-bg: rgba(220, 50, 47, 0.06);
+  --warning: #CB4B16;
+  --warning-bg: rgba(203, 75, 22, 0.06);
+  --success: #859900;
+  --info: #2AA198;
+  --info-bg: rgba(42, 161, 152, 0.06);
+
+  --syntax-keyword: #859900;
+  --syntax-string: #2AA198;
+  --syntax-number: #D33682;
+  --syntax-comment: #93A1A1;
+  --syntax-function: #268BD2;
+  --syntax-type: #B58900;
+  --syntax-variable: #586E75;
+  --syntax-operator: #859900;
+  --syntax-property: #268BD2;
+  --syntax-regexp: #2AA198;
+  --syntax-deleted: #DC322F;
+  --syntax-inserted: #859900;
+  --syntax-changed: #B58900;
+  --syntax-meta: #93A1A1;
+  --syntax-tag: #B58900;
+  --syntax-attr-name: #268BD2;
+  --syntax-attr-value: #2AA198;
+  --syntax-builtin: #B58900;
+  --syntax-heading: #586E75;
+  --syntax-bold: #586E75;
+  --syntax-italic: #657B83;
+  --syntax-quote: #93A1A1;
+  --syntax-link: #268BD2;
+  --syntax-code-bg: #EEE8D5;
+  --editor-cursor: #268BD2;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
+  --shadow-focus: 0 0 0 3px rgba(38, 139, 210, 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   High Contrast — Accessibility-first pure black/white
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="high-contrast"] {
+  --bg-base: #000000;
+  --bg-surface: #000000;
+  --bg-elevated: #111111;
+  --bg-hover: #1A1A1A;
+  --bg-active: #222222;
+  --bg-subtle: #111111;
+  --bg-pressed: #222222;
+  --border-default: #FFFFFF;
+  --border-subtle: #444444;
+  --border-focus: #FFFF00;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #FFFFFF;
+  --text-tertiary: #FFFF00;
+  --text-muted: #888888;
+  --text-inverse: #000000;
+  --text-accent: #FFFF00;
+
+  --accent-default: #FFFF00;
+  --accent-hover: #00FFFF;
+  --accent-subtle: rgba(255, 255, 0, 0.15);
+  --accent-muted: rgba(255, 255, 0, 0.3);
+
+  --slide-break-end: #FF0000;
+  --slide-break-start: #00FF00;
+  --slide-break-end-bg: rgba(255, 0, 0, 0.15);
+  --slide-break-start-bg: rgba(0, 255, 0, 0.15);
+
+  --error: #FF0000;
+  --error-bg: rgba(255, 0, 0, 0.15);
+  --warning: #FFFF00;
+  --warning-bg: rgba(255, 255, 0, 0.15);
+  --success: #00FF00;
+  --info: #00FFFF;
+  --info-bg: rgba(0, 255, 255, 0.15);
+
+  --syntax-keyword: #FFFF00;
+  --syntax-string: #00FFFF;
+  --syntax-number: #FF00FF;
+  --syntax-comment: #888888;
+  --syntax-function: #00FFFF;
+  --syntax-type: #00FF00;
+  --syntax-variable: #FFFFFF;
+  --syntax-operator: #FFFF00;
+  --syntax-property: #00FFFF;
+  --syntax-regexp: #00FFFF;
+  --syntax-deleted: #FF0000;
+  --syntax-inserted: #00FF00;
+  --syntax-changed: #FFFF00;
+  --syntax-meta: #888888;
+  --syntax-tag: #00FF00;
+  --syntax-attr-name: #FFFF00;
+  --syntax-attr-value: #00FFFF;
+  --syntax-builtin: #00FF00;
+  --syntax-heading: #FFFFFF;
+  --syntax-bold: #FFFFFF;
+  --syntax-italic: #FFFFFF;
+  --syntax-quote: #888888;
+  --syntax-link: #00FFFF;
+  --syntax-code-bg: #111111;
+  --editor-cursor: #FFFF00;
+
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-focus: 0 0 0 4px #FFFF00;
+}

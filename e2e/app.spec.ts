@@ -188,6 +188,23 @@ test("theme toggle keeps icon, data-theme, and CSS in sync", async ({ page }) =>
   }
 });
 
+test("theme toggle discards active preset and reverts to default palette", async ({ page }) => {
+  const themeBtn = page.locator('button[aria-label="Toggle theme"]');
+  const html = page.locator("html");
+
+  // Set a preset via the store
+  await page.evaluate(() => {
+    (window as any).presetStore?.set("nord");
+    document.documentElement.setAttribute("data-theme-preset", "nord");
+    document.documentElement.setAttribute("data-theme", "dark");
+  });
+  await expect(html).toHaveAttribute("data-theme-preset", "nord");
+
+  // Click toggle — preset should be discarded
+  await themeBtn.click();
+  await expect(html).not.toHaveAttribute("data-theme-preset");
+});
+
 test("accessibility settings are present in settings modal", async ({ page }) => {
   await page.locator('button[aria-label="Settings"]').click();
 

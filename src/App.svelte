@@ -27,6 +27,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   import type { PaletteMode } from "./lib/commandPalette";
   import { getSession } from "./lib/sessionStore";
   import { workspaceStore } from "./lib/workspaceStore";
+  import { presetStore } from "./lib/themeStore";
 
   import { confirm } from "@tauri-apps/plugin-dialog";
   // Always start at 100% zoom — prevents stale localStorage values
@@ -86,6 +87,11 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       debugLogStore.setCollapsed(s.debug_panel_collapsed ?? true);
       debugLogStore.setHeight(s.debug_panel_height ?? 180);
       debugLogStore.setFilter(s.debug_log_filter ?? "info");
+      // Initialize theme preset from saved preferences
+      const preset = s.theme_preset ?? "";
+      if (preset) {
+        presetStore.set(preset);
+      }
     })
     .catch(() => {});
   /* Adaptive layout — responsive breakpoints */

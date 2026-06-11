@@ -13,7 +13,7 @@
   } from "@lucide/svelte";
   import "./settings-shared.css";
   import { get } from "svelte/store";
-  import { themeStore, type Theme } from "../../lib/themeStore";
+  import { themeStore, presetStore, type Theme } from "../../lib/themeStore";
   import { ttsStore } from "../../lib/ttsStore";
   import type { AppSettings } from "../../lib/settingsTypes";
   import GeneralSettings from "./categories/GeneralSettings.svelte";
@@ -87,6 +87,7 @@
     try {
       await invoke("update_settings", { settings });
       themeStore.set(settings.theme as Theme);
+      presetStore.set(settings.theme_preset as import("../../lib/themeStore").ThemePreset);
       window.dispatchEvent(
         new CustomEvent("markz:settings-changed", {
           detail: {

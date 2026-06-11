@@ -2,7 +2,7 @@
   import { get } from "svelte/store";
   import { onMount } from "svelte";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
-  import { themeStore, type Theme } from "../../lib/themeStore";
+  import { themeStore, presetStore, type Theme } from "../../lib/themeStore";
   import { openDocument, saveDocument, openDocumentByPath, newDocument, openFolder } from "../../lib/keyboard";
   import { getRecentFiles, clearRecentFiles, type RecentFile } from "../../lib/recentFiles";
   import { updateReady, confirmAndRestart } from "../../lib/updater";
@@ -12,7 +12,7 @@
   import { Trash2 } from "@lucide/svelte";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
   import logo from "../../assets/logo.png";
-import Toast from "../ui/Toast.svelte";
+  import Toast from "../../components/ui/Toast.svelte";
   import { logOperationStart, logOperationEnd, logError } from "../../lib/debugLogStore";
 
   interface Props {
@@ -428,7 +428,7 @@ import Toast from "../ui/Toast.svelte";
       <button class="tool-btn" onclick={onOpenSettings} aria-label="Settings" data-tooltip="Settings" data-testid="settings-button">
         <Settings size={15} strokeWidth={2} />
       </button>
-      <button class="tool-btn" onclick={() => themeStore.cycle()} aria-label="Toggle theme" data-tooltip="Theme: {themeLabel($themeStore)} (click to cycle)">
+      <button class="tool-btn" onclick={() => { presetStore.clear(); themeStore.cycle(); }} aria-label="Toggle theme" data-tooltip="Theme: {themeLabel($themeStore)} (click to cycle)">
         {#if resolved === "dark"}
           <Sun size={15} strokeWidth={2} />
         {:else}

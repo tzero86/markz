@@ -1,5 +1,7 @@
 <script lang="ts">
   import { RotateCcw } from "@lucide/svelte";
+  import { presetStore, PRESET_OPTIONS, type ThemePreset } from "../../../lib/themeStore";
+  import ThemePresetCard from "../ThemePresetCard.svelte";
   import type { AppSettings } from "../../../lib/settingsTypes";
 
   let {
@@ -12,9 +14,17 @@
     sectionMatches: (terms: string[]) => boolean;
   } = $props();
 
+  function handlePresetSelect(value: ThemePreset) {
+    if (!settings) return;
+    settings.theme_preset = value;
+    presetStore.set(value);
+  }
+
   function resetAppearance() {
     if (!settings) return;
     settings.theme = "system";
+    settings.theme_preset = "default";
+    presetStore.clear();
   }
   function resetLayout() {
     if (!settings) return;
@@ -29,7 +39,7 @@
 </script>
 
 {#if settings}
-  {#if !searching || sectionMatches(["theme", "appearance", "color", "dark", "light", "system"])}
+  {#if !searching || sectionMatches(["theme", "appearance", "color", "dark", "light", "system", "preset", "nord", "dracula", "tokyo", "gruvbox", "solarized", "contrast"])}
     <div class="settings-section">
       <div class="section-header">
         <h3>Appearance</h3>
@@ -44,6 +54,18 @@
           <option value="light">Light</option>
           <option value="dark">Dark</option>
         </select>
+      </div>
+      <div class="field-row preset-grid-row">
+        <span class="field-label preset-grid-label">Color Preset</span>
+        <div class="preset-grid">
+          {#each PRESET_OPTIONS as opt}
+            <ThemePresetCard
+              preset={opt}
+              selected={settings.theme_preset === opt.value}
+              onSelect={handlePresetSelect}
+            />
+          {/each}
+        </div>
       </div>
     </div>
   {/if}

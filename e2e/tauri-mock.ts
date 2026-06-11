@@ -27,6 +27,7 @@ export const MOCK_SETTINGS = {
   enable_spellcheck: true,
   custom_dictionary: [],
   split_direction: "horizontal",
+  theme_preset: "default",
 };
 
 export const MOCK_HTML = `<h1>Welcome to MarkZ</h1>

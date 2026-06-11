@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Controls whether Playwright reuses an already-running dev server.
+// Default: false (always start a fresh server). Set REUSE_SERVER=1 to reuse.
+const reuseExistingServer = process.env.REUSE_SERVER === "1";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -19,9 +23,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && npx vite preview --port 4173",
+    // Always build fresh before serving. For repeated local runs, pre-build
+    // manually and set REUSE_SERVER=1 to skip the build step.
+    command: reuseExistingServer
+      ? "npx vite preview --port 4173"
+      : "npm run build && npx vite preview --port 4173",
     url: "http://localhost:4173",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    reuseExistingServer,
+    timeout: 180_000,
   },
 });

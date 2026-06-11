@@ -1,4 +1,6 @@
 import "./styles/tokens.css";
+import "./styles/presets.css";
+import "./styles/base.css";
 import "./styles/base.css";
 import "./styles/animations.css";
 import "./styles/editor-theme.css";
