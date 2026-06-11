@@ -13,7 +13,7 @@ export class ScrollSyncController {
     if (this.clearTimer) clearTimeout(this.clearTimer);
     this.clearTimer = setTimeout(() => {
       this.activeSource = null;
-    }, 50);
+    }, 150);
   }
 
   /** Scroll preview to match editor position.
@@ -35,12 +35,12 @@ export class ScrollSyncController {
         if (Math.abs(previewScroller.scrollTop - targetTop) > 5) {
           this.lock("editor");
           previewScroller.scrollTop = targetTop;
-          return;
         }
+        return; // heading handled (or close enough) — never mix with ratio
       }
     }
 
-    // No heading found (or already aligned) — fall back to ratio sync
+    // No heading found (or element not in preview) — fall back to ratio sync
     this.syncByRatio(editorScroller, previewScroller, "editor");
   }
 

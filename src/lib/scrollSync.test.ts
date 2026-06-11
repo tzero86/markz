@@ -7,6 +7,11 @@ describe("ScrollSyncController", () => {
   beforeEach(() => {
     controller = new ScrollSyncController();
     vi.useFakeTimers({ shouldAdvanceTime: true });
+    if (!(globalThis as any).CSS) (globalThis as any).CSS = {} as any;
+    if (!(globalThis as any).CSS.escape) {
+      (globalThis as any).CSS.escape = (s: string) =>
+        s.replace(/([\x00-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f])/g, "\\$1");
+    }
   });
 
   afterEach(() => {
@@ -105,11 +110,45 @@ describe("ScrollSyncController", () => {
 
     // Simulate the user scrolling the preview while the editor lock is active
     preview.scrollTop = 150;
-
-    // After the 50 ms grace period, reverse sync works again
-    vi.advanceTimersByTime(60);
+    // After the 150 ms grace period, reverse sync works again
+    vi.advanceTimersByTime(160);
     controller.syncPreviewToEditor(preview, editor);
     // preview.scrollTop=150 / sourceMax=300 = 0.5 → targetMax=100 * 0.5 = 50
     expect(editor.scrollTop).toBe(50);
+  });
+
+  it("does not fall through to ratio sync when heading is already aligned", () => {
+    const editorScroller = document.createElement("div");
+    const previewScroller = document.createElement("div");
+
+    Object.defineProperty(editorScroller, "scrollHeight", { value: 400, configurable: true });
+    Object.defineProperty(editorScroller, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(previewScroller, "scrollHeight", { value: 400, configurable: true });
+    Object.defineProperty(previewScroller, "clientHeight", { value: 100, configurable: true });
+
+    // Create a heading element in the preview so heading sync activates
+    const heading = document.createElement("h2");
+    heading.id = "introduction";
+    Object.defineProperty(heading, "offsetTop", { value: 70, configurable: true });
+    previewScroller.appendChild(heading);
+
+    // Set preview already within 5 px of heading target (70 - 20 = 50)
+    previewScroller.scrollTop = 52;
+    editorScroller.scrollTop = 50;
+
+    const mockView = {
+      state: {
+        doc: {
+          lineAt: () => ({ number: 5, text: "# Introduction" }),
+          line: () => ({ number: 1, text: "" }),
+        },
+      },
+      viewport: { from: 0, to: 100 },
+    } as any;
+
+    controller.syncEditorToPreview(mockView, editorScroller, previewScroller);
+
+    // Preview should stay at 52 (heading is close enough) — NOT ratio-synced away
+    expect(previewScroller.scrollTop).toBe(52);
   });
 });

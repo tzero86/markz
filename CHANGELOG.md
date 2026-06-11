@@ -1,3 +1,12 @@
+## [0.8.47] - 2026-06-11
+
+### Fixed
+- **Editor scroll flickering** — Fixed heading-based sync fighting with ratio-based fallback. When a heading anchor was found but the preview was already within 5 px of it, the code fell through to ratio sync, causing the preview to oscillate between heading position and ratio position during fast scrolling. Heading sync now always returns after handling (or deciding no scroll is needed), never mixing with ratio sync.
+- **Scroll lock grace period** — Increased from 50 ms to 150 ms to give browsers more time to deliver coalesced/deferred scroll events before clearing the lock.
+
+### Changed
+- **scrollSync robustness** — Added unit test verifying heading sync does not fall through to ratio sync when already aligned.
+
 ## [0.8.46] - 2026-06-11
 
 ### Fixed
