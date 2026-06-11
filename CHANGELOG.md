@@ -1,3 +1,11 @@
+## [0.8.46] - 2026-06-11
+
+### Fixed
+- **Editor scroll jumping** — Replaced the `requestAnimationFrame`-based `programmaticScroll` boolean lock with a source-based lock (`activeSource: 'editor' | 'preview' | null`) and a 50 ms grace period. This eliminates feedback loops caused by coalesced or deferred scroll events during fast trackpad/mousewheel scrolling in the editor pane.
+
+### Changed
+- **scrollSync robustness** — Added unit test verifying reverse sync resumes correctly after the grace period expires.
+
 ## [0.8.45] - 2026-06-10
 
 ### Added
