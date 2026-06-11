@@ -137,7 +137,7 @@ test.describe("Settings modal", () => {
   test("preset cards show all curated options", async ({ page }) => {
     const modal = await openSettings(page);
     const cards = modal.locator('.preset-card');
-    await expect(cards).toHaveCount(9);
+    await expect(cards).toHaveCount(17);
     const labels = await cards.locator('.preset-name').allTextContents();
     expect(labels).toEqual([
       "Default",
@@ -149,6 +149,14 @@ test.describe("Settings modal", () => {
       "Solarized Dark",
       "Solarized Light",
       "High Contrast",
+      "Cosmic",
+      "Supernatural",
+      "Restorative",
+      "Hedonistic",
+      "Luxurious",
+      "Ancient",
+      "Subversive",
+      "Noir",
     ]);
   });
 
@@ -158,6 +166,14 @@ test.describe("Settings modal", () => {
     await nordCard.click();
     const html = page.locator("html");
     await expect(html).toHaveAttribute("data-theme-preset", "nord");
+  });
+
+  test("clicking a WGSN preset card applies it immediately", async ({ page }) => {
+    const modal = await openSettings(page);
+    const cosmicCard = modal.locator('.preset-card').filter({ hasText: "Cosmic" });
+    await cosmicCard.click();
+    const html = page.locator("html");
+    await expect(html).toHaveAttribute("data-theme-preset", "cosmic");
   });
 
   test("toggling minimap checkbox changes state", async ({ page }) => {

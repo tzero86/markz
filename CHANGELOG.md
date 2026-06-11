@@ -1,3 +1,22 @@
+## [0.8.49] - 2026-06-11
+
+### Added
+- **8 new WGSN 2026 Dark Colour Palette themes** — Curated dark themes based on the WGSN 2026 colour trend report:
+  - **Cosmic** — Deep space blues & purples (Future Dusk, Midnight Blue, Basalt)
+  - **Supernatural** — Mystical darks with vivid accents (Deep Emerald, Plum Berry, Mystic Green, Electric Indigo)
+  - **Restorative** — Calming forest & earth tones (Ground Coffee, Wild Green, Midnight Plum)
+  - **Hedonistic** — Opulent deep reds & purples (Cherry Lacquer, Punk Purple, Neon Flare)
+  - **Luxurious** — Sophisticated warm darks with caramel & indigo accents
+  - **Ancient** — Earthy terracotta, olive & ochre (Intense Rust, Dark Olive, Sepia)
+  - **Subversive** — Bold rebellious reds against deep dark (Cranberry Juice, Cherry Lacquer)
+  - **Noir** — Pure sophisticated black with silver chrome accents
+  - Each theme includes full syntax highlighting, accent scales, status colours, and slide-break tokens
+  - Themes are selectable from Settings → General → Color Preset alongside the existing 8 presets
+
+### Changed
+- **Settings search** — Updated search keywords to include all new theme names
+- **E2E coverage** — Updated preset card count (9 → 17) and added WGSN preset activation test
+
 ## [0.8.48] - 2026-06-11
 
 ### Fixed

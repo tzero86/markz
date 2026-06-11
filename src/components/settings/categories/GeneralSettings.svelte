@@ -39,7 +39,7 @@
 </script>
 
 {#if settings}
-  {#if !searching || sectionMatches(["theme", "appearance", "color", "dark", "light", "system", "preset", "nord", "dracula", "tokyo", "gruvbox", "solarized", "contrast"])}
+  {#if !searching || sectionMatches(["theme", "appearance", "color", "dark", "light", "system", "preset", "nord", "dracula", "tokyo", "gruvbox", "solarized", "contrast", "cosmic", "supernatural", "restorative", "hedonistic", "luxurious", "ancient", "subversive", "noir"])}
     <div class="settings-section">
       <div class="section-header">
         <h3>Appearance</h3>

@@ -595,3 +595,604 @@
   --shadow-xl: none;
   --shadow-focus: 0 0 0 4px #FFFF00;
 }
+/* ==========================================================================
+   WGSN 2026 Dark Colour Palettes
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Cosmic — Deep space blues & purples (Future Dusk, Midnight Blue, Basalt)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="cosmic"] {
+  --bg-base: #131520;
+  --bg-surface: #1a1d2e;
+  --bg-elevated: #23263a;
+  --bg-hover: #2a2e45;
+  --bg-active: #323650;
+  --bg-subtle: #181b2b;
+  --bg-pressed: #3a3f5c;
+  --border-default: #2a2e45;
+  --border-subtle: #23263a;
+  --border-focus: #4a5070;
+
+  --text-primary: #d8dae8;
+  --text-secondary: #a0a4b8;
+  --text-tertiary: #6b7088;
+  --text-muted: #4a4f68;
+  --text-inverse: #131520;
+  --text-accent: #8b93c4;
+
+  --accent-default: #8b93c4;
+  --accent-hover: #a0a8d8;
+  --accent-subtle: rgba(139, 147, 196, 0.12);
+  --accent-muted: rgba(139, 147, 196, 0.25);
+
+  --slide-break-end: #b05a7a;
+  --slide-break-start: #5a8a7a;
+  --slide-break-end-bg: rgba(176, 90, 122, 0.15);
+  --slide-break-start-bg: rgba(90, 138, 122, 0.15);
+
+  --error: #e07070;
+  --error-bg: rgba(224, 112, 112, 0.12);
+  --warning: #d4a85e;
+  --warning-bg: rgba(212, 168, 94, 0.12);
+  --success: #7ab88a;
+  --info: #7a9ad4;
+  --info-bg: rgba(122, 154, 212, 0.12);
+
+  --syntax-keyword: #8b93c4;
+  --syntax-string: #9ab88a;
+  --syntax-number: #7a9ad4;
+  --syntax-comment: #5a5f78;
+  --syntax-function: #a89ad4;
+  --syntax-type: #d4a85e;
+  --syntax-variable: #d8dae8;
+  --syntax-operator: #8b93c4;
+  --syntax-property: #7a9ad4;
+  --syntax-regexp: #9ab88a;
+  --syntax-deleted: #e07070;
+  --syntax-inserted: #7ab88a;
+  --syntax-changed: #d4a85e;
+  --syntax-meta: #5a5f78;
+  --syntax-tag: #7ab88a;
+  --syntax-attr-name: #8b93c4;
+  --syntax-attr-value: #9ab88a;
+  --syntax-builtin: #7a9ad4;
+  --syntax-heading: #d8dae8;
+  --syntax-bold: #d8dae8;
+  --syntax-italic: #d8dae8;
+  --syntax-quote: #5a5f78;
+  --syntax-link: #7a9ad4;
+  --syntax-code-bg: #1a1d2e;
+  --editor-cursor: #8b93c4;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(139, 147, 196, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Supernatural — Mystical darks with vivid accents
+   (Black, Deep Emerald, Plum Berry + Celestial Yellow, Mystic Green, Electric Indigo)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="supernatural"] {
+  --bg-base: #121212;
+  --bg-surface: #1a1a1b;
+  --bg-elevated: #242425;
+  --bg-hover: #2d2d2e;
+  --bg-active: #363637;
+  --bg-subtle: #181818;
+  --bg-pressed: #3f3f40;
+  --border-default: #2d2d2e;
+  --border-subtle: #242425;
+  --border-focus: #4a4a4b;
+
+  --text-primary: #e8e8e6;
+  --text-secondary: #a8a8a6;
+  --text-tertiary: #6b6b6a;
+  --text-muted: #4a4a4a;
+  --text-inverse: #121212;
+  --text-accent: #6bc4a4;
+
+  --accent-default: #6bc4a4;
+  --accent-hover: #7dd4b4;
+  --accent-subtle: rgba(107, 196, 164, 0.12);
+  --accent-muted: rgba(107, 196, 164, 0.25);
+
+  --slide-break-end: #c07090;
+  --slide-break-start: #6bc4a4;
+  --slide-break-end-bg: rgba(192, 112, 144, 0.15);
+  --slide-break-start-bg: rgba(107, 196, 164, 0.15);
+
+  --error: #e07080;
+  --error-bg: rgba(224, 112, 128, 0.12);
+  --warning: #d4c47a;
+  --warning-bg: rgba(212, 196, 122, 0.12);
+  --success: #6bc4a4;
+  --info: #6a8ad4;
+  --info-bg: rgba(106, 138, 212, 0.12);
+
+  --syntax-keyword: #6bc4a4;
+  --syntax-string: #d4c47a;
+  --syntax-number: #6a8ad4;
+  --syntax-comment: #5a5a5a;
+  --syntax-function: #a898d4;
+  --syntax-type: #d4a47a;
+  --syntax-variable: #e8e8e6;
+  --syntax-operator: #6bc4a4;
+  --syntax-property: #6a8ad4;
+  --syntax-regexp: #d4c47a;
+  --syntax-deleted: #e07080;
+  --syntax-inserted: #6bc4a4;
+  --syntax-changed: #d4a47a;
+  --syntax-meta: #5a5a5a;
+  --syntax-tag: #7ad4a4;
+  --syntax-attr-name: #6a8ad4;
+  --syntax-attr-value: #d4c47a;
+  --syntax-builtin: #6a8ad4;
+  --syntax-heading: #e8e8e6;
+  --syntax-bold: #e8e8e6;
+  --syntax-italic: #e8e8e6;
+  --syntax-quote: #5a5a5a;
+  --syntax-link: #6a8ad4;
+  --syntax-code-bg: #1a1a1b;
+  --editor-cursor: #6bc4a4;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(107, 196, 164, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Restorative — Calming forest & earth tones
+   (Ground Coffee, Midnight Blue, Midnight Plum, Wild Green, Future Dusk)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="restorative"] {
+  --bg-base: #161413;
+  --bg-surface: #211e1c;
+  --bg-elevated: #2b2825;
+  --bg-hover: #34302c;
+  --bg-active: #3d3834;
+  --bg-subtle: #1e1b19;
+  --bg-pressed: #46413c;
+  --border-default: #34302c;
+  --border-subtle: #2b2825;
+  --border-focus: #5a544c;
+
+  --text-primary: #e0ddd8;
+  --text-secondary: #a8a39c;
+  --text-tertiary: #6e6a62;
+  --text-muted: #4a4640;
+  --text-inverse: #161413;
+  --text-accent: #7a9a6e;
+
+  --accent-default: #7a9a6e;
+  --accent-hover: #8aaa7e;
+  --accent-subtle: rgba(122, 154, 110, 0.12);
+  --accent-muted: rgba(122, 154, 110, 0.25);
+
+  --slide-break-end: #b07070;
+  --slide-break-start: #7a9a6e;
+  --slide-break-end-bg: rgba(176, 112, 112, 0.15);
+  --slide-break-start-bg: rgba(122, 154, 110, 0.15);
+
+  --error: #c87070;
+  --error-bg: rgba(200, 112, 112, 0.12);
+  --warning: #c4a45e;
+  --warning-bg: rgba(196, 164, 94, 0.12);
+  --success: #7a9a6e;
+  --info: #6a7a9a;
+  --info-bg: rgba(106, 122, 154, 0.12);
+
+  --syntax-keyword: #7a9a6e;
+  --syntax-string: #a4a45e;
+  --syntax-number: #6a7a9a;
+  --syntax-comment: #5a544c;
+  --syntax-function: #9a8aaa;
+  --syntax-type: #c4a45e;
+  --syntax-variable: #e0ddd8;
+  --syntax-operator: #7a9a6e;
+  --syntax-property: #6a7a9a;
+  --syntax-regexp: #a4a45e;
+  --syntax-deleted: #c87070;
+  --syntax-inserted: #7a9a6e;
+  --syntax-changed: #c4a45e;
+  --syntax-meta: #5a544c;
+  --syntax-tag: #8aaa7e;
+  --syntax-attr-name: #6a7a9a;
+  --syntax-attr-value: #a4a45e;
+  --syntax-builtin: #6a7a9a;
+  --syntax-heading: #e0ddd8;
+  --syntax-bold: #e0ddd8;
+  --syntax-italic: #e0ddd8;
+  --syntax-quote: #5a544c;
+  --syntax-link: #6a7a9a;
+  --syntax-code-bg: #211e1c;
+  --editor-cursor: #7a9a6e;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(122, 154, 110, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Hedonistic — Opulent deep reds & purples
+   (Dark Moss, Midnight Blue, Cherry Lacquer + Punk Purple, Neon Flare)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="hedonistic"] {
+  --bg-base: #141018;
+  --bg-surface: #1e1822;
+  --bg-elevated: #28202e;
+  --bg-hover: #322838;
+  --bg-active: #3c3042;
+  --bg-subtle: #1a151e;
+  --bg-pressed: #46384c;
+  --border-default: #322838;
+  --border-subtle: #28202e;
+  --border-focus: #5a4a62;
+
+  --text-primary: #e8dde5;
+  --text-secondary: #b0a0ac;
+  --text-tertiary: #7a6a78;
+  --text-muted: #544854;
+  --text-inverse: #141018;
+  --text-accent: #e88a7a;
+
+  --accent-default: #e88a7a;
+  --accent-hover: #f09a8a;
+  --accent-subtle: rgba(232, 138, 122, 0.12);
+  --accent-muted: rgba(232, 138, 122, 0.25);
+
+  --slide-break-end: #e88a7a;
+  --slide-break-start: #7a8aaa;
+  --slide-break-end-bg: rgba(232, 138, 122, 0.15);
+  --slide-break-start-bg: rgba(122, 138, 170, 0.15);
+
+  --error: #e87070;
+  --error-bg: rgba(232, 112, 112, 0.12);
+  --warning: #d4a45e;
+  --warning-bg: rgba(212, 164, 94, 0.12);
+  --success: #7aaa8a;
+  --info: #7a8aaa;
+  --info-bg: rgba(122, 138, 170, 0.12);
+
+  --syntax-keyword: #e88a7a;
+  --syntax-string: #c4a45e;
+  --syntax-number: #7a8aaa;
+  --syntax-comment: #5a4a5a;
+  --syntax-function: #a898c4;
+  --syntax-type: #d4a45e;
+  --syntax-variable: #e8dde5;
+  --syntax-operator: #e88a7a;
+  --syntax-property: #7a8aaa;
+  --syntax-regexp: #c4a45e;
+  --syntax-deleted: #e87070;
+  --syntax-inserted: #7aaa8a;
+  --syntax-changed: #d4a45e;
+  --syntax-meta: #5a4a5a;
+  --syntax-tag: #7aaa8a;
+  --syntax-attr-name: #a898c4;
+  --syntax-attr-value: #c4a45e;
+  --syntax-builtin: #7a8aaa;
+  --syntax-heading: #e8dde5;
+  --syntax-bold: #e8dde5;
+  --syntax-italic: #e8dde5;
+  --syntax-quote: #5a4a5a;
+  --syntax-link: #7a8aaa;
+  --syntax-code-bg: #1e1822;
+  --editor-cursor: #e88a7a;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(232, 138, 122, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Luxurious — Sophisticated warm darks with caramel & indigo
+   (Basalt, Cherry Lacquer, Midnight Blue, Ground Coffee + Honest Indigo, Rustic Caramel)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="luxurious"] {
+  --bg-base: #141210;
+  --bg-surface: #1e1b18;
+  --bg-elevated: #282420;
+  --bg-hover: #322e28;
+  --bg-active: #3c3830;
+  --bg-subtle: #1a1714;
+  --bg-pressed: #464238;
+  --border-default: #322e28;
+  --border-subtle: #282420;
+  --border-focus: #5a5448;
+
+  --text-primary: #e8e4de;
+  --text-secondary: #b0a89c;
+  --text-tertiary: #7a7268;
+  --text-muted: #544e44;
+  --text-inverse: #141210;
+  --text-accent: #d49a5e;
+
+  --accent-default: #d49a5e;
+  --accent-hover: #e0aa6e;
+  --accent-subtle: rgba(212, 154, 94, 0.12);
+  --accent-muted: rgba(212, 154, 94, 0.25);
+
+  --slide-break-end: #c07a6a;
+  --slide-break-start: #7aaa7a;
+  --slide-break-end-bg: rgba(192, 122, 106, 0.15);
+  --slide-break-start-bg: rgba(122, 170, 122, 0.15);
+
+  --error: #e07070;
+  --error-bg: rgba(224, 112, 112, 0.12);
+  --warning: #d4a45e;
+  --warning-bg: rgba(212, 164, 94, 0.12);
+  --success: #7aaa7a;
+  --info: #6a7a9a;
+  --info-bg: rgba(106, 122, 154, 0.12);
+
+  --syntax-keyword: #d49a5e;
+  --syntax-string: #a4aa5e;
+  --syntax-number: #6a7a9a;
+  --syntax-comment: #5a5448;
+  --syntax-function: #a898c4;
+  --syntax-type: #d4a45e;
+  --syntax-variable: #e8e4de;
+  --syntax-operator: #d49a5e;
+  --syntax-property: #6a7a9a;
+  --syntax-regexp: #a4aa5e;
+  --syntax-deleted: #e07070;
+  --syntax-inserted: #7aaa7a;
+  --syntax-changed: #d4a45e;
+  --syntax-meta: #5a5448;
+  --syntax-tag: #8aaa7a;
+  --syntax-attr-name: #6a7a9a;
+  --syntax-attr-value: #a4aa5e;
+  --syntax-builtin: #6a7a9a;
+  --syntax-heading: #e8e4de;
+  --syntax-bold: #e8e4de;
+  --syntax-italic: #e8e4de;
+  --syntax-quote: #5a5448;
+  --syntax-link: #6a7a9a;
+  --syntax-code-bg: #1e1b18;
+  --editor-cursor: #d49a5e;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(212, 154, 94, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Ancient — Earthy terracotta, olive & ochre
+   (Intense Rust, Dark Olive, Sepia, Ground Coffee, Midnight Plum + Sea Kelp, Cosmetic Pink)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="ancient"] {
+  --bg-base: #161412;
+  --bg-surface: #211e18;
+  --bg-elevated: #2b2820;
+  --bg-hover: #353228;
+  --bg-active: #3f3c30;
+  --bg-subtle: #1c1a16;
+  --bg-pressed: #494638;
+  --border-default: #353228;
+  --border-subtle: #2b2820;
+  --border-focus: #5a5440;
+
+  --text-primary: #e8e0d4;
+  --text-secondary: #b0a898;
+  --text-tertiary: #7a7260;
+  --text-muted: #504a3c;
+  --text-inverse: #161412;
+  --text-accent: #b56a5a;
+
+  --accent-default: #b56a5a;
+  --accent-hover: #c47a6a;
+  --accent-subtle: rgba(181, 106, 90, 0.12);
+  --accent-muted: rgba(181, 106, 90, 0.25);
+
+  --slide-break-end: #b56a5a;
+  --slide-break-start: #6a8a5a;
+  --slide-break-end-bg: rgba(181, 106, 90, 0.15);
+  --slide-break-start-bg: rgba(106, 138, 90, 0.15);
+
+  --error: #d07060;
+  --error-bg: rgba(208, 112, 96, 0.12);
+  --warning: #c4a45e;
+  --warning-bg: rgba(196, 164, 94, 0.12);
+  --success: #6a8a5a;
+  --info: #7a6a8a;
+  --info-bg: rgba(122, 106, 138, 0.12);
+
+  --syntax-keyword: #b56a5a;
+  --syntax-string: #a4a45e;
+  --syntax-number: #7a6a8a;
+  --syntax-comment: #5a5440;
+  --syntax-function: #a898a8;
+  --syntax-type: #c4a45e;
+  --syntax-variable: #e8e0d4;
+  --syntax-operator: #b56a5a;
+  --syntax-property: #7a6a8a;
+  --syntax-regexp: #a4a45e;
+  --syntax-deleted: #d07060;
+  --syntax-inserted: #6a8a5a;
+  --syntax-changed: #c4a45e;
+  --syntax-meta: #5a5440;
+  --syntax-tag: #7a9a5a;
+  --syntax-attr-name: #7a6a8a;
+  --syntax-attr-value: #a4a45e;
+  --syntax-builtin: #7a6a8a;
+  --syntax-heading: #e8e0d4;
+  --syntax-bold: #e8e0d4;
+  --syntax-italic: #e8e0d4;
+  --syntax-quote: #5a5440;
+  --syntax-link: #7a6a8a;
+  --syntax-code-bg: #211e18;
+  --editor-cursor: #b56a5a;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(181, 106, 90, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Subversive — Bold rebellious reds against deep dark
+   (Cranberry Juice, Cherry Lacquer, Midnight Plum, Black)
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="subversive"] {
+  --bg-base: #111010;
+  --bg-surface: #1a1818;
+  --bg-elevated: #242020;
+  --bg-hover: #2e2828;
+  --bg-active: #383030;
+  --bg-subtle: #161414;
+  --bg-pressed: #423838;
+  --border-default: #2e2828;
+  --border-subtle: #242020;
+  --border-focus: #4a3a3a;
+
+  --text-primary: #e8d8d8;
+  --text-secondary: #b09898;
+  --text-tertiary: #7a6868;
+  --text-muted: #4a4040;
+  --text-inverse: #111010;
+  --text-accent: #c44a5a;
+
+  --accent-default: #c44a5a;
+  --accent-hover: #d45a6a;
+  --accent-subtle: rgba(196, 74, 90, 0.12);
+  --accent-muted: rgba(196, 74, 90, 0.25);
+
+  --slide-break-end: #c44a5a;
+  --slide-break-start: #5a9a7a;
+  --slide-break-end-bg: rgba(196, 74, 90, 0.15);
+  --slide-break-start-bg: rgba(90, 154, 122, 0.15);
+
+  --error: #e86060;
+  --error-bg: rgba(232, 96, 96, 0.12);
+  --warning: #d4a45e;
+  --warning-bg: rgba(212, 164, 94, 0.12);
+  --success: #5a9a7a;
+  --info: #6a7a9a;
+  --info-bg: rgba(106, 122, 154, 0.12);
+
+  --syntax-keyword: #c44a5a;
+  --syntax-string: #a4a45e;
+  --syntax-number: #6a7a9a;
+  --syntax-comment: #5a4848;
+  --syntax-function: #a898c4;
+  --syntax-type: #d4a45e;
+  --syntax-variable: #e8d8d8;
+  --syntax-operator: #c44a5a;
+  --syntax-property: #6a7a9a;
+  --syntax-regexp: #a4a45e;
+  --syntax-deleted: #e86060;
+  --syntax-inserted: #5a9a7a;
+  --syntax-changed: #d4a45e;
+  --syntax-meta: #5a4848;
+  --syntax-tag: #6aaa8a;
+  --syntax-attr-name: #a898c4;
+  --syntax-attr-value: #a4a45e;
+  --syntax-builtin: #6a7a9a;
+  --syntax-heading: #e8d8d8;
+  --syntax-bold: #e8d8d8;
+  --syntax-italic: #e8d8d8;
+  --syntax-quote: #5a4848;
+  --syntax-link: #6a7a9a;
+  --syntax-code-bg: #1a1818;
+  --editor-cursor: #c44a5a;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(196, 74, 90, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Noir — Pure sophisticated black with silver chrome accents
+   -------------------------------------------------------------------------- */
+:root[data-theme-preset="noir"] {
+  --bg-base: #0a0a0a;
+  --bg-surface: #141414;
+  --bg-elevated: #1e1e1e;
+  --bg-hover: #282828;
+  --bg-active: #323232;
+  --bg-subtle: #111111;
+  --bg-pressed: #3a3a3a;
+  --border-default: #282828;
+  --border-subtle: #1e1e1e;
+  --border-focus: #4a4a4a;
+
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #6b6b6b;
+  --text-muted: #4a4a4a;
+  --text-inverse: #0a0a0a;
+  --text-accent: #b0b0b0;
+
+  --accent-default: #b0b0b0;
+  --accent-hover: #c8c8c8;
+  --accent-subtle: rgba(176, 176, 176, 0.12);
+  --accent-muted: rgba(176, 176, 176, 0.25);
+
+  --slide-break-end: #b07070;
+  --slide-break-start: #70b070;
+  --slide-break-end-bg: rgba(176, 112, 112, 0.15);
+  --slide-break-start-bg: rgba(112, 176, 112, 0.15);
+
+  --error: #e07070;
+  --error-bg: rgba(224, 112, 112, 0.12);
+  --warning: #d4a85e;
+  --warning-bg: rgba(212, 168, 94, 0.12);
+  --success: #70b070;
+  --info: #7a9ad4;
+  --info-bg: rgba(122, 154, 212, 0.12);
+
+  --syntax-keyword: #b0b0b0;
+  --syntax-string: #a0a080;
+  --syntax-number: #809ac0;
+  --syntax-comment: #505050;
+  --syntax-function: #a0a0c0;
+  --syntax-type: #c0a060;
+  --syntax-variable: #e8e8e8;
+  --syntax-operator: #b0b0b0;
+  --syntax-property: #809ac0;
+  --syntax-regexp: #a0a080;
+  --syntax-deleted: #e07070;
+  --syntax-inserted: #70b070;
+  --syntax-changed: #c0a060;
+  --syntax-meta: #505050;
+  --syntax-tag: #80b080;
+  --syntax-attr-name: #a0a0c0;
+  --syntax-attr-value: #a0a080;
+  --syntax-builtin: #809ac0;
+  --syntax-heading: #e8e8e8;
+  --syntax-bold: #e8e8e8;
+  --syntax-italic: #e8e8e8;
+  --syntax-quote: #505050;
+  --syntax-link: #809ac0;
+  --syntax-code-bg: #141414;
+  --editor-cursor: #b0b0b0;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.65);
+  --shadow-focus: 0 0 0 3px rgba(176, 176, 176, 0.2);
+}

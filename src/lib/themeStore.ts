@@ -10,8 +10,15 @@ export type ThemePreset =
   | "gruvbox-light"
   | "solarized-dark"
   | "solarized-light"
-  | "high-contrast";
-
+  | "high-contrast"
+  | "cosmic"
+  | "supernatural"
+  | "restorative"
+  | "hedonistic"
+  | "luxurious"
+  | "ancient"
+  | "subversive"
+  | "noir";
 export interface PresetOption {
   value: ThemePreset;
   label: string;
@@ -28,6 +35,14 @@ export const PRESET_OPTIONS: PresetOption[] = [
   { value: "solarized-dark", label: "Solarized Dark", preview: ["#002B36", "#268BD2", "#859900", "#2AA198"] },
   { value: "solarized-light", label: "Solarized Light", preview: ["#FDF6E3", "#268BD2", "#859900", "#2AA198"] },
   { value: "high-contrast", label: "High Contrast", preview: ["#000000", "#FFFF00", "#FFFF00", "#00FFFF"] },
+  { value: "cosmic", label: "Cosmic", preview: ["#131520", "#8b93c4", "#8b93c4", "#9ab88a"] },
+  { value: "supernatural", label: "Supernatural", preview: ["#121212", "#6bc4a4", "#6bc4a4", "#d4c47a"] },
+  { value: "restorative", label: "Restorative", preview: ["#161413", "#7a9a6e", "#7a9a6e", "#a4a45e"] },
+  { value: "hedonistic", label: "Hedonistic", preview: ["#141018", "#e88a7a", "#e88a7a", "#c4a45e"] },
+  { value: "luxurious", label: "Luxurious", preview: ["#141210", "#d49a5e", "#d49a5e", "#a4aa5e"] },
+  { value: "ancient", label: "Ancient", preview: ["#161412", "#b56a5a", "#b56a5a", "#a4a45e"] },
+  { value: "subversive", label: "Subversive", preview: ["#111010", "#c44a5a", "#c44a5a", "#a4a45e"] },
+  { value: "noir", label: "Noir", preview: ["#0a0a0a", "#b0b0b0", "#b0b0b0", "#a0a080"] },
 ];
 
 function resolveTheme(theme: Theme): "light" | "dark" {
