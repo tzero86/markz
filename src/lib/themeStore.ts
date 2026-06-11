@@ -12,16 +12,22 @@ export type ThemePreset =
   | "solarized-light"
   | "high-contrast";
 
-export const PRESET_OPTIONS: { value: ThemePreset; label: string }[] = [
-  { value: "default", label: "Default" },
-  { value: "nord", label: "Nord" },
-  { value: "dracula", label: "Dracula" },
-  { value: "tokyo-night", label: "Tokyo Night" },
-  { value: "gruvbox-dark", label: "Gruvbox Dark" },
-  { value: "gruvbox-light", label: "Gruvbox Light" },
-  { value: "solarized-dark", label: "Solarized Dark" },
-  { value: "solarized-light", label: "Solarized Light" },
-  { value: "high-contrast", label: "High Contrast" },
+export interface PresetOption {
+  value: ThemePreset;
+  label: string;
+  preview: string[]; // 4 hex colors: bg, accent, keyword, string
+}
+
+export const PRESET_OPTIONS: PresetOption[] = [
+  { value: "default", label: "Default", preview: ["#0d0d0d", "#0d8a5d", "#4ec9b0", "#ce9178"] },
+  { value: "nord", label: "Nord", preview: ["#2E3440", "#88C0D0", "#81A1C1", "#A3BE8C"] },
+  { value: "dracula", label: "Dracula", preview: ["#282A36", "#BD93F9", "#FF79C6", "#F1FA8C"] },
+  { value: "tokyo-night", label: "Tokyo Night", preview: ["#1A1B26", "#7AA2F7", "#BB9AF7", "#9ECE6A"] },
+  { value: "gruvbox-dark", label: "Gruvbox Dark", preview: ["#282828", "#D79921", "#FB4934", "#B8BB26"] },
+  { value: "gruvbox-light", label: "Gruvbox Light", preview: ["#FBF1C7", "#9D0006", "#859900", "#2AA198"] },
+  { value: "solarized-dark", label: "Solarized Dark", preview: ["#002B36", "#268BD2", "#859900", "#2AA198"] },
+  { value: "solarized-light", label: "Solarized Light", preview: ["#FDF6E3", "#268BD2", "#859900", "#2AA198"] },
+  { value: "high-contrast", label: "High Contrast", preview: ["#000000", "#FFFF00", "#FFFF00", "#00FFFF"] },
 ];
 
 function resolveTheme(theme: Theme): "light" | "dark" {

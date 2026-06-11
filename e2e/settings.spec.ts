@@ -134,12 +134,12 @@ test.describe("Settings modal", () => {
     await expect(modal.locator('select#theme-select')).toHaveValue("light");
   });
 
-  test("preset dropdown has all curated options", async ({ page }) => {
+  test("preset cards show all curated options", async ({ page }) => {
     const modal = await openSettings(page);
-    const select = modal.locator('select#theme-preset-select');
-    await expect(select).toHaveValue("default");
-    const options = await select.locator("option").allTextContents();
-    expect(options).toEqual([
+    const cards = modal.locator('.preset-card');
+    await expect(cards).toHaveCount(9);
+    const labels = await cards.locator('.preset-name').allTextContents();
+    expect(labels).toEqual([
       "Default",
       "Nord",
       "Dracula",
@@ -152,9 +152,10 @@ test.describe("Settings modal", () => {
     ]);
   });
 
-  test("selecting a preset applies it immediately", async ({ page }) => {
+  test("clicking a preset card applies it immediately", async ({ page }) => {
     const modal = await openSettings(page);
-    await modal.locator('select#theme-preset-select').selectOption("nord");
+    const nordCard = modal.locator('.preset-card').filter({ hasText: "Nord" });
+    await nordCard.click();
     const html = page.locator("html");
     await expect(html).toHaveAttribute("data-theme-preset", "nord");
   });
