@@ -1,3 +1,21 @@
+## [0.8.45] - 2026-06-10
+
+### Added
+- **Theme Presets** — 8 curated color palettes selectable from Settings → General → Color Preset.
+  - Nord, Dracula, Tokyo Night, Gruvbox Dark, Gruvbox Light, Solarized Dark, Solarized Light, High Contrast
+  - Each card shows a live 4-color preview strip
+  - 3-column compact grid layout
+  - Click to apply immediately; selected state shows checkmark
+- **Preset persistence** — Selected preset is saved to settings and restored on app launch
+- **Theme toggle integration** — Clicking the title bar sun/moon button discards the active preset and reverts to the default palette
+
+### Changed
+- **Settings UI** — Replaced Color Preset dropdown with card-based grid selection
+
+### Fixed
+- **TitleBar Toast import** — Added missing `import Toast from "..."` that caused runtime `ReferenceError: Toast is not defined`
+- **Rust Settings struct** — Removed duplicate `debug_panel_*` fields
+
 ## [0.8.44] - 2026-06-10
 
 ### Added
