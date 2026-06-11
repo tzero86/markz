@@ -117,7 +117,7 @@ describe("ScrollSyncController", () => {
     expect(editor.scrollTop).toBe(50);
   });
 
-  it("does not fall through to ratio sync when heading is already aligned", () => {
+  it("falls through to ratio sync when heading is already aligned", () => {
     const editorScroller = document.createElement("div");
     const previewScroller = document.createElement("div");
 
@@ -134,7 +134,7 @@ describe("ScrollSyncController", () => {
 
     // Set preview already within 5 px of heading target (70 - 20 = 50)
     previewScroller.scrollTop = 52;
-    editorScroller.scrollTop = 50;
+    editorScroller.scrollTop = 50; // 50 / 300 = 16.7%
 
     const mockView = {
       state: {
@@ -148,7 +148,26 @@ describe("ScrollSyncController", () => {
 
     controller.syncEditorToPreview(mockView, editorScroller, previewScroller);
 
-    // Preview should stay at 52 (heading is close enough) — NOT ratio-synced away
-    expect(previewScroller.scrollTop).toBe(52);
+    // Preview should be ratio-synced (heading is close enough so ratio fine-tunes)
+    // 50 / 300 = 0.1667 → 0.1667 * 300 = 50
+    expect(previewScroller.scrollTop).toBe(50);
+  });
+
+  it("ratio sync respects different source and target client heights", () => {
+    const source = document.createElement("div");
+    const target = document.createElement("div");
+
+    Object.defineProperty(source, "scrollHeight", { value: 500, configurable: true });
+    Object.defineProperty(source, "clientHeight", { value: 200, configurable: true });
+    Object.defineProperty(target, "scrollHeight", { value: 300, configurable: true });
+    Object.defineProperty(target, "clientHeight", { value: 50, configurable: true });
+
+    source.scrollTop = 150; // 150 / 300 = 50%
+
+    // @ts-expect-error — private method
+    controller.syncByRatio(source, target, "editor");
+
+    // 50% of targetMax (300 - 50 = 250) = 125
+    expect(target.scrollTop).toBe(125);
   });
 });

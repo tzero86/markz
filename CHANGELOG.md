@@ -1,3 +1,12 @@
+## [0.8.48] - 2026-06-11
+
+### Fixed
+- **Scroll sync out of sync** — Restored ratio-sync fallback after heading sync when the heading is already aligned. The v0.8.47 "never fall through" change prevented the preview from following the editor past a heading anchor, causing the two panes to drift apart (e.g., editor at bottom, preview stuck mid-document).
+- **`syncByRatio` target height bug** — Fixed a typo where `targetMax` was computed with `source.clientHeight` instead of `target.clientHeight`. This caused ratio-synced scroll positions to be wrong whenever the editor and preview had different visible heights, making it impossible to scroll the preview to its true bottom.
+
+### Changed
+- **scrollSync tests** — Updated the "already aligned" test to expect ratio fallthrough, and added a regression test verifying ratio sync uses the correct `target.clientHeight`.
+
 ## [0.8.47] - 2026-06-11
 
 ### Fixed

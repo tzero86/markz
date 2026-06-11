@@ -36,7 +36,8 @@ export class ScrollSyncController {
           this.lock("editor");
           previewScroller.scrollTop = targetTop;
         }
-        return; // heading handled (or close enough) — never mix with ratio
+        // Fall through to ratio sync so the preview keeps tracking the
+        // editor even when the heading anchor is already close.
       }
     }
 
