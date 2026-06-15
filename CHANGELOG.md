@@ -1,3 +1,23 @@
+## [0.8.50] - 2026-06-15
+
+### Fixed
+- **JIRA multi-paragraph blockquote merging** — Multiple blocks inside a blockquote (e.g., two paragraphs) now render with blank `bq.` separator lines between them, preventing JIRA from merging them into a single paragraph.
+- **JIRA WikiLink rendering** — WikiLinks no longer append `.md` extension, rendering as `[display|target]` instead of `[display|target.md]`.
+- **GitHub nested list indentation** — Fixed child list item indentation to match the parent prefix length (2 spaces for `- `, 3 spaces for `1. `), aligning content correctly with the first character after the list marker.
+- **Confluence task list checkboxes** — Task list items now render `[x]` / `[ ]` markers inside `<li>` elements.
+- **Confluence table alignment** — Table cell alignment (`left`, `center`, `right`) now emits `style="text-align: ..."` attributes on `<th>` and `<td>`.
+- **Confluence footnote definitions** — Footnote definitions now wrap in `<sup id="fn-{label}">` for proper referencing.
+
+### Added
+- **Converter integration tests** — 54 end-to-end tests covering the full markdown→parse→convert pipeline for all 4 formats (JIRA, Confluence, GitHub, Slack). Tests cover headings, formatting, code blocks, lists, nested lists, blockquotes, tables, images, links, and edge cases.
+- **Unit test coverage** — 16 new unit tests across converters: nested lists, task lists, table alignment, footnotes, multi-paragraph blockquotes, WikiLinks, complex documents, and empty input.
+- **Slide break mode initial state** — `slideBreaksEnabled` is now passed explicitly to the editor. The gutter is hidden on app launch and only appears when the user explicitly enables slide break editing, giving the feature the intended 2-state behaviour (hidden vs. enabled with breakpoints rendered).
+- **Slide break auto-detection** — When slide break mode is enabled for the first time on a tab, H1/H2/`---` boundaries are auto-detected and rendered as gutter markers. Previously the gutter was visible on launch but no breakpoints were rendered.
+
+### Changed
+- **EditorConfig API** — Added optional `slideBreaksEnabled` flag to `EditorConfig`. The editor no longer infers slide-break visibility from the presence of the `onSlideBreakToggle` callback.
+
+
 ## [0.8.49] - 2026-06-11
 
 ### Added

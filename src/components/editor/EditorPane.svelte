@@ -362,6 +362,7 @@
       showMinimap,
       customDictionary: [],
       slideBreaks: $activeDocumentStore.slideBreaks,
+      slideBreaksEnabled: slideBreakMode,
       onSlideBreakToggle: (line) => {
         const tab = tabStore.getActiveTab();
         if (!tab) return;

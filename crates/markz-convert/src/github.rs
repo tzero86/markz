@@ -75,7 +75,7 @@ fn render_block(output: &mut String, block: &Block, ctx: &ConvertContext) {
                             render_inlines(output, text, ctx);
                         }
                         Block::List { .. } => {
-                            let indent = "  ".repeat(prefix.len() / 2 + 1);
+                            let indent = " ".repeat(prefix.len());
                             let mut sub = String::new();
                             render_block(&mut sub, b, ctx);
                             for line in sub.trim().lines() {
@@ -85,7 +85,7 @@ fn render_block(output: &mut String, block: &Block, ctx: &ConvertContext) {
                             }
                         }
                         _ => {
-                            let indent = "  ".repeat(prefix.len() / 2 + 1);
+                            let indent = " ".repeat(prefix.len());
                             let mut sub = String::new();
                             render_block(&mut sub, b, ctx);
                             for line in sub.trim().lines() {
@@ -302,5 +302,104 @@ mod tests {
         }]);
         let ctx = ConvertContext::default();
         assert!(convert(&doc, &ctx).contains("~~old~~"));
+    }
+
+    #[test]
+    fn test_nested_unordered_list() {
+        let doc = doc_with_blocks(vec![Block::List {
+            ordered: false, start: None,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph { text: vec![Inline::Text("parent".to_string())] },
+                    Block::List { ordered: false, start: None, items: vec![
+                        ListItem { blocks: vec![Block::Paragraph { text: vec![Inline::Text("child".to_string())] }], task: None },
+                    ]},
+                ],
+                task: None,
+            }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        // Indent should be 2 spaces for "- " prefix (length 2)
+        assert_eq!(result, "- parent\n\n  - child");
+    }
+
+    #[test]
+    fn test_nested_ordered_list() {
+        let doc = doc_with_blocks(vec![Block::List {
+            ordered: true, start: Some(1),
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph { text: vec![Inline::Text("parent".to_string())] },
+                    Block::List { ordered: true, start: Some(1), items: vec![
+                        ListItem { blocks: vec![Block::Paragraph { text: vec![Inline::Text("child".to_string())] }], task: None },
+                    ]},
+                ],
+                task: None,
+            }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        // Indent should be 3 spaces for "1. " prefix (length 3)
+        assert_eq!(result, "1. parent\n\n   1. child");
+    }
+
+    #[test]
+    fn test_nested_mixed_list() {
+        let doc = doc_with_blocks(vec![Block::List {
+            ordered: false, start: None,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph { text: vec![Inline::Text("item".to_string())] },
+                    Block::List { ordered: true, start: Some(1), items: vec![
+                        ListItem { blocks: vec![Block::Paragraph { text: vec![Inline::Text("sub".to_string())] }], task: None },
+                    ]},
+                ],
+                task: None,
+            }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.contains("- item"), "parent: {result}");
+        assert!(result.contains("sub"), "child: {result}");
+    }
+
+    #[test]
+    fn test_list_with_code_block() {
+        let doc = doc_with_blocks(vec![Block::List {
+            ordered: false, start: None,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph { text: vec![Inline::Text("item".to_string())] },
+                    Block::CodeBlock { language: Some("js".to_string()), content: "let x = 1;".to_string() },
+                ],
+                task: None,
+            }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.contains("- item"), "list item: {result}");
+        assert!(result.contains("let x = 1"), "code block: {result}");
+    }
+
+    #[test]
+    fn test_complex_document() {
+        let doc = doc_with_blocks(vec![
+            Block::Heading { level: 1, text: vec![Inline::Text("Title".to_string())] },
+            Block::Paragraph { text: vec![Inline::Text("Intro".to_string())] },
+            Block::List { ordered: false, start: None, items: vec![
+                ListItem { blocks: vec![Block::Paragraph { text: vec![Inline::Text("a".to_string())] }], task: None },
+                ListItem { blocks: vec![Block::Paragraph { text: vec![Inline::Text("b".to_string())] }], task: None },
+            ]},
+            Block::CodeBlock { language: None, content: "code".to_string() },
+            Block::ThematicBreak,
+        ]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.contains("# Title"), "heading: {result}");
+        assert!(result.contains("Intro"), "para: {result}");
+        assert!(result.contains("- a"), "list: {result}");
+        assert!(result.contains("```"), "code: {result}");
+        assert!(result.contains("---"), "hr: {result}");
     }
 }

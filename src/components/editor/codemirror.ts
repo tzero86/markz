@@ -211,6 +211,7 @@ export interface EditorConfig {
   showMinimap?: boolean;
   customDictionary?: string[];
   slideBreaks?: number[];
+  slideBreaksEnabled?: boolean;
   onSlideBreakToggle?: (line: number) => void;
   onChange: (content: string) => void;
   onCursorChange?: (pos: CursorPosition) => void;
@@ -235,6 +236,8 @@ export function initEditor(
   const fontFamily = config.fontFamily ?? "JetBrains Mono";
   const fontSize = config.fontSize ?? 14;
   const lineHeight = config.lineHeight ?? 1.7;
+
+  const slideBreaksEnabled = config.slideBreaksEnabled ?? false;
 
   const extensions = [
     themeCompartment.of(createEditorTheme(isDark)),
@@ -283,7 +286,7 @@ export function initEditor(
       createSlideBreakExtension(
         config.slideBreaks ?? [],
         config.onSlideBreakToggle ?? (() => {}),
-        (config.slideBreaks?.length ?? 0) > 0 || !!config.onSlideBreakToggle
+        slideBreaksEnabled
       )
     ),
     closeBrackets(),
@@ -327,6 +330,7 @@ export function initEditor(
     },
   };
 }
+
 
 export function setEditorTheme(view: EditorView, isDark: boolean) {
   view.dispatch({

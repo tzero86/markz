@@ -43,7 +43,7 @@ fn render_block(output: &mut String, block: &Block, depth: usize, ctx: &ConvertC
         Block::BlockQuote { blocks } => {
             for (i, b) in blocks.iter().enumerate() {
                 if i > 0 {
-                    output.push('\n');
+                    output.push_str("bq.\n");
                 }
                 let mut bq_output = String::new();
                 render_block(&mut bq_output, b, depth, ctx);
@@ -52,9 +52,9 @@ fn render_block(output: &mut String, block: &Block, depth: usize, ctx: &ConvertC
                     output.push_str(line);
                     output.push('\n');
                 }
-                if output.ends_with('\n') {
-                    output.pop();
-                }
+            }
+            if output.ends_with('\n') {
+                output.pop();
             }
         }
         Block::List { ordered, start: _, items } => {
@@ -212,7 +212,7 @@ fn render_inline(output: &mut String, inline: &Inline, rctx: &mut RenderContext,
             output.push_str(display);
             output.push_str("|");
             output.push_str(target);
-            output.push_str(".md]");
+            output.push(']');
         }
         Inline::FootnoteReference { label } => {
             output.push_str("[^");
@@ -392,5 +392,74 @@ mod tests {
         let ctx = ConvertContext::default();
         let result = convert(&doc, &ctx);
         assert_eq!(result, "----");
+    }
+
+    #[test]
+    fn test_multiline_blockquote() {
+        let doc = doc_with_blocks(vec![Block::BlockQuote {
+            blocks: vec![
+                Block::Paragraph { text: vec![Inline::Text("First paragraph".to_string())] },
+                Block::Paragraph { text: vec![Inline::Text("Second paragraph".to_string())] },
+            ],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert_eq!(result, "bq. First paragraph\nbq.\nbq. Second paragraph");
+    }
+
+    #[test]
+    fn test_wikilink() {
+        let doc = doc_with_blocks(vec![Block::Paragraph {
+            text: vec![Inline::WikiLink { target: "SomePage".to_string(), display: "Some Page".to_string() }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert_eq!(result, "[Some Page|SomePage]");
+    }
+
+    #[test]
+    fn test_nested_blockquote_list() {
+        let doc = doc_with_blocks(vec![Block::BlockQuote {
+            blocks: vec![Block::List {
+                ordered: false, start: None,
+                items: vec![
+                    ListItem { blocks: vec![Block::Paragraph { text: vec![Inline::Text("item".to_string())] }], task: None },
+                ],
+            }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert_eq!(result, "bq. * item");
+    }
+
+    #[test]
+    fn test_image_with_local_path() {
+        let doc = doc_with_blocks(vec![Block::Paragraph {
+            text: vec![Inline::Image { alt: "pic".to_string(), url: "images/logo.png".to_string(), title: None }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert_eq!(result, "!images/logo.png|pic!");
+    }
+
+    #[test]
+    fn test_empty_document() {
+        let doc = doc_with_blocks(vec![]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_multiple_headings_and_paragraphs() {
+        let doc = doc_with_blocks(vec![
+            Block::Heading { level: 1, text: vec![Inline::Text("Title".to_string())] },
+            Block::Paragraph { text: vec![Inline::Text("Intro text".to_string())] },
+            Block::Heading { level: 2, text: vec![Inline::Text("Section".to_string())] },
+            Block::Paragraph { text: vec![Inline::Text("Body text".to_string())] },
+        ]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert_eq!(result, "h1. Title\n\nIntro text\n\nh2. Section\n\nBody text");
     }
 }

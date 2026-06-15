@@ -69,6 +69,9 @@ fn render_block(output: &mut String, block: &Block, ctx: &ConvertContext) {
             }
             for item in items {
                 output.push_str("<li>");
+                if let Some(done) = item.task {
+                    output.push_str(if done { "[x] " } else { "[ ] " });
+                }
                 for b in &item.blocks {
                     render_block(output, b, ctx);
                 }
@@ -83,7 +86,17 @@ fn render_block(output: &mut String, block: &Block, ctx: &ConvertContext) {
         Block::Table { header, rows } => {
             output.push_str("<table><tbody>\n<tr>\n");
             for cell in header {
-                output.push_str("<th>");
+                output.push_str("<th");
+                if let Some(ref align) = cell.alignment {
+                    output.push_str(" style=\"text-align: ");
+                    output.push_str(match align {
+                        Alignment::Left => "left",
+                        Alignment::Center => "center",
+                        Alignment::Right => "right",
+                    });
+                    output.push('"');
+                }
+                output.push('>');
                 render_inlines(output, &cell.text, ctx);
                 output.push_str("</th>\n");
             }
@@ -91,7 +104,17 @@ fn render_block(output: &mut String, block: &Block, ctx: &ConvertContext) {
             for row in rows {
                 output.push_str("<tr>\n");
                 for cell in row {
-                    output.push_str("<td>");
+                    output.push_str("<td");
+                    if let Some(ref align) = cell.alignment {
+                        output.push_str(" style=\"text-align: ");
+                        output.push_str(match align {
+                            Alignment::Left => "left",
+                            Alignment::Center => "center",
+                            Alignment::Right => "right",
+                        });
+                        output.push('"');
+                    }
+                    output.push('>');
                     render_inlines(output, &cell.text, ctx);
                     output.push_str("</td>\n");
                 }
@@ -105,10 +128,14 @@ fn render_block(output: &mut String, block: &Block, ctx: &ConvertContext) {
         Block::RawHtml(html) => {
             output.push_str(html);
         }
-        Block::FootnoteDefinition { blocks, .. } => {
+        Block::FootnoteDefinition { label, blocks } => {
+            output.push_str("<sup id=\"fn-");
+            output.push_str(&escape_xml_attr(label));
+            output.push_str("\">");
             for b in blocks {
                 render_block(output, b, ctx);
             }
+            output.push_str("</sup>");
         }
     }
 }
@@ -284,5 +311,114 @@ mod tests {
         }]);
         let ctx = ConvertContext::default();
         assert!(convert(&doc, &ctx).contains("<del>gone</del>"));
+    }
+
+    #[test]
+    fn test_nested_list() {
+        let doc = doc_with_blocks(vec![Block::List {
+            ordered: false, start: None,
+            items: vec![ListItem {
+                blocks: vec![
+                    Block::Paragraph { text: vec![Inline::Text("outer".to_string())] },
+                    Block::List {
+                        ordered: false, start: None,
+                        items: vec![ListItem {
+                            blocks: vec![Block::Paragraph { text: vec![Inline::Text("inner".to_string())] }],
+                            task: None,
+                        }],
+                    },
+                ],
+                task: None,
+            }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        let li_start = result.find("<li>").expect("should have <li>");
+        let li_end = result.find("</li>").expect("should have </li>");
+        let li_content = &result[li_start..li_end];
+        assert!(li_content.contains("<ul>"), "nested <ul> should be inside <li>: {}", li_content);
+        assert!(li_content.contains("<p>inner</p>"), "inner paragraph should be inside nested list");
+    }
+
+    #[test]
+    fn test_task_list() {
+        let doc = doc_with_blocks(vec![Block::List {
+            ordered: false, start: None,
+            items: vec![
+                ListItem {
+                    blocks: vec![Block::Paragraph { text: vec![Inline::Text("done".to_string())] }],
+                    task: Some(true),
+                },
+                ListItem {
+                    blocks: vec![Block::Paragraph { text: vec![Inline::Text("pending".to_string())] }],
+                    task: Some(false),
+                },
+            ],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.contains("[x]"), "completed task should have [x] marker");
+        assert!(result.contains("[ ]"), "pending task should have [ ] marker");
+    }
+
+    #[test]
+    fn test_table_with_alignment() {
+        let doc = doc_with_blocks(vec![Block::Table {
+            header: vec![
+                TableCell { text: vec![Inline::Text("Left".to_string())], alignment: Some(Alignment::Left) },
+                TableCell { text: vec![Inline::Text("Center".to_string())], alignment: Some(Alignment::Center) },
+                TableCell { text: vec![Inline::Text("Right".to_string())], alignment: Some(Alignment::Right) },
+            ],
+            rows: vec![],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.contains(r#"style="text-align: left"#));
+        assert!(result.contains(r#"style="text-align: center"#));
+        assert!(result.contains(r#"style="text-align: right"#));
+    }
+
+    #[test]
+    fn test_footnote_definition() {
+        let doc = doc_with_blocks(vec![Block::FootnoteDefinition {
+            label: "1".to_string(),
+            blocks: vec![Block::Paragraph { text: vec![Inline::Text("A footnote.".to_string())] }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.contains(r#"<sup id="fn-1">"#), "footnote should have <sup> with id");
+        assert!(result.contains("</sup>"), "footnote should close <sup>");
+        assert!(result.contains("<p>A footnote.</p>"), "footnote content should be inside <sup>");
+    }
+
+    #[test]
+    fn test_deeply_nested_blocks() {
+        let doc = doc_with_blocks(vec![Block::BlockQuote {
+            blocks: vec![Block::List {
+                ordered: false, start: None,
+                items: vec![ListItem {
+                    blocks: vec![
+                        Block::Paragraph { text: vec![Inline::Text("nested paragraph".to_string())] },
+                    ],
+                    task: None,
+                }],
+            }],
+        }]);
+        let ctx = ConvertContext::default();
+        let result = convert(&doc, &ctx);
+        assert!(result.contains("<blockquote>"));
+        assert!(result.contains("</blockquote>"));
+        assert!(result.contains("<ul>"));
+        assert!(result.contains("<li>"));
+        assert!(result.contains("<p>nested paragraph</p>"));
+        // Verify nesting order
+        let bq_start = result.find("<blockquote>").unwrap();
+        let ul_pos = result[bq_start..].find("<ul>").unwrap() + bq_start;
+        let li_pos = result[ul_pos..].find("<li>").unwrap() + ul_pos;
+        let p_pos = result[li_pos..].find("<p>nested paragraph</p>").unwrap() + li_pos;
+        let ul_end = result[p_pos..].find("</ul>").unwrap() + p_pos;
+        let bq_end = result[ul_end..].find("</blockquote>").unwrap() + ul_end;
+        assert!(bq_start < ul_pos && ul_pos < li_pos && li_pos < p_pos && ul_end < bq_end,
+            "block elements should be properly nested");
     }
 }
