@@ -53,6 +53,12 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node scripts/get-release-notes.cjs
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -61,7 +67,11 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "MarkZ ${{ github.ref_name }}"
-          releaseBody: "See the assets to download this version and install."
+          releaseBody: ${{ steps.changelog.outputs.body }}
+          # Set to true to prepend these curated notes to GitHub's auto-generated
+          # commit/PR release notes. Disabled by default so the release body is
+          # exactly the hand-maintained CHANGELOG section.
+          generateReleaseNotes: false
           releaseDraft: false
           prerelease: false
           includeRelease: true
