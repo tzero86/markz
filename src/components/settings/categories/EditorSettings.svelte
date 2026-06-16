@@ -28,7 +28,6 @@
     settings.word_wrap = true;
     settings.show_line_numbers = true;
     settings.show_minimap = false;
-    settings.auto_open_folder = true;
     settings.enable_spellcheck = true;
     settings.vim_mode = false;
   }
@@ -71,7 +70,7 @@
     </div>
   {/if}
 
-  {#if !searching || sectionMatches(["word wrap", "line numbers", "minimap", "auto open", "folder", "spellcheck", "vim", "keybindings", "editor"])}
+  {#if !searching || sectionMatches(["word wrap", "line numbers", "minimap", "spellcheck", "vim", "keybindings", "editor"])}
     <div class="settings-section">
       <div class="section-header">
         <h3>Editor</h3>
@@ -99,13 +98,6 @@
           <span class="toggle-hint">Display a minimap of the document</span>
         </span>
         <input type="checkbox" bind:checked={settings.show_minimap} />
-      </label>
-      <label class="toggle-row">
-        <span class="toggle-label">
-          Auto-open folder
-          <span class="toggle-hint">Automatically open the folder of a file when you open it</span>
-        </span>
-        <input type="checkbox" bind:checked={settings.auto_open_folder} />
       </label>
       <label class="toggle-row">
         <span class="toggle-label">

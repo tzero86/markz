@@ -62,19 +62,19 @@ test.describe("Settings modal", () => {
   test("editor behavior toggles have correct initial values", async ({ page }) => {
     const modal = await openSettings(page);
     await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
-    const checkboxes = modal.locator('input[type="checkbox"]');
-    await expect(checkboxes.nth(0)).toBeChecked(); // word wrap
-    await expect(checkboxes.nth(1)).toBeChecked(); // show line numbers
-    await expect(checkboxes.nth(2)).not.toBeChecked(); // minimap
-    await expect(checkboxes.nth(3)).toBeChecked(); // auto open folder
-    await expect(checkboxes.nth(4)).toBeChecked(); // spellcheck
-    await expect(checkboxes.nth(5)).not.toBeChecked(); // vim mode
+    const toggle = (label: string) =>
+      modal.locator(`label:has-text("${label}")`).locator('input[type="checkbox"]');
+    await expect(toggle("Word wrap")).toBeChecked();
+    await expect(toggle("Show line numbers")).toBeChecked();
+    await expect(toggle("Show minimap")).not.toBeChecked();
+    await expect(toggle("Spellcheck")).toBeChecked();
+    await expect(toggle("Vim mode")).not.toBeChecked();
   });
 
   test("vim mode checkbox toggles", async ({ page }) => {
     const modal = await openSettings(page);
     await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
-    const vimMode = modal.locator('input[type="checkbox"]').nth(5);
+    const vimMode = modal.locator('label:has-text("Vim mode")').locator('input[type="checkbox"]');
     await expect(vimMode).not.toBeChecked();
     await vimMode.click();
     await expect(vimMode).toBeChecked();
@@ -179,7 +179,7 @@ test.describe("Settings modal", () => {
   test("toggling minimap checkbox changes state", async ({ page }) => {
     const modal = await openSettings(page);
     await modal.locator('.sidebar-item').filter({ hasText: "Editor" }).click();
-    const showMinimap = modal.locator('input[type="checkbox"]').nth(2);
+    const showMinimap = modal.locator('label:has-text("Show minimap")').locator('input[type="checkbox"]');
     await expect(showMinimap).not.toBeChecked();
     await showMinimap.click();
     await expect(showMinimap).toBeChecked();

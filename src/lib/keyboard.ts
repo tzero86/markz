@@ -58,7 +58,6 @@ export async function openDocument() {
       tabStore.newTab(result.content, undefined, result.path);
     }
     addRecentFile(result.path);
-    await maybeOpenFolder(result.path);
     logOperationEnd("file", `Open: ${result.path}`);
   } catch (e) {
     logError("file", `Open failed: ${result.path}`, String(e));
@@ -89,28 +88,12 @@ export async function openDocumentByPath(path: string) {
       tabStore.newTab(info.content, undefined, info.path);
     }
     addRecentFile(path);
-    await maybeOpenFolder(path);
     logOperationEnd("file", `Open: ${path}`);
   } catch (e) {
     logError("file", `Open failed: ${path}`, String(e));
     alert("Open failed: " + String(e));
   } finally {
     tabStore.setLoading(false);
-  }
-}
-
-async function maybeOpenFolder(filePath: string | null) {
-  if (!filePath) return;
-  try {
-    const settings = await invoke<any>("get_settings");
-    if (settings?.auto_open_folder ?? true) {
-      const parent = filePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
-      if (parent) {
-        workspaceStore.loadWorkspace(parent).catch(() => {});
-      }
-    }
-  } catch {
-    // silently ignore settings read failures
   }
 }
 

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { get } from "svelte/store";
   import { invoke } from "@tauri-apps/api/core";
   import EditorPane from "./components/editor/EditorPane.svelte";
   import PreviewPane from "./components/preview/PreviewPane.svelte";
@@ -136,7 +135,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     }, 500);
     return () => clearTimeout(timeout);
   });
-  /* Sync directory panel to active file's folder and file watcher */
+  /* Sync open-files watcher + surface external file changes */
   let lastActivePath: string | null = null;
   const externallyModifiedPaths = new Set<string>();
 
@@ -156,6 +155,9 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     }
   }
 
+  // Keep the open-files watcher in sync and surface external changes.
+  // NOTE: the workspace tree is intentionally NOT coupled to the active
+  // document — it stays on whatever root the user opened until they change it.
   const unsubscribeWorkspaceSync = tabStore.subscribe((state) => {
     const active = state.tabs.find((t) => t.id === state.activeTabId);
     const path = active?.path ?? null;
@@ -166,16 +168,10 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
     if (path === lastActivePath) return;
     lastActivePath = path;
-    if (!path) {
-      workspaceStore.closeWorkspace();
-      return;
+    if (path) {
+      // If we switched to a file that was externally modified, prompt to reload
+      checkExternalChanges(path);
     }
-    const parent = path.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
-    if (parent && parent !== get(workspaceStore).rootPath) {
-      workspaceStore.loadWorkspace(parent).catch(() => {});
-    }
-    // If we switched to a file that was externally modified, prompt to reload
-    checkExternalChanges(path);
   });
   let forceSinglePane = $derived(windowWidth > 0 && windowWidth < 900);
   let effectiveViewMode = $derived(
@@ -216,19 +212,10 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
             // Fallback: default welcome tab is already present
           });
       }
-      // Restore workspace folder if one was open
+      // Restore the workspace the user previously had open (if any).
+      // The tree is never auto-derived from an open file's location.
       if (session?.workspacePath) {
         workspaceStore.loadWorkspace(session.workspacePath).catch(() => {});
-      } else if (session?.activeTabPath) {
-        // Auto-open folder of restored active tab (if setting enabled)
-        invoke("get_settings")
-          .then((s: any) => {
-            if (s?.auto_open_folder ?? true) {
-              const parent = session.activeTabPath?.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
-              if (parent) workspaceStore.loadWorkspace(parent).catch(() => {});
-            }
-          })
-          .catch(() => {});
       }
     });
 

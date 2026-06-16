@@ -1,3 +1,18 @@
+## [0.8.51] - 2026-06-16
+
+### Fixed
+- **File tree no longer follows the active document** — The workspace explorer is now a stable, user-controlled view (like VS Code / Sublime). Switching tabs, opening a file from a different folder, or closing all file tabs no longer re-roots or clears the tree. Previously the tree hijacked to the parent folder of whichever file was active, making it impossible to browse one folder while editing a file from another.
+- **Opening a file no longer forces a folder open** — `Ctrl+O` / recent files / command palette now just open the file in a tab. The tree stays on whatever root you opened (or shows its empty state if none). The editor was never folder-gated, but the auto-follow made it feel that way.
+
+### Changed
+- **File tree shows all files** — The explorer now lists every file (any extension), not only `.md`/`.mdx`/`.markdown`. Hidden entries and common heavy directories (`node_modules`, `target`, `dist`, `build`, `.git`, `__pycache__`, `.venv`, etc.) are skipped, and empty directories are now shown.
+- **Breadcrumb navigation in the file tree** — The folder-name header is replaced by a clickable path breadcrumb; click any ancestor to re-root the explorer up the directory tree. An always-available Open Folder button sits beside it.
+- **Removed "Auto-open folder" setting** — The setting only ever controlled the now-removed tree-follows-file behaviour, so it has been removed from Settings → Editor, the config schema, and the type definitions. Saved settings containing the old key are ignored gracefully.
+
+### Added
+- **E2E coverage for the file tree** — New tests assert the tree stays stable across tab switches and cross-folder file opens, persists when file tabs close, supports direct file open with no folder, breadcrumb re-rooting, and non-markdown file visibility. Brittle index-based settings-checkbox selectors were also hardened to label-based selectors.
+
+
 ## [0.8.50] - 2026-06-15
 
 ### Fixed

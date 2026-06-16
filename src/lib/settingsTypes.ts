@@ -23,7 +23,6 @@ export interface AppSettings {
   custom_dictionary: string[];
   split_direction: string;
   vim_mode: boolean;
-  auto_open_folder: boolean;
   enable_spellcheck: boolean;
   /** Debug panel collapsed state */
   debug_panel_collapsed: boolean;

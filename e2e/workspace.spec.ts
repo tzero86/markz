@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { tauriMockInitFunc } from "./tauri-mock";
 
 test.beforeEach(async ({ page }) => {
@@ -96,91 +96,117 @@ test.describe("Workspace file tree", () => {
   });
 });
 
-test.describe("Directory tree follows active file", () => {
+// Opens a workspace folder via the Files panel's empty-state action.
+async function openFolderInTree(page: Page, root: string) {
+  await page.evaluate((r) => localStorage.setItem("__e2e_open_folder_result", r), root);
+  await page.click('.activity-btn[aria-label="Files"]');
+  await page.locator(".file-tree-scroller .btn-secondary").click();
+  await page.waitForSelector(".tree-file", { timeout: 5000 });
+}
+
+test.describe("Workspace tree stays stable", () => {
   test.beforeEach(async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await page.reload();
     await page.waitForSelector(".app", { timeout: 10000 });
   });
-  test("switches folder when switching tabs from different directories", async ({ page }) => {
-    await page.evaluate(() => {
-      localStorage.setItem("__e2e_open_file_result", "/workspace-a/file-a.md");
-    });
+
+  test("opening a file from a different folder does not change tree root", async ({ page }) => {
+    await openFolderInTree(page, "/projects/markz");
+    const breadcrumbs = page.locator(".file-tree-breadcrumbs");
+    await expect(breadcrumbs).toContainText("markz");
+
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/elsewhere/notes.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("notes.md")', { timeout: 5000 });
+
+    // The tree must NOT follow the opened file — root stays on markz.
+    await expect(breadcrumbs).toContainText("markz");
+    await expect(breadcrumbs).not.toContainText("elsewhere");
+    await expect(page.locator(".tree-file").first()).toBeVisible();
+  });
+
+  test("switching tabs does not change tree root", async ({ page }) => {
+    await openFolderInTree(page, "/projects/markz");
+
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/a/file-a.md"));
     await page.keyboard.press("Control+o");
     await page.waitForSelector('.tab:has-text("file-a.md")', { timeout: 5000 });
 
-    await page.evaluate(() => {
-      localStorage.setItem("__e2e_open_file_result", "/workspace-b/file-b.md");
-    });
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/b/file-b.md"));
     await page.keyboard.press("Control+o");
     await page.waitForSelector('.tab:has-text("file-b.md")', { timeout: 5000 });
 
-    // Switch back to folder A tab
+    const breadcrumbs = page.locator(".file-tree-breadcrumbs");
     await page.locator('.tab:has-text("file-a.md")').click();
-    await expect(page.locator('.tab.active')).toContainText("file-a.md");
+    await expect(breadcrumbs).toContainText("markz");
 
-    await page.click('.activity-btn[aria-label="Files"]');
-    await expect(page.locator(".file-tree-root")).toContainText("workspace-a");
-
-    // Switch to folder B tab
     await page.locator('.tab:has-text("file-b.md")').click();
-    await expect(page.locator('.tab.active')).toContainText("file-b.md");
-
-    await expect(page.locator(".file-tree-root")).toContainText("workspace-b");
+    await expect(breadcrumbs).toContainText("markz");
+    await expect(breadcrumbs).not.toContainText("file-a");
   });
 
-  test("clears directory tree when all file tabs are closed", async ({ page }) => {
-    await page.evaluate(() => {
-      localStorage.setItem("__e2e_open_file_result", "/workspace-a/file-a.md");
-    });
+  test("closing all file tabs does not clear the tree", async ({ page }) => {
+    await openFolderInTree(page, "/projects/markz");
+
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/x/f.md"));
     await page.keyboard.press("Control+o");
-    await page.waitForSelector('.tab:has-text("file-a.md")', { timeout: 5000 });
+    await page.waitForSelector('.tab:has-text("f.md")', { timeout: 5000 });
 
-    // Close the file tab (mock confirm always returns true)
-    await page.locator('.tab:has-text("file-a.md") .tab-close').click();
-    await expect(page.locator('.tab.active')).toContainText("Untitled");
+    await page.locator('.tab:has-text("f.md") .tab-close').click();
 
-    await page.click('.activity-btn[aria-label="Files"]');
-    await expect(page.locator(".file-tree-scroller .empty-state")).toBeVisible();
+    // The tree is independent of open tabs and must persist.
+    await expect(page.locator(".file-tree-breadcrumbs")).toContainText("markz");
+    await expect(page.locator(".tree-file").first()).toBeVisible();
   });
 
-  test("updates directory tree when closing a tab and falling back to another file", async ({ page }) => {
-    // Close all tabs and the fresh empty tab so we have a clean slate
-    await page.evaluate(async () => {
-      const ts = (window as any).__markz_tabStore;
-      await ts.closeAll();
-      let state: any;
-      const unsub = ts.subscribe((s: any) => { state = s; });
-      unsub();
-      const untitled = state.tabs.find((t: any) => t.title === "Untitled");
-      if (untitled) await ts.closeTab(untitled.id);
-    });
-
-    await page.evaluate(() => {
-      localStorage.setItem("__e2e_open_file_result", "/workspace-a/file-a.md");
-    });
+  test("opens a file directly with no folder open", async ({ page }) => {
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/lonely/doc.md"));
     await page.keyboard.press("Control+o");
-    await page.waitForSelector('.tab:has-text("file-a.md")', { timeout: 5000 });
+    await page.waitForSelector('.tab:has-text("doc.md")', { timeout: 5000 });
 
+    await expect(page.locator(".tab.active")).toContainText("doc.md");
+    await expect(page.locator(".cm-editor")).toBeVisible();
+  });
+});
+
+test.describe("File tree navigation", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+  });
+
+  test("breadcrumb shows root segments and an open-folder button", async ({ page }) => {
+    await openFolderInTree(page, "/home/user/docs");
+
+    await expect(page.locator(".file-tree-breadcrumbs")).toBeVisible();
+    await expect(page.locator(".tree-crumb.active")).toContainText("docs");
+    await expect(page.locator(".tree-open-folder")).toBeVisible();
+  });
+
+  test("clicking an ancestor crumb re-roots the tree", async ({ page }) => {
+    await openFolderInTree(page, "/home/user/docs");
+
+    await page.locator('.tree-crumb[data-path="/home/user"]').click();
+
+    // Re-rooting to /home/user makes "user" the active (last) crumb.
+    await expect(page.locator(".tree-crumb.active")).toContainText("user", { timeout: 5000 });
+  });
+
+  test("tree shows non-markdown files", async ({ page }) => {
     await page.evaluate(() => {
-      localStorage.setItem("__e2e_open_file_result", "/workspace-b/file-b.md");
+      localStorage.setItem("__e2e_workspace_files", JSON.stringify([
+        { name: "readme.txt", path: "/ws/readme.txt", rel_path: "readme.txt", is_dir: false, children: [] },
+        { name: "notes.md", path: "/ws/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+      ]));
+      localStorage.setItem("__e2e_open_folder_result", "/ws");
     });
-    await page.keyboard.press("Control+o");
-    await page.waitForSelector('.tab:has-text("file-b.md")', { timeout: 5000 });
-
-    // Close active tab (file-b), should fall back to file-a
-    await page.evaluate(async () => {
-      const ts = (window as any).__markz_tabStore;
-      let state: any;
-      const unsub = ts.subscribe((s: any) => { state = s; });
-      unsub();
-      const fileB = state.tabs.find((t: any) => t.title === "file-b.md");
-      if (fileB) await ts.closeTab(fileB.id);
-    });
-    await expect(page.locator('.tab.active')).toContainText("file-a.md");
-
     await page.click('.activity-btn[aria-label="Files"]');
-    await expect(page.locator(".file-tree-root")).toContainText("workspace-a");
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    await expect(page.locator(".tree-file", { hasText: "readme.txt" })).toBeVisible();
   });
 });
 

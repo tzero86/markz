@@ -105,6 +105,34 @@
   function isActiveFile(path: string): boolean {
     return $activeDocumentStore.path === path;
   }
+  interface Crumb { name: string; path: string; }
+
+  // Breadcrumb segments of the workspace root, so the user can navigate up
+  // the directory tree by clicking an ancestor crumb.
+  let crumbs = $derived.by<Crumb[]>(() => {
+    const root = $workspaceStore.rootPath;
+    if (!root) return [];
+    const normalized = root.replace(/\\/g, "/");
+    const leading = normalized.startsWith("/") ? "/" : "";
+    const parts = normalized.split("/").filter(Boolean);
+    const out: Crumb[] = [];
+    let acc = "";
+    for (let i = 0; i < parts.length; i++) {
+      acc = acc ? `${acc}/${parts[i]}` : `${leading}${parts[i]}`;
+      out.push({ name: parts[i], path: acc });
+    }
+    return out;
+  });
+
+  // The drive/root-most segment (e.g. "C:") renders as plain text — re-rooting
+  // to a bare drive label is rarely meaningful.
+  function isRootSegment(name: string, index: number): boolean {
+    return index === 0 && /^[A-Za-z]:$/.test(name);
+  }
+
+  function handleCrumbClick(path: string) {
+    workspaceStore.loadWorkspace(path);
+  }
 </script>
 <div class="sidebar">
   {#if activity === "outline"}
@@ -204,12 +232,26 @@
         />
       {:else}
         <div class="file-tree-header">
-          <span class="file-tree-root" title={$workspaceStore.rootPath}>
-            {$workspaceStore.rootPath.split(/[\\/]/).pop() || "Workspace"}
-          </span>
-          <button class="refresh-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
-            <span style="font-size: 11px;">↻</span>
-          </button>
+          <div class="file-tree-breadcrumbs" title={$workspaceStore.rootPath}>
+            {#each crumbs as crumb, i (crumb.path)}
+              {#if i > 0}<span class="tree-crumb-sep" aria-hidden="true">/</span>{/if}
+              {#if i === crumbs.length - 1}
+                <span class="tree-crumb active" data-path={crumb.path}>{crumb.name}</span>
+              {:else if isRootSegment(crumb.name, i)}
+                <span class="tree-crumb root-segment" data-path={crumb.path}>{crumb.name}</span>
+              {:else}
+                <button class="tree-crumb" data-path={crumb.path} onclick={() => handleCrumbClick(crumb.path)}>{crumb.name}</button>
+              {/if}
+            {/each}
+          </div>
+          <div class="file-tree-actions">
+            <button class="tree-open-folder" aria-label="Open folder" title="Open folder" onclick={() => workspaceStore.openWorkspace()}>
+              <FolderOpen size={13} strokeWidth={2} />
+            </button>
+            <button class="refresh-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
+              <span style="font-size: 11px;">↻</span>
+            </button>
+          </div>
         </div>
         <div class="search-box">
           <Search size={12} strokeWidth={2} />
@@ -247,8 +289,8 @@
           <EmptyState
             icon={FileText}
             iconSize={32}
-            title="No markdown files"
-            subtitle="This folder doesn't contain any .md files."
+            title="Empty folder"
+            subtitle="This folder doesn't contain any visible files."
           />
         {:else}
           <ul class="file-tree">
@@ -407,45 +449,77 @@
   .file-tree-scroller {
     padding: 0;
   }
-  .open-folder-btn {
-    margin-top: var(--space-3);
-    padding: var(--space-2) var(--space-4);
-    background: var(--accent-default);
-    color: white;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 150ms ease;
-  }
-  .open-folder-btn:hover {
-    background: var(--accent-hover);
-  }
   .file-tree-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
     border-bottom: 1px solid var(--border-default);
   }
-  .file-tree-root {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--text-primary);
+  .file-tree-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
     white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .file-tree-breadcrumbs::-webkit-scrollbar {
+    display: none;
+  }
+  .tree-crumb {
+    flex: none;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 160px;
+    transition: background 150ms ease, color 150ms ease;
   }
+  button.tree-crumb:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .tree-crumb.active {
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: default;
+  }
+  .tree-crumb.root-segment {
+    cursor: default;
+  }
+  .tree-crumb-sep {
+    flex: none;
+    color: var(--text-tertiary);
+    opacity: 0.6;
+  }
+  .file-tree-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: none;
+  }
+  .tree-open-folder,
   .refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
     color: var(--text-tertiary);
     cursor: pointer;
-    padding: 2px 4px;
+    padding: 3px;
     border-radius: var(--radius-sm);
+    transition: background 150ms ease, color 150ms ease;
   }
+  .tree-open-folder:hover,
   .refresh-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);

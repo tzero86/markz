@@ -106,7 +106,6 @@
             customCss: settings.custom_css,
             pandocPath: settings.pandoc_path,
             embedRemoteImages: settings.embed_remote_images,
-            autoOpenFolder: settings.auto_open_folder,
             enableSpellcheck: settings.enable_spellcheck,
             customDictionary: settings.custom_dictionary,
             splitDirection: settings.split_direction,

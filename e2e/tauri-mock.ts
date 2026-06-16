@@ -23,7 +23,6 @@ export const MOCK_SETTINGS = {
   tts_rate: 1.0,
   custom_css: "",
   pandoc_path: "",
-  auto_open_folder: true,
   enable_spellcheck: true,
   custom_dictionary: [],
   split_direction: "horizontal",

@@ -33,6 +33,25 @@ pub async fn open_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>,
     }
 }
 
+/// Directories that are never useful in the workspace tree and may be huge
+/// (build output, dependencies). Skipped during listing.
+const IGNORED_DIRS: &[&str] = &[
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".git",
+    "__pycache__",
+    ".next",
+    ".cache",
+    "coverage",
+    ".venv",
+    "venv",
+];
+
+fn is_ignored_dir(name: &str) -> bool {
+    IGNORED_DIRS.contains(&name)
+}
 #[tauri::command]
 pub async fn list_workspace_files(root: String) -> Result<Vec<FileTreeNode>, String> {
     let root_path = std::path::Path::new(&root);
@@ -66,8 +85,8 @@ pub async fn list_workspace_files(root: String) -> Result<Vec<FileTreeNode>, Str
             .unwrap_or_else(|_| name.clone());
         let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
 
-        // Skip hidden files and common non-doc directories
-        if name.starts_with('.') {
+        // Skip hidden files and common non-document directories
+        if name.starts_with('.') || (is_dir && is_ignored_dir(&name)) {
             continue;
         }
 
@@ -81,12 +100,6 @@ pub async fn list_workspace_files(root: String) -> Result<Vec<FileTreeNode>, Str
                 children,
             }
         } else {
-            // Only include markdown files at leaf level
-            let entry_path = entry.path();
-            let ext = entry_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            if ext != "md" && ext != "mdx" && ext != "markdown" {
-                continue;
-            }
             FileTreeNode {
                 name,
                 path,
@@ -124,7 +137,10 @@ fn read_dir_recursive(
 
     for entry in entries {
         let name = entry.file_name().to_string_lossy().to_string();
-        if name.starts_with('.') {
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+
+        // Skip hidden files and common non-document directories
+        if name.starts_with('.') || (is_dir && is_ignored_dir(&name)) {
             continue;
         }
 
@@ -134,33 +150,18 @@ fn read_dir_recursive(
             .strip_prefix(root)
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|_| name.clone());
-        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
 
-        if is_dir {
-            let grand_children = read_dir_recursive(&entry.path(), root)?;
-            if !grand_children.is_empty() {
-                children.push(FileTreeNode {
-                    name,
-                    path,
-                    rel_path,
-                    is_dir: true,
-                    children: grand_children,
-                });
-            }
-        } else {
-            let entry_path = entry.path();
-            let ext = entry_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            if ext != "md" && ext != "mdx" && ext != "markdown" {
-                continue;
-            }
-            children.push(FileTreeNode {
-                name,
-                path,
-                rel_path,
-                is_dir: false,
-                children: Vec::new(),
-            });
-        }
+        children.push(FileTreeNode {
+            name,
+            path,
+            rel_path,
+            is_dir,
+            children: if is_dir {
+                read_dir_recursive(&entry.path(), root)?
+            } else {
+                Vec::new()
+            },
+        });
     }
 
     Ok(children)
