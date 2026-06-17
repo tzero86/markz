@@ -1,3 +1,9 @@
+## [0.8.52] - 2026-06-17
+
+### Fixed
+- **Clicking an already-open file in the tree no longer duplicates the tab** — The file tree and search results now focus the existing tab when you select a file that's already open, instead of opening a second copy. Matches the behavior of VS Code / Sublime.
+
+
 ## [0.8.51] - 2026-06-16
 
 ### Fixed

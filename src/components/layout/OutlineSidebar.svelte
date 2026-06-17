@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { get } from "svelte/store";
   import EmptyState from "../ui/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { activeDocumentStore } from "../../lib/tabStore";
+  import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { openDocumentByPath } from "../../lib/keyboard";
   import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
   import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight, ListTree } from "@lucide/svelte";
@@ -85,8 +86,13 @@
       console.error("resolve_wikilink failed:", e);
     }
   }
-
   async function handleOpenFile(path: string) {
+    // If the file is already open, focus its tab instead of creating a duplicate.
+    const existing = get(tabStore).tabs.find((t) => t.path === path);
+    if (existing) {
+      tabStore.switchTab(existing.id);
+      return;
+    }
     await openDocumentByPath(path);
   }
 

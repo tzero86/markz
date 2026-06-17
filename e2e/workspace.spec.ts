@@ -64,6 +64,32 @@ test.describe("Workspace file tree", () => {
     await expect(page.locator('.tab:has-text("notes.md")')).toBeVisible();
   });
 
+  test("clicking an already-open file from tree focuses its tab", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    // Open the file once from the tree.
+    await page.locator(".tree-file", { hasText: "notes.md" }).click();
+    await expect(page.locator('.tab:has-text("notes.md")')).toHaveCount(1);
+    const firstTab = page.locator('.tab:has-text("notes.md")');
+    await firstTab.click();
+
+    // Open an unrelated file so the notes.md tab is no longer active.
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/test-workspace/other.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("other.md")', { timeout: 5000 });
+    await expect(page.locator('.tab.active')).toContainText("other.md");
+
+    // Clicking notes.md in the tree again should focus the existing tab, not duplicate it.
+    await page.locator(".tree-file", { hasText: "notes.md" }).click();
+    await expect(page.locator('.tab:has-text("notes.md")')).toHaveCount(1);
+    await expect(page.locator('.tab.active')).toContainText("notes.md");
+  });
+
   test("search finds matches", async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
