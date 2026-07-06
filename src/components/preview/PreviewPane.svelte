@@ -16,7 +16,7 @@
   import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
 
-  type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github";
+  type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github" | "word-pandoc";
 
   /** Cache of content → rendered HTML to avoid redundant re-renders.
    *  Implemented as an LRU (least-recently-used) Map with a max size. */
@@ -30,6 +30,7 @@
   let copyDropdownOpen = $state(false);
   let settings = $state<{ embed_remote_images: boolean; preview_font_size: number } | null>(null);
   let copyFeedback = $state(false);
+  let pandocAvailable = $state(false);
   let previewEditing = $state(false);
   let tableEditorOpen = $state(false);
   let tableEditorIndex = $state(0);
@@ -445,19 +446,13 @@
 
   async function copyOutput(format: CopyFormat = "html") {
     try {
-      const plainText = format === "html"
-        ? htmlContent.replace(/<[^>]+>/g, "")
-        : htmlContent.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-
-      if (format === "html") {
-        await navigator.clipboard.writeText(plainText);
-      } else {
-        // For non-HTML formats, also fetch the rendered HTML so rich editors
-        // (JIRA, Confluence, etc.) can paste formatted content properly.
-        const renderedHtml = await invoke<string>("render_preview", {
+      if (format === "word-pandoc") {
+        const renderedHtml = await invoke<string>("copy_via_pandoc", {
           markdown: $activeDocumentStore.content,
           docPath: $activeDocumentStore.path,
+          format: "html",
         });
+        const plainText = renderedHtml.replace(/<[^>]+>/g, "");
         const blobHtml = new Blob([renderedHtml], { type: "text/html" });
         const blobText = new Blob([plainText], { type: "text/plain" });
         const item = new ClipboardItem({
@@ -465,6 +460,28 @@
           "text/plain": blobText,
         });
         await navigator.clipboard.write([item]);
+      } else {
+        const plainText = format === "html"
+          ? htmlContent.replace(/<[^>]+>/g, "")
+          : htmlContent.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+
+        if (format === "html") {
+          await navigator.clipboard.writeText(plainText);
+        } else {
+          // For non-HTML formats, also fetch the rendered HTML so rich editors
+          // (JIRA, Confluence, etc.) can paste formatted content properly.
+          const renderedHtml = await invoke<string>("render_preview", {
+            markdown: $activeDocumentStore.content,
+            docPath: $activeDocumentStore.path,
+          });
+          const blobHtml = new Blob([renderedHtml], { type: "text/html" });
+          const blobText = new Blob([plainText], { type: "text/plain" });
+          const item = new ClipboardItem({
+            "text/html": blobHtml,
+            "text/plain": blobText,
+          });
+          await navigator.clipboard.write([item]);
+        }
       }
 
       copyFeedback = true;
@@ -570,7 +587,17 @@
     }
   });
 
+  function checkPandoc() {
+    invoke("pandoc_available")
+      .then((available) => { pandocAvailable = Boolean(available); })
+      .catch(() => { pandocAvailable = false; });
+  }
+
   onMount(() => {
+    checkPandoc();
+    const onSettingsChanged = () => checkPandoc();
+    window.addEventListener("markz:settings-changed", onSettingsChanged);
+
     function onPrint() {
       if (!contentDiv) {
         window.print();
@@ -681,6 +708,7 @@
     return () => {
       window.removeEventListener("markz:print", onPrint);
       window.removeEventListener("markz:slide-breaks-changed", onSlideBreaksChanged);
+      window.removeEventListener("markz:settings-changed", onSettingsChanged);
     };
   });
 
@@ -720,6 +748,15 @@
                   {fmt.label}
                 </button>
               {/each}
+              {#if pandocAvailable}
+                <button
+                  class="copy-dropdown-item"
+                  role="menuitem"
+                  onclick={() => { copyOutput("word-pandoc"); copyDropdownOpen = false; }}
+                >
+                  Copy as Word (Pandoc)
+                </button>
+              {/if}
             </div>
           {/if}
         </div>

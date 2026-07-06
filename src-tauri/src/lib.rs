@@ -197,6 +197,7 @@ pub fn run() {
             commands::session::load_session,
             commands::pandoc::pandoc_available,
             commands::pandoc::export_via_pandoc,
+            commands::pandoc::copy_via_pandoc,
             commands::session::clear_session_disk,
             commands::workspace::open_folder_dialog,
             commands::workspace::list_workspace_files,

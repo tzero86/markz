@@ -74,6 +74,72 @@ test.describe("Preview pane Copy dropdown", () => {
     await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as Confluence")')).toBeVisible();
     await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as Slack")')).toBeVisible();
     await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as GitHub")')).toBeVisible();
+    await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as Word (Pandoc)")')).toBeVisible();
+  });
+
+  test("Copy as Word (Pandoc) copies Pandoc HTML to clipboard", async ({ page }) => {
+    // Set a path so the Copy button is enabled and supply deterministic Markdown
+    await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      if (ts && ts.setPath) ts.setPath("/test/pandoc-copy.md");
+      if (ts && ts.setContent) ts.setContent("# Pandoc Copy Test\n\nHello World.");
+    });
+    await page.waitForTimeout(500);
+
+    const copyBtn = page.locator('button[aria-label="Copy"]');
+    await expect(copyBtn).toBeVisible();
+    await expect(copyBtn).not.toBeDisabled();
+    await copyBtn.click();
+
+    const dropdown = page.locator(".copy-dropdown-menu");
+    await expect(dropdown).toBeVisible();
+
+    await dropdown.locator('.copy-dropdown-item:has-text("Copy as Word (Pandoc)")').click();
+
+    // Button should show success state
+    await expect(page.locator(".float-btn.success")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.float-btn .action-label:has-text("Copied")')).toBeVisible();
+
+    // Verify the backend command was called with the expected format
+    const calls = await page.evaluate(() => {
+      return JSON.parse(localStorage.getItem("__e2e_copy_pandoc_calls") || "[]");
+    });
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(calls[calls.length - 1].format).toBe("html");
+
+    // Verify rich clipboard data was written
+    const clipboardTypes = await page.evaluate(() => {
+      return JSON.parse(localStorage.getItem("__e2e_clipboard_write_types") || "[]");
+    });
+    expect(clipboardTypes).toContain("text/html");
+    expect(clipboardTypes).toContain("text/plain");
+  });
+
+  test("Copy as Word (Pandoc) option hidden when Pandoc unavailable", async ({ page }) => {
+    // Disable Pandoc before the app boots
+    await page.addInitScript(() => {
+      localStorage.setItem("__e2e_pandoc_available", "false");
+    });
+    await page.addInitScript(tauriMockInitFunc);
+    await page.goto("/");
+    await page.waitForSelector(".app", { timeout: 10000 });
+
+    // Set a path so the Copy button is enabled
+    await page.evaluate(() => {
+      const ts = (window as any).__markz_tabStore;
+      if (ts && ts.setPath) ts.setPath("/test/no-pandoc.md");
+    });
+    await page.waitForTimeout(500);
+
+    const copyBtn = page.locator('button[aria-label="Copy"]');
+    await expect(copyBtn).toBeVisible();
+    await expect(copyBtn).not.toBeDisabled();
+    await copyBtn.click();
+
+    const dropdown = page.locator(".copy-dropdown-menu");
+    await expect(dropdown).toBeVisible();
+
+    await expect(dropdown.locator('.copy-dropdown-item:has-text("Copy as Word (Pandoc)")')).toHaveCount(0);
   });
 
   test("copy button shows feedback after clicking", async ({ page }) => {

@@ -664,12 +664,24 @@ export function injectTauriMock() {
         { path: root + "/notes.md", rel_path: "notes.md", line_number: 1, context: "Hello " + query + " world" },
       ];
     },
-    pandoc_available: () => true,
+    pandoc_available: () => {
+      const override = localStorage.getItem("__e2e_pandoc_available");
+      return override !== "false";
+    },
     export_via_pandoc: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");
       calls.push(args);
       localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));
       return null;
+    },
+    copy_via_pandoc: (args) => {
+      const calls = JSON.parse(localStorage.getItem("__e2e_copy_pandoc_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_copy_pandoc_calls", JSON.stringify(calls));
+      return `<p>Pandoc HTML copy output for ${(args as { format?: string })?.format ?? "unknown"}</p>\n` +
+        "<h1>Welcome to MarkZ</h1>\n<p>" +
+        ((args as { markdown?: string })?.markdown?.slice(0, 100) || "") +
+        "</p>";
     },
     export_to_docx: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");
@@ -743,7 +755,23 @@ export function injectTauriMock() {
   if (!navigator.clipboard) {
     (navigator as unknown as { clipboard?: unknown }).clipboard = {};
   }
-  (navigator.clipboard as { writeText?: (text: string) => Promise<void> }).writeText = function (text: string) {
+  (navigator.clipboard as { writeText?: (text: string) => Promise<void>; write?: (items: ClipboardItems) => Promise<void> }).writeText = function (text: string) {
+    localStorage.setItem("__e2e_clipboard_text", text);
+    return Promise.resolve();
+  };
+  (navigator.clipboard as { writeText?: (text: string) => Promise<void>; write?: (items: ClipboardItems) => Promise<void> }).write = function (items: ClipboardItems) {
+    const types: string[] = [];
+    for (const item of Array.from(items)) {
+      for (const type of item.types) {
+        types.push(type);
+        item.getType(type).then((blob) => {
+          blob.text().then((t) => {
+            localStorage.setItem(`__e2e_clipboard_${type}`, t);
+          });
+        });
+      }
+    }
+    localStorage.setItem("__e2e_clipboard_write_types", JSON.stringify(types));
     return Promise.resolve();
   };
 }
@@ -885,12 +913,24 @@ export const tauriMockInitFunc = new Function(
   '      { path: root + "/notes.md", rel_path: "notes.md", line_number: 1, context: "Hello " + query + " world" },\n' +
   '    ];\n' +
   '  },\n' +
-  '  pandoc_available: () => true,\n' +
+  '  pandoc_available: () => {\n' +
+  '    const override = localStorage.getItem("__e2e_pandoc_available");\n' +
+  '    return override !== "false";\n' +
+  '  },\n' +
   '  export_via_pandoc: (args) => {\n' +
   '    const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");\n' +
   '    calls.push(args);\n' +
   '    localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));\n' +
   '    return null;\n' +
+  '  },\n' +
+  '  copy_via_pandoc: (args) => {\n' +
+  '    const calls = JSON.parse(localStorage.getItem("__e2e_copy_pandoc_calls") || "[]");\n' +
+  '    calls.push(args);\n' +
+  '    localStorage.setItem("__e2e_copy_pandoc_calls", JSON.stringify(calls));\n' +
+  '    return "<p>Pandoc HTML copy output for " + (args?.format || "unknown") + "</p>\\\\n" +\n' +
+  '      "<h1>Welcome to MarkZ</h1>\\\\n<p>" +\n' +
+  '      (args?.markdown?.slice(0, 100) || "") +\n' +
+  '      "</p>";\n' +
   '  },\n' +
   '  export_to_docx: (args) => {\n' +
   '    const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");\n' +
@@ -958,6 +998,24 @@ export const tauriMockInitFunc = new Function(
   '  navigator.clipboard = {};\n' +
   '}\n' +
   'navigator.clipboard.writeText = function(text) {\n' +
+  '  localStorage.setItem("__e2e_clipboard_text", text);\n' +
+  '  return Promise.resolve();\n' +
+  '};\n' +
+  'navigator.clipboard.write = function(items) {\n' +
+  '  var types = [];\n' +
+  '  for (var i = 0; i < items.length; i++) {\n' +
+  '    var item = items[i];\n' +
+  '    for (var j = 0; j < item.types.length; j++) {\n' +
+  '      var type = item.types[j];\n' +
+  '      types.push(type);\n' +
+  '      item.getType(type).then(function(blob) {\n' +
+  '        blob.text().then(function(t) {\n' +
+  '          localStorage.setItem("__e2e_clipboard_" + type, t);\n' +
+  '        });\n' +
+  '      });\n' +
+  '    }\n' +
+  '  }\n' +
+  '  localStorage.setItem("__e2e_clipboard_write_types", JSON.stringify(types));\n' +
   '  return Promise.resolve();\n' +
   '};\n'
 );
@@ -1101,12 +1159,24 @@ export const tauriMockScriptString = `
         { path: root + "/notes.md", rel_path: "notes.md", line_number: 1, context: "Hello " + query + " world" },
       ];
     },
-    pandoc_available: () => true,
+    pandoc_available: () => {
+      const override = localStorage.getItem("__e2e_pandoc_available");
+      return override !== "false";
+    },
     export_via_pandoc: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");
       calls.push(args);
       localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));
       return null;
+    },
+    copy_via_pandoc: (args) => {
+      const calls = JSON.parse(localStorage.getItem("__e2e_copy_pandoc_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_copy_pandoc_calls", JSON.stringify(calls));
+      return "<p>Pandoc HTML copy output for " + (args?.format || "unknown") + "</p>\\n" +
+        "<h1>Welcome to MarkZ</h1>\\n<p>" +
+        (args?.markdown?.slice(0, 100) || "") +
+        "</p>";
     },
     export_to_docx: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");
@@ -1173,6 +1243,24 @@ export const tauriMockScriptString = `
     navigator.clipboard = {};
   }
   navigator.clipboard.writeText = function(text) {
+    localStorage.setItem("__e2e_clipboard_text", text);
+    return Promise.resolve();
+  };
+  navigator.clipboard.write = function(items) {
+    var types = [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      for (var j = 0; j < item.types.length; j++) {
+        var type = item.types[j];
+        types.push(type);
+        item.getType(type).then(function(blob) {
+          blob.text().then(function(t) {
+            localStorage.setItem("__e2e_clipboard_" + type, t);
+          });
+        });
+      }
+    }
+    localStorage.setItem("__e2e_clipboard_write_types", JSON.stringify(types));
     return Promise.resolve();
   };
 })();
