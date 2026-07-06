@@ -148,7 +148,7 @@ test.describe("Session restore", () => {
     expect(sameCount).toBe(1);
   });
 
-  test("restores previously opened workspace folder on reload", async ({ page }) => {
+  test("restores workspace tree based on active tab's directory on reload", async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector(".app", { timeout: 10000 });
 
@@ -160,10 +160,11 @@ test.describe("Session restore", () => {
             { content: "# Doc1", path: "/test-workspace/doc1.md", title: "doc1.md", isDirty: false },
           ],
           activeTabPath: "/test-workspace/doc1.md",
-          workspacePath: "/test-workspace",
+          // Intentionally different from the active tab's parent to verify
+          // the tree follows the active tab, not a separately restored workspacePath.
+          workspacePath: "/ignored-other-workspace",
         })
       );
-      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
       localStorage.setItem("__e2e_workspace_files", JSON.stringify([
         { path: "/test-workspace/doc1.md", rel_path: "doc1.md", name: "doc1.md", is_dir: false, children: [] },
         { path: "/test-workspace/docs", rel_path: "docs", name: "docs", is_dir: true, children: [
@@ -178,10 +179,12 @@ test.describe("Session restore", () => {
     // Open Files panel
     await page.click('.activity-btn[aria-label="Files"]');
 
-    // Workspace tree should be visible
+    // Workspace tree should reflect the active tab's directory, not workspacePath.
     await expect(page.locator(".tree-file").first()).toBeVisible({ timeout: 5000 });
     await expect(page.locator(".tree-file").first()).toContainText("doc1.md");
     await expect(page.locator(".tree-dir").first()).toContainText("docs");
+    await expect(page.locator(".file-tree-breadcrumbs")).toContainText("test-workspace");
+    await expect(page.locator(".file-tree-breadcrumbs")).not.toContainText("ignored-other-workspace");
   });
 
   test("restores correct content for each tab", async ({ page }) => {

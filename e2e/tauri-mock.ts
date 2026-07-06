@@ -568,11 +568,14 @@ export function injectTauriMock() {
       return null;
     },
     save_file_dialog: (args) => {
+      const override = localStorage.getItem("__e2e_save_file_result");
+      if (override) return override;
       const exts = (args as { filterExtensions?: string[] })?.filterExtensions || [];
       if (exts.includes("docx")) return "/tmp/test-export.docx";
       if (exts.includes("pdf")) return "/tmp/test-export.pdf";
       if (exts.includes("html")) return "/tmp/test-export.html";
       if (exts.includes("epub")) return "/tmp/test-export.epub";
+      if (exts.includes("md") || exts.includes("markdown") || exts.includes("txt")) return "/tmp/untitled.md";
       return null;
     },
     save_document: () => null,
@@ -806,11 +809,14 @@ export const tauriMockInitFunc = new Function(
   '    return null;\n' +
   '  },\n' +
   '  save_file_dialog: (args) => {\n' +
+  '    const override = localStorage.getItem("__e2e_save_file_result");\n' +
+  '    if (override) return override;\n' +
   '    const exts = args?.filterExtensions || [];\n' +
   '    if (exts.includes("docx")) return "/tmp/test-export.docx";\n' +
   '    if (exts.includes("pdf")) return "/tmp/test-export.pdf";\n' +
   '    if (exts.includes("html")) return "/tmp/test-export.html";\n' +
   '    if (exts.includes("epub")) return "/tmp/test-export.epub";\n' +
+  '    if (exts.includes("md") || exts.includes("markdown") || exts.includes("txt")) return "/tmp/untitled.md";\n' +
   '    return null;\n' +
   '  },\n' +
   '  save_document: () => null,\n' +
@@ -1018,11 +1024,14 @@ export const tauriMockScriptString = `
       return null;
     },
     save_file_dialog: (args) => {
+      const override = localStorage.getItem("__e2e_save_file_result");
+      if (override) return override;
       const exts = args?.filterExtensions || [];
       if (exts.includes("docx")) return "/tmp/test-export.docx";
       if (exts.includes("pdf")) return "/tmp/test-export.pdf";
       if (exts.includes("html")) return "/tmp/test-export.html";
       if (exts.includes("epub")) return "/tmp/test-export.epub";
+      if (exts.includes("md") || exts.includes("markdown") || exts.includes("txt")) return "/tmp/untitled.md";
       return null;
     },
     save_document: () => null,

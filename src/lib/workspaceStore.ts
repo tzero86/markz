@@ -124,6 +124,25 @@ function createWorkspaceStore() {
     logOperationEnd("workspace", "Close workspace");
   }
 
+  function parentDirectory(path: string): string {
+    const lastSep = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+    if (lastSep === -1) return ".";
+    if (lastSep === 0) return "/";
+    return path.slice(0, lastSep);
+  }
+
+  async function syncToFile(path: string | null) {
+    const state = get({ subscribe });
+    if (path === null) {
+      if (state.rootPath === null) return;
+      await closeWorkspace();
+      return;
+    }
+    const parent = parentDirectory(path);
+    if (parent === state.rootPath) return;
+    await loadWorkspace(parent);
+  }
+
   return {
     subscribe,
     openWorkspace,
@@ -132,6 +151,7 @@ function createWorkspaceStore() {
     toggleDir,
     search,
     closeWorkspace,
+    syncToFile,
   };
 }
 

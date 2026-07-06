@@ -1,3 +1,9 @@
+## [0.8.53] - 2026-07-06
+
+### Fixed
+- **File tree follows the active tab** — The workspace explorer now mirrors the directory of the active editor tab. New untitled tabs show the empty "No folder open" state, and saving, opening, or switching files re-roots the tree to that file's parent directory. This restores synchronization between the editor and the file tree.
+
+
 ## [0.8.52] - 2026-06-17
 
 ### Fixed

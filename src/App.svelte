@@ -156,8 +156,6 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   }
 
   // Keep the open-files watcher in sync and surface external changes.
-  // NOTE: the workspace tree is intentionally NOT coupled to the active
-  // document — it stays on whatever root the user opened until they change it.
   const unsubscribeWorkspaceSync = tabStore.subscribe((state) => {
     const active = state.tabs.find((t) => t.id === state.activeTabId);
     const path = active?.path ?? null;
@@ -168,6 +166,8 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
     if (path === lastActivePath) return;
     lastActivePath = path;
+    // Keep the file tree rooted at the active tab's directory.
+    workspaceStore.syncToFile(path).catch(() => {});
     if (path) {
       // If we switched to a file that was externally modified, prompt to reload
       checkExternalChanges(path);
@@ -211,11 +211,6 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
           .catch(() => {
             // Fallback: default welcome tab is already present
           });
-      }
-      // Restore the workspace the user previously had open (if any).
-      // The tree is never auto-derived from an open file's location.
-      if (session?.workspacePath) {
-        workspaceStore.loadWorkspace(session.workspacePath).catch(() => {});
       }
     });
 

@@ -25,6 +25,7 @@ export async function saveDocument() {
     tabStore.markClean();
     if (!doc.path) tabStore.setPath(path);
     addRecentFile(path);
+    await workspaceStore.syncToFile(path);
     logOperationEnd("file", `Saved: ${path}`);
   } catch (e) {
     logError("file", `Save failed: ${path}`, String(e));
@@ -58,6 +59,7 @@ export async function openDocument() {
       tabStore.newTab(result.content, undefined, result.path);
     }
     addRecentFile(result.path);
+    await workspaceStore.syncToFile(result.path);
     logOperationEnd("file", `Open: ${result.path}`);
   } catch (e) {
     logError("file", `Open failed: ${result.path}`, String(e));
@@ -88,6 +90,7 @@ export async function openDocumentByPath(path: string) {
       tabStore.newTab(info.content, undefined, info.path);
     }
     addRecentFile(path);
+    await workspaceStore.syncToFile(path);
     logOperationEnd("file", `Open: ${path}`);
   } catch (e) {
     logError("file", `Open failed: ${path}`, String(e));
@@ -103,6 +106,7 @@ export async function openFolder() {
 
 export function newDocument() {
   tabStore.newTab("", "Untitled", null);
+  workspaceStore.syncToFile(null).catch(() => {});
 }
 
 export function closeActiveTab() {
