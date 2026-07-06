@@ -1,3 +1,17 @@
+## [0.8.55] - 2026-07-06
+
+### Added
+- **Open Markdown files with MarkZ** — MarkZ now registers as an editor for `.md`, `.markdown`, `.mdx`, and `.mdown` files on Windows, macOS, and Linux. Double-clicking a Markdown file launches MarkZ and opens the file in a new tab.
+- **Suggested app for Markdown files** — On platforms that support file associations, MarkZ appears as a suggested application for opening Markdown files.
+- **Single-instance file open** — If MarkZ is already running, opening another Markdown file reuses the existing window and adds the file as a new tab instead of launching a second instance.
+
+### Fixed
+- **File tree / tab synchronization for OS-opened files** — Files opened from the OS (via file association or "Open With") now correctly re-root the file tree to the file's parent directory, keeping the tree and active tab in sync.
+
+### Added
+- **File association end-to-end tests** — Added Playwright coverage for both cold-start file open (file passed at launch) and warm file open (file opened while the app is running).
+
+
 ## [0.8.54] - 2026-07-06
 
 ### Added

@@ -488,10 +488,44 @@ export const FORMATTING_TEST_MD = [
 ].join("\n");
 
 export function injectTauriMock() {
+  const eventListeners: Record<string, Array<{ id: number; callbackId: number }>> = {};
+  let nextEventId = 1;
+  const callbackRegistry: Record<number, (event: { payload: unknown }) => void> = {};
+  let nextCallbackId = 1;
+
   const responses: Record<string, (args?: unknown) => unknown> = {
     get_settings: () => MOCK_SETTINGS,
     update_settings: () => null,
     get_version: () => "0.1.12",
+    take_pending_open: () => {
+      const override = localStorage.getItem("__e2e_pending_open");
+      localStorage.removeItem("__e2e_pending_open");
+      if (override) {
+        try {
+          return JSON.parse(override);
+        } catch {
+          /* fall through */
+        }
+      }
+      return [];
+    },
+    "plugin:event|listen": (args) => {
+      const event = (args as { event?: string })?.event || "";
+      const callbackId = (args as { handler?: number })?.handler ?? 0;
+      const id = nextEventId++;
+      if (!eventListeners[event]) eventListeners[event] = [];
+      eventListeners[event].push({ id, callbackId });
+      return id;
+    },
+    "plugin:event|unlisten": (args) => {
+      const event = (args as { event?: string })?.event || "";
+      const eventId = (args as { eventId?: number })?.eventId;
+      const list = eventListeners[event];
+      if (list) {
+        eventListeners[event] = list.filter((l) => l.id !== eventId);
+      }
+      return null;
+    },
     render_preview: () => Promise.resolve(MOCK_HTML),
     render_slides: (args) => {
       const override = localStorage.getItem("__e2e_slides_override");
@@ -750,8 +784,28 @@ export function injectTauriMock() {
     convertFileSrc: function (path: string) {
       return path;
     },
+    transformCallback: function (callback: (event: { payload: unknown }) => void, _once?: boolean) {
+      const id = nextCallbackId++;
+      callbackRegistry[id] = callback;
+      return id;
+    },
   };
 
+  (window as unknown as { __markz_emit_event?: (event: string, payload: unknown) => void }).__markz_emit_event = function (event: string, payload: unknown) {
+    const listeners = eventListeners[event];
+    if (listeners) {
+      listeners.forEach((l) => {
+        const handler = callbackRegistry[l.callbackId];
+        if (handler) {
+          try {
+            handler({ payload });
+          } catch (e) {
+            console.error("[E2E Mock] Event handler error:", e);
+          }
+        }
+      });
+    }
+  };
   if (!navigator.clipboard) {
     (navigator as unknown as { clipboard?: unknown }).clipboard = {};
   }
@@ -784,10 +838,35 @@ export const tauriMockInitFunc = new Function(
   'const MOCK_HTML = ' + JSON.stringify(MOCK_HTML) + ';\n' +
   'const FORMATTING_TEST_MD = ' + JSON.stringify(FORMATTING_TEST_MD) + ';\n' +
   '\n' +
+  'const eventListeners = {};\n' +
+  'let nextEventId = 1;\n' +
+  'const callbackRegistry = {};\n' +
+  'let nextCallbackId = 1;\n' +
   'const responses = {\n' +
   '  get_settings: () => MOCK_SETTINGS,\n' +
   '  update_settings: () => null,\n' +
   '  get_version: () => "0.1.12",\n' +
+  '  take_pending_open: () => {\n' +
+  '    const override = localStorage.getItem("__e2e_pending_open");\n' +
+  '    localStorage.removeItem("__e2e_pending_open");\n' +
+  '    if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }\n' +
+  '    return [];\n' +
+  '  },\n' +
+  '  "plugin:event|listen": (args) => {\n' +
+  '    const event = args?.event || "";\n' +
+  '    const callbackId = args?.handler || 0;\n' +
+  '    const id = nextEventId++;\n' +
+  '    if (!eventListeners[event]) eventListeners[event] = [];\n' +
+  '    eventListeners[event].push({ id: id, callbackId: callbackId });\n' +
+  '    return id;\n' +
+  '  },\n' +
+  '  "plugin:event|unlisten": (args) => {\n' +
+  '    const event = args?.event || "";\n' +
+  '    const eventId = args?.eventId;\n' +
+  '    const list = eventListeners[event];\n' +
+  '    if (list) { eventListeners[event] = list.filter((l) => l.id !== eventId); }\n' +
+  '    return null;\n' +
+  '  },\n' +
   '  render_preview: () => Promise.resolve(MOCK_HTML),\n' +
   '  render_slides: (args) => {\n' +
   '    const override = localStorage.getItem("__e2e_slides_override");\n' +
@@ -992,8 +1071,24 @@ export const tauriMockInitFunc = new Function(
   '    return Promise.resolve(handler(args));\n' +
   '  },\n' +
   '  convertFileSrc: function(path) { return path; },\n' +
+  '  transformCallback: function(callback, _once) {\n' +
+  '    var id = nextCallbackId++;\n' +
+  '    callbackRegistry[id] = callback;\n' +
+  '    return id;\n' +
+  '  },\n' +
   '};\n' +
   '\n' +
+  'window.__markz_emit_event = function(event, payload) {\n' +
+  '  var listeners = eventListeners[event];\n' +
+  '  if (listeners) {\n' +
+  '    listeners.forEach(function(l) {\n' +
+  '      var handler = callbackRegistry[l.callbackId];\n' +
+  '      if (handler) {\n' +
+  '        try { handler({ payload: payload }); } catch (e) { console.error("[E2E Mock] Event handler error:", e); }\n' +
+  '      }\n' +
+  '    });\n' +
+  '  }\n' +
+  '};\n' +
   'if (!navigator.clipboard) {\n' +
   '  navigator.clipboard = {};\n' +
   '}\n' +
@@ -1026,10 +1121,36 @@ export const tauriMockScriptString = `
   const MOCK_HTML = ${JSON.stringify(MOCK_HTML)};
   const FORMATTING_TEST_MD = ${JSON.stringify(FORMATTING_TEST_MD)};
 
+  const eventListeners = {};
+  let nextEventId = 1;
+  const callbackRegistry = {};
+  let nextCallbackId = 1;
+
   const responses = {
     get_settings: () => MOCK_SETTINGS,
     update_settings: () => null,
     get_version: () => "0.1.12",
+    take_pending_open: () => {
+      const override = localStorage.getItem("__e2e_pending_open");
+      localStorage.removeItem("__e2e_pending_open");
+      if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }
+      return [];
+    },
+    "plugin:event|listen": (args) => {
+      const event = args?.event || "";
+      const callbackId = args?.handler || 0;
+      const id = nextEventId++;
+      if (!eventListeners[event]) eventListeners[event] = [];
+      eventListeners[event].push({ id, callbackId });
+      return id;
+    },
+    "plugin:event|unlisten": (args) => {
+      const event = args?.event || "";
+      const eventId = args?.eventId;
+      const list = eventListeners[event];
+      if (list) { eventListeners[event] = list.filter((l) => l.id !== eventId); }
+      return null;
+    },
     render_preview: (args) => {
       // Return comprehensive mock HTML regardless of content so test assertions work
       return Promise.resolve(MOCK_HTML);
@@ -1237,6 +1358,24 @@ export const tauriMockScriptString = `
       return Promise.resolve(handler(args));
     },
     convertFileSrc: function(path) { return path; },
+  };
+
+  window.__TAURI_INTERNALS__.transformCallback = function(callback, _once) {
+    var id = nextCallbackId++;
+    callbackRegistry[id] = callback;
+    return id;
+  };
+
+  window.__markz_emit_event = function(event, payload) {
+    var listeners = eventListeners[event];
+    if (listeners) {
+      listeners.forEach(function(l) {
+        var handler = callbackRegistry[l.callbackId];
+        if (handler) {
+          try { handler({ payload: payload }); } catch (e) { console.error("[E2E Mock] Event handler error:", e); }
+        }
+      });
+    }
   };
   // Mock navigator.clipboard for copy operations in test environment
   if (!navigator.clipboard) {

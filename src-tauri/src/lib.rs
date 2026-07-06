@@ -1,11 +1,12 @@
 use markz_core::frontmatter;
-
 use markz_core::parser;
+use markz_core::util::is_markdown_path;
 
 use markz_convert::context::ConvertContext;
 use std::sync::Mutex;
 use base64::Engine;
 use log::LevelFilter;
+use tauri::{Emitter, Manager};
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
 #[cfg(windows)]
@@ -14,6 +15,38 @@ mod edge_tts_crate;
 mod commands;
 pub struct AppState {
     pub current_path: Mutex<Option<String>>,
+    pub pending_open: Mutex<Vec<String>>,
+}
+
+/// Queue a file path to be opened by the frontend, and emit an event if the UI is listening.
+pub fn queue_open_file<R: tauri::Runtime>(app: &tauri::AppHandle<R>, path: String) {
+    if !is_markdown_path(&path) {
+        return;
+    }
+    if let Ok(mut pending) = app.state::<AppState>().pending_open.lock() {
+        pending.push(path.clone());
+    }
+    let _ = app.emit("open-file", path);
+}
+
+/// Parse command-line arguments and queue the first existing Markdown file.
+pub fn handle_argv<R: tauri::Runtime>(app: &tauri::AppHandle<R>, args: &[String]) {
+    for arg in args.iter().skip(1) {
+        if arg.starts_with('-') {
+            continue;
+        }
+        let path = if cfg!(windows) && arg.starts_with("file:///") {
+            arg[8..].to_string()
+        } else if arg.starts_with("file://") {
+            arg[7..].to_string()
+        } else {
+            arg.clone()
+        };
+        if std::path::Path::new(&path).is_file() {
+            queue_open_file(app, path);
+            break;
+        }
+    }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -141,9 +174,24 @@ pub fn session_path() -> Option<std::path::PathBuf> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            handle_argv(app, &argv);
+        }));
+    }
+
+    builder = builder
         .manage(AppState {
             current_path: Mutex::new(None),
+            pending_open: Mutex::new(vec![]),
+        })
+        .setup(|app| {
+            let args: Vec<String> = std::env::args().collect();
+            handle_argv(app.handle(), &args);
+            Ok(())
         })
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -207,7 +255,25 @@ pub fn run() {
             commands::watcher::watch_open_files,
             commands::watcher::unwatch_open_files,
             commands::presentation::render_slides,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+            commands::app::take_pending_open,
+        ]);
+
+    let app = builder
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    #[cfg(target_os = "macos")]
+    app.run(|app, event| {
+        if let tauri::RunEvent::Opened { urls } = event {
+            for url in urls {
+                if url.scheme() == "file" {
+                    if let Ok(path) = url.to_file_path() {
+                        queue_open_file(app, path.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+    });
+    #[cfg(not(target_os = "macos"))]
+    app.run(|_app, _event| {});
 }

@@ -1,3 +1,4 @@
+pub mod app;
 pub mod backlinks;
 pub mod convert;
 pub mod documents;

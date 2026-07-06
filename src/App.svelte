@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import EditorPane from "./components/editor/EditorPane.svelte";
   import PreviewPane from "./components/preview/PreviewPane.svelte";
   import TitleBar from "./components/layout/TitleBar.svelte";
@@ -193,26 +194,42 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   onMount(() => {
     startupCheckpoint("App mounted");
 
-    // Restore previous session if one exists
-    getSession().then((session) => {
-      if (session && session.tabs.length > 0) {
-        tabStore
-          .restoreSession(
-            async (path: string) => {
-              await openDocumentByPath(path);
-            },
-            session.activeTabPath
-          )
-          .then((restored) => {
-            if (!restored) {
-              // No valid session to restore; keep default welcome tab
-            }
-          })
-          .catch(() => {
-            // Fallback: default welcome tab is already present
-          });
+    let unlisten: UnlistenFn | undefined;
+
+    // Listen for files opened via OS association while the app is running.
+    listen<string>("open-file", (event) => {
+      if (event.payload) {
+        openDocumentByPath(event.payload);
       }
+    }).then((fn) => {
+      unlisten = fn;
     });
+
+    // Restore previous session if one exists, then handle any file the OS
+    // asked us to open on startup (OS file open takes precedence).
+    getSession().then((session) => {
+      const restorePromise =
+        session && session.tabs.length > 0
+          ? tabStore
+              .restoreSession(
+                async (path: string) => {
+                  await openDocumentByPath(path);
+                },
+                session.activeTabPath
+              )
+              .catch(() => false)
+          : Promise.resolve(false);
+
+      return restorePromise;
+    }).then(() =>
+      invoke<string[]>("take_pending_open")
+        .then((paths) => {
+          if (paths.length > 0) {
+            openDocumentByPath(paths[0]);
+          }
+        })
+        .catch(() => {})
+    );
 
     // Dismiss splash screen
     const splash = document.getElementById("splash");
@@ -220,6 +237,12 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       splash.classList.add("fade-out");
       setTimeout(() => splash.remove(), 350);
     }
+
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
   });
 
   $effect(() => {
