@@ -1,3 +1,9 @@
+## [0.8.54] - 2026-07-06
+
+### Added
+- **Copy as Word (Pandoc)** — The preview pane's Copy dropdown now offers a "Copy as Word (Pandoc)" option when Pandoc is installed. It converts the active Markdown document through Pandoc to HTML and copies it to the clipboard as `text/html` (with a plain-text fallback), so you can paste formatted content directly into Word without saving and opening a DOCX file first.
+
+
 ## [0.8.53] - 2026-07-06
 
 ### Fixed
