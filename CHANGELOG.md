@@ -1,3 +1,13 @@
+## [0.8.56] - 2026-07-06
+
+### Fixed
+- **Reduced startup UI freeze** — Preview post-processing (heading anchors, KaTeX math, Mermaid diagrams, and syntax highlighting) now runs in `requestAnimationFrame` chunks instead of all in one synchronous tick. This keeps the app responsive while the welcome page or a large document renders.
+- **Faster first preview paint** — Lowered the preview render debounce from 150 ms to 50 ms so the preview pane updates sooner after the active document changes.
+
+### Added
+- **Preview render timing logs** — Added `[preview-render]` timing logs to the browser console to help diagnose where remaining render time is spent.
+
+
 ## [0.8.55] - 2026-07-06
 
 ### Added

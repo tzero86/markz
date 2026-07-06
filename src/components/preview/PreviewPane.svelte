@@ -5,9 +5,9 @@
   import { invoke } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
-  import { highlightCodeBlocks, setHljsTheme } from "./syntaxHighlighter";
+  import { highlightCodeBlocksChunked, setHljsTheme } from "./syntaxHighlighter";
   import { renderMermaidBlocks, setMermaidTheme } from "./mermaidRenderer";
-  import { renderMathBlocks } from "./mathRenderer";
+  import { renderMathBlocksChunked } from "./mathRenderer";
   import { slugify } from "../../lib/toc";
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
@@ -22,6 +22,11 @@
    *  Implemented as an LRU (least-recently-used) Map with a max size. */
   const renderCache = new Map<string, string>();
   const MAX_CACHE_SIZE = 10;
+
+  function logRenderTiming(label: string, start: number) {
+    const elapsed = performance.now() - start;
+    console.info(`[preview-render] ${label}: ${elapsed.toFixed(1)}ms`);
+  }
 
   let htmlContent = $state("<p>Loading preview...</p>");
   let isRendering = $state(false);
@@ -87,11 +92,13 @@
     }
     clearTimeout(timeout);
     isRendering = true;
+    const renderStart = performance.now();
     timeout = setTimeout(async () => {
       try {
-        const result = DOMPurify.sanitize(
-          await invoke<string>("render_preview", { markdown: content, docPath })
-        );
+        const rawHtml = await invoke<string>("render_preview", { markdown: content, docPath });
+        logRenderTiming("render_preview returned", renderStart);
+        const result = DOMPurify.sanitize(rawHtml);
+        logRenderTiming("DOMPurify sanitized", renderStart);
         // Guard: the content we started rendering must still match the
         // current active document. If tabs were switched while we were
         // rendering, discard.
@@ -115,7 +122,7 @@
           isRendering = false;
         }, 200);
       }
-    }, 150); // Debounced render
+    }, 50); // Debounced render
     return () => {
       clearTimeout(timeout);
     };
@@ -564,12 +571,20 @@
   $effect(() => {
     const _content = htmlContent;
     if (!contentDiv) return;
-    addHeadingAnchors(contentDiv);
-    renderMathBlocks(contentDiv);
-    renderMermaidBlocks(contentDiv)
-      .then(() => scaleMermaidDiagrams())
-      .catch(console.error);
-    highlightCodeBlocks(contentDiv);
+    const postStart = performance.now();
+    // Yield to the browser and run heavy post-processing in chunks so the
+    // UI stays responsive during large previews (e.g. the welcome page).
+    requestAnimationFrame(() => {
+      addHeadingAnchors(contentDiv);
+      requestAnimationFrame(async () => {
+        await renderMathBlocksChunked(contentDiv);
+        renderMermaidBlocks(contentDiv)
+          .then(() => scaleMermaidDiagrams())
+          .catch(console.error);
+        await highlightCodeBlocksChunked(contentDiv);
+        logRenderTiming("post-processing complete", postStart);
+      });
+    });
   });
 
   // Re-scale mermaid when zoom changes (content already rendered)
