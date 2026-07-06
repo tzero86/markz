@@ -1,3 +1,10 @@
+## [0.8.57] - 2026-07-06
+
+### Fixed
+- **Eliminated welcome tab flash on startup** — The splash screen now stays up and the preview pane skips rendering until session restore and any pending OS file open have completed. This removes the "Loading preview → welcome → files" sequence when restoring previous tabs.
+- **Deferred startup UI work** — Added a `startupComplete` store so heavy UI effects don't run against the transient default welcome tab while the app is still restoring its session.
+
+
 ## [0.8.56] - 2026-07-06
 
 ### Fixed

@@ -28,6 +28,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   import { getSession } from "./lib/sessionStore";
   import { workspaceStore } from "./lib/workspaceStore";
   import { presetStore } from "./lib/themeStore";
+  import { startupComplete } from "./lib/startupStore";
 
   import { confirm } from "@tauri-apps/plugin-dialog";
   // Always start at 100% zoom — prevents stale localStorage values
@@ -207,36 +208,36 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
     // Restore previous session if one exists, then handle any file the OS
     // asked us to open on startup (OS file open takes precedence).
-    getSession().then((session) => {
-      const restorePromise =
-        session && session.tabs.length > 0
-          ? tabStore
-              .restoreSession(
-                async (path: string) => {
-                  await openDocumentByPath(path);
-                },
-                session.activeTabPath
-              )
-              .catch(() => false)
-          : Promise.resolve(false);
-
-      return restorePromise;
-    }).then(() =>
-      invoke<string[]>("take_pending_open")
-        .then((paths) => {
-          if (paths.length > 0) {
-            openDocumentByPath(paths[0]);
-          }
-        })
-        .catch(() => {})
-    );
-
-    // Dismiss splash screen
-    const splash = document.getElementById("splash");
-    if (splash) {
-      splash.classList.add("fade-out");
-      setTimeout(() => splash.remove(), 350);
+    async function finishStartup() {
+      try {
+        const session = await getSession();
+        if (session && session.tabs.length > 0) {
+          await tabStore
+            .restoreSession(
+              async (path: string) => {
+                await openDocumentByPath(path);
+              },
+              session.activeTabPath
+            )
+            .catch(() => false);
+        }
+        const paths = await invoke<string[]>("take_pending_open");
+        if (paths.length > 0) {
+          await openDocumentByPath(paths[0]);
+        }
+      } finally {
+        startupComplete.set(true);
+        // Dismiss splash screen only after startup work is done so the user
+        // never sees the transient welcome tab flash when a session restores.
+        const splash = document.getElementById("splash");
+        if (splash) {
+          splash.classList.add("fade-out");
+          setTimeout(() => splash.remove(), 350);
+        }
+      }
     }
+
+    finishStartup();
 
     return () => {
       if (unlisten) {

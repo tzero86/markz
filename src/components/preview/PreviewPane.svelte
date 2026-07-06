@@ -2,6 +2,7 @@
   import EmptyState from "../ui/EmptyState.svelte";
   import { Eye, Copy, Check, Volume2, Volume, Square, ChevronDown, Presentation } from "@lucide/svelte";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
+  import { startupComplete } from "../../lib/startupStore";
   import { invoke } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
@@ -68,7 +69,15 @@
   $effect(() => {
     const content = $activeDocumentStore.content;
     const docPath = $activeDocumentStore.path;
+    const isStartupComplete = $startupComplete;
     const cacheKey = `${docPath ?? "null"}:${content}`;
+    // Don't waste renders on transient startup state (e.g. the welcome tab
+    // that gets replaced by session restore). Wait until App.svelte finishes
+    // its startup sequence.
+    if (!isStartupComplete) {
+      htmlContent = "<p>Loading preview...</p>";
+      return;
+    }
     // Bump generation so stale async renders (from a previous content) don't
     // overwrite the result of a newer render request.
     const myGen = ++renderGen;
@@ -570,7 +579,8 @@
   }
   $effect(() => {
     const _content = htmlContent;
-    if (!contentDiv) return;
+    const isStartupComplete = $startupComplete;
+    if (!contentDiv || !isStartupComplete) return;
     const postStart = performance.now();
     // Yield to the browser and run heavy post-processing in chunks so the
     // UI stays responsive during large previews (e.g. the welcome page).
