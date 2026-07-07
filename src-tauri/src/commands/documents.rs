@@ -46,7 +46,9 @@ pub async fn render_preview(
 
 #[tauri::command]
 pub async fn open_document(path: String) -> Result<DocumentInfo, String> {
-    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let content = tokio::fs::read_to_string(&path)
+        .await
+        .map_err(|e| e.to_string())?;
     let title = std::path::Path::new(&path)
         .file_stem()
         .and_then(|s| s.to_str())
@@ -57,7 +59,9 @@ pub async fn open_document(path: String) -> Result<DocumentInfo, String> {
 
 #[tauri::command]
 pub async fn save_document(path: String, content: String) -> Result<(), String> {
-    std::fs::write(&path, content).map_err(|e| e.to_string())
+    tokio::fs::write(&path, content)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

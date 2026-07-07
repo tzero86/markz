@@ -18,16 +18,15 @@
   const isSplit = $derived(mode === "split");
 
   function sizeStyle(forLeft: boolean): string {
-    const hidden = forLeft ? mode === "preview" : mode === "editor";
-    if (hidden) {
-      return isHorizontal ? "width: 0%; display: none;" : "height: 0%; display: none;";
-    }
     if (!isSplit) {
       return isHorizontal ? "width: 100%;" : "height: 100%;";
     }
     const pct = forLeft ? splitRatio : 100 - splitRatio;
     return isHorizontal ? `width: ${pct}%;` : `height: ${pct}%;`;
   }
+
+  const showLeft = $derived(mode !== "preview");
+  const showRight = $derived(mode !== "editor");
 
   function onMouseDown(e: MouseEvent) {
     if (!isSplit) return;
@@ -82,25 +81,33 @@
 
 <div class="split-pane" class:vertical={!isHorizontal} class:reversed={direction === "vertical-reversed"} bind:this={containerRef}>
   {#if direction === "vertical-reversed"}
-    <div class="pane top-left" style={sizeStyle(false)}>
-      {@render right()}
-    </div>
+    {#if showRight}
+      <div class="pane top-left" style={sizeStyle(false)}>
+        {@render right()}
+      </div>
+    {/if}
     {#if isSplit}
       <div class="divider" class:dragging={isDragging} class:vertical={true} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
     {/if}
-    <div class="pane bottom-right" style={sizeStyle(true)}>
-      {@render left()}
-    </div>
+    {#if showLeft}
+      <div class="pane bottom-right" style={sizeStyle(true)}>
+        {@render left()}
+      </div>
+    {/if}
   {:else}
-    <div class="pane top-left" style={sizeStyle(true)}>
-      {@render left()}
-    </div>
+    {#if showLeft}
+      <div class="pane top-left" style={sizeStyle(true)}>
+        {@render left()}
+      </div>
+    {/if}
     {#if isSplit}
       <div class="divider" class:dragging={isDragging} class:vertical={!isHorizontal} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
     {/if}
-    <div class="pane bottom-right" style={sizeStyle(false)}>
-      {@render right()}
-    </div>
+    {#if showRight}
+      <div class="pane bottom-right" style={sizeStyle(false)}>
+        {@render right()}
+      </div>
+    {/if}
   {/if}
 </div>
 

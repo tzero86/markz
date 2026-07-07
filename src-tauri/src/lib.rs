@@ -165,10 +165,17 @@ pub struct SessionState {
     workspace_path: Option<String>,
 }
 
+pub async fn session_path_async() -> Option<std::path::PathBuf> {
+    let mut dir = dirs::config_dir()?;
+    dir.push("markz");
+    tokio::fs::create_dir_all(&dir).await.ok()?;
+    dir.push("session.json");
+    Some(dir)
+}
+
 pub fn session_path() -> Option<std::path::PathBuf> {
     let mut dir = dirs::config_dir()?;
     dir.push("markz");
-    std::fs::create_dir_all(&dir).ok()?;
     dir.push("session.json");
     Some(dir)
 }

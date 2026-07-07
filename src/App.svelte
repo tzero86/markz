@@ -51,28 +51,9 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   let sidebarWidth = $state(220);
   let viewMode = $state<"split" | "editor" | "preview">("split");
   let splitDirection = $state<"horizontal" | "vertical" | "vertical-reversed">("horizontal");
-  function applySettings(s: any) {
-    activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
-    viewMode = s.view_mode || s.viewMode || "split";
-    splitDirection = s.split_direction || s.splitDirection || "horizontal";
-    document.documentElement.setAttribute("data-reduced-motion", String(s.reduced_motion ?? s.reducedMotion ?? false));
-    document.documentElement.style.setProperty("--ui-font-size", `${s.ui_font_size ?? s.uiFontSize ?? 14}px`);
-    // Inject custom CSS if provided
-    let styleEl = document.getElementById("markz-custom-css") as HTMLStyleElement | null;
-    const customCss = s.custom_css ?? s.customCss ?? "";
-    if (customCss.trim()) {
-      if (!styleEl) {
-        styleEl = document.createElement("style");
-        styleEl.id = "markz-custom-css";
-        document.head.appendChild(styleEl);
-      }
-      styleEl.textContent = customCss;
-    } else if (styleEl) {
-      styleEl.textContent = "";
-    }
-  }
-  invoke("get_settings")
-    .then((s: any) => {
+  async function loadSettings() {
+    try {
+      const s: any = await invoke("get_settings");
       applySettings(s);
       sidebarWidth = s.sidebar_width ?? s.sidebarWidth ?? 220;
       // Initialize TTS from saved preferences
@@ -94,8 +75,30 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       if (preset) {
         presetStore.set(preset);
       }
-    })
-    .catch(() => {});
+    } catch {
+      // Defaults already apply; ignore settings load failure.
+    }
+  }
+  function applySettings(s: any) {
+    activeActivity = s.show_outline ?? s.showOutline ?? true ? "outline" : "files";
+    viewMode = s.view_mode || s.viewMode || "split";
+    splitDirection = s.split_direction || s.splitDirection || "horizontal";
+    document.documentElement.setAttribute("data-reduced-motion", String(s.reduced_motion ?? s.reducedMotion ?? false));
+    document.documentElement.style.setProperty("--ui-font-size", `${s.ui_font_size ?? s.uiFontSize ?? 14}px`);
+    // Inject custom CSS if provided
+    let styleEl = document.getElementById("markz-custom-css") as HTMLStyleElement | null;
+    const customCss = s.custom_css ?? s.customCss ?? "";
+    if (customCss.trim()) {
+      if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = "markz-custom-css";
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = customCss;
+    } else if (styleEl) {
+      styleEl.textContent = "";
+    }
+  }
   /* Adaptive layout — responsive breakpoints */
   let windowWidth = $state(0);
   $effect(() => {
@@ -230,6 +233,11 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     async function finishStartup() {
       const t0 = performance.now();
       try {
+        // Load settings first so the UI theme/layout are correct before we
+        // restore tabs and render the preview.
+        const ts = performance.now();
+        await loadSettings();
+        debugLogStore.add("info", "startup", `loadSettings took ${(performance.now() - ts).toFixed(1)}ms`);
         const session = await getSession();
         debugLogStore.add("info", "startup", `getSession took ${(performance.now() - t0).toFixed(1)}ms`);
         if (session && session.tabs.length > 0) {

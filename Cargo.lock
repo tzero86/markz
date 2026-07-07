@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "markz"
-version = "0.8.62"
+version = "0.8.63"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2557,7 +2557,7 @@ dependencies = [
 
 [[package]]
 name = "markz-config"
-version = "0.8.62"
+version = "0.8.63"
 dependencies = [
  "dirs",
  "log",
@@ -2568,7 +2568,7 @@ dependencies = [
 
 [[package]]
 name = "markz-convert"
-version = "0.8.62"
+version = "0.8.63"
 dependencies = [
  "base64 0.22.1",
  "docx-rs",
@@ -2582,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "markz-core"
-version = "0.8.62"
+version = "0.8.63"
 dependencies = [
  "htmd",
  "log",
@@ -2596,7 +2596,7 @@ dependencies = [
 
 [[package]]
 name = "markz-images"
-version = "0.8.62"
+version = "0.8.63"
 dependencies = [
  "chrono",
  "dirs",
@@ -2610,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "markz-templates"
-version = "0.8.62"
+version = "0.8.63"
 dependencies = [
  "chrono",
  "dirs",
@@ -5021,6 +5021,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "windows-sys 0.61.2",
 ]

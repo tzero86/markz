@@ -55,42 +55,46 @@ fn normalize_rel(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-fn read_dir_shallow(dir: &Path, root: &Path) -> Result<Vec<FileTreeNode>, String> {
-    let mut children = Vec::new();
-    let mut entries: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|e| e.to_string())?
-        .filter_map(|e| e.ok())
-        .collect();
+async fn read_dir_shallow(dir: &Path, root: &Path) -> Result<Vec<FileTreeNode>, String> {
+    let mut entries = Vec::new();
+    let mut read_dir = tokio::fs::read_dir(dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    while let Some(entry) = read_dir.next_entry().await.map_err(|e| e.to_string())? {
+        entries.push(entry);
+    }
 
-    entries.sort_by(|a, b| {
-        let a_is_dir = a.file_type().map(|t| t.is_dir()).unwrap_or(false);
-        let b_is_dir = b.file_type().map(|t| t.is_dir()).unwrap_or(false);
-        match (a_is_dir, b_is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.file_name().cmp(&b.file_name()),
-        }
-    });
-
+    let mut with_meta = Vec::with_capacity(entries.len());
     for entry in entries {
         let name = entry.file_name().to_string_lossy().to_string();
-        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        let file_type = entry.file_type().await.map_err(|e| e.to_string())?;
+        let is_dir = file_type.is_dir();
+        let path = entry.path();
+        with_meta.push((name, is_dir, path));
+    }
 
+    with_meta.sort_by(|a, b| match (a.1, b.1) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.0.cmp(&b.0),
+    });
+
+    let mut children = Vec::new();
+    for (name, is_dir, path) in with_meta {
         // Skip hidden files and common non-document directories
         if name.starts_with('.') || (is_dir && is_ignored_dir(&name)) {
             continue;
         }
 
-        let path = entry.path().to_string_lossy().to_string();
-        let rel_path = entry
-            .path()
+        let path_str = path.to_string_lossy().to_string();
+        let rel_path = path
             .strip_prefix(root)
             .map(normalize_rel)
             .unwrap_or_else(|_| name.clone());
 
         children.push(FileTreeNode {
             name,
-            path,
+            path: path_str,
             rel_path,
             is_dir,
             children: Vec::new(),
@@ -100,25 +104,33 @@ fn read_dir_shallow(dir: &Path, root: &Path) -> Result<Vec<FileTreeNode>, String
     Ok(children)
 }
 
+async fn is_valid_dir(path: &Path) -> Result<bool, String> {
+    match tokio::fs::metadata(path).await {
+        Ok(meta) => Ok(meta.is_dir()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 #[tauri::command]
 pub async fn list_workspace_files_shallow(root: String) -> Result<Vec<FileTreeNode>, String> {
     let root_path = Path::new(&root);
-    if !root_path.exists() || !root_path.is_dir() {
+    if !is_valid_dir(root_path).await? {
         return Err("Path is not a valid directory".to_string());
     }
 
-    read_dir_shallow(root_path, root_path)
+    read_dir_shallow(root_path, root_path).await
 }
 
 #[tauri::command]
 pub async fn list_dir_children(path: String, root: String) -> Result<Vec<FileTreeNode>, String> {
     let dir = Path::new(&path);
     let root_path = Path::new(&root);
-    if !dir.exists() || !dir.is_dir() {
+    if !is_valid_dir(dir).await? {
         return Err("Path is not a valid directory".to_string());
     }
 
-    read_dir_shallow(dir, root_path)
+    read_dir_shallow(dir, root_path).await
 }
 
 #[tauri::command]
@@ -128,45 +140,45 @@ pub async fn search_workspace(root: String, query: String) -> Result<Vec<SearchR
         return Err("Invalid workspace directory".to_string());
     }
 
+    let query_lower = query.to_lowercase();
     let mut results = Vec::new();
-    search_dir(root_path, root_path, &query.to_lowercase(), &mut results)?;
-    Ok(results)
-}
+    let mut stack: Vec<std::path::PathBuf> = vec![root_path.to_path_buf()];
 
-fn search_dir(
-    dir: &Path,
-    root: &Path,
-    query: &str,
-    results: &mut Vec<SearchResult>,
-) -> Result<(), String> {
-    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let name = entry.file_name().to_string_lossy().to_string();
-        if name.starts_with('.') {
-            continue;
-        }
+    while let Some(dir) = stack.pop() {
+        let mut read_dir = tokio::fs::read_dir(&dir)
+            .await
+            .map_err(|e| e.to_string())?;
+        while let Some(entry) = read_dir.next_entry().await.map_err(|e| e.to_string())? {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') {
+                continue;
+            }
+            let file_type = entry.file_type().await.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if file_type.is_dir() {
+                if !is_ignored_dir(&name) {
+                    stack.push(path);
+                }
+                continue;
+            }
 
-        let path = entry.path();
-        if path.is_dir() {
-            search_dir(&path, root, query, results)?;
-        } else {
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             if ext != "md" && ext != "mdx" && ext != "markdown" {
                 continue;
             }
 
-            let content = match std::fs::read_to_string(&path) {
+            let content = match tokio::fs::read_to_string(&path).await {
                 Ok(c) => c,
                 Err(_) => continue,
             };
 
             let rel_path = path
-                .strip_prefix(root)
+                .strip_prefix(root_path)
                 .map(normalize_rel)
                 .unwrap_or_else(|_| name.clone());
 
             for (line_idx, line) in content.lines().enumerate() {
-                if line.to_lowercase().contains(query) {
+                if line.to_lowercase().contains(&query_lower) {
                     let context = if line.len() > 120 {
                         format!("{}...", &line[..120])
                     } else {
@@ -183,5 +195,5 @@ fn search_dir(
         }
     }
 
-    Ok(())
+    Ok(results)
 }

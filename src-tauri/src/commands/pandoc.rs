@@ -1,4 +1,5 @@
-use std::process::{Command, Stdio};
+use std::process::Stdio;
+use tokio::process::Command;
 
 const SUPPORTED_FORMATS: &[&str] = &["docx", "pdf", "html", "epub"];
 const SUPPORTED_CLIPBOARD_FORMATS: &[&str] = &["html", "rtf"];
@@ -27,8 +28,12 @@ fn pandoc_binary() -> String {
 /// Check whether `pandoc` is available — first checking the custom path from
 /// settings (if set), then falling back to the system PATH.
 #[tauri::command]
-pub fn pandoc_available() -> Result<bool, String> {
-    match Command::new(pandoc_binary()).arg("--version").output() {
+pub async fn pandoc_available() -> Result<bool, String> {
+    match Command::new(pandoc_binary())
+        .arg("--version")
+        .output()
+        .await
+    {
         Ok(output) => Ok(output.status.success()),
         Err(_) => Ok(false),
     }
@@ -64,7 +69,8 @@ pub async fn export_via_pandoc(
 
     // Write markdown to a temporary file so Pandoc can read it.
     let temp_path = std::env::temp_dir().join(format!("markz-pandoc-{}.md", uuid::Uuid::new_v4()));
-    std::fs::write(&temp_path, markdown.as_bytes())
+    tokio::fs::write(&temp_path, markdown.as_bytes())
+        .await
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
 
     // Build Pandoc command.
@@ -83,10 +89,11 @@ pub async fn export_via_pandoc(
 
     let output = cmd
         .output()
+        .await
         .map_err(|e| format!("Failed to execute pandoc: {}", e))?;
 
     // Clean up temp file regardless of outcome.
-    let _ = std::fs::remove_file(&temp_path);
+    let _ = tokio::fs::remove_file(&temp_path).await;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -127,7 +134,8 @@ pub async fn copy_via_pandoc(
     // Write markdown to a temporary file so Pandoc can read it.
     let temp_path =
         std::env::temp_dir().join(format!("markz-pandoc-copy-{}.md", uuid::Uuid::new_v4()));
-    std::fs::write(&temp_path, markdown.as_bytes())
+    tokio::fs::write(&temp_path, markdown.as_bytes())
+        .await
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
 
     // Build Pandoc command, writing to stdout.
@@ -146,10 +154,11 @@ pub async fn copy_via_pandoc(
 
     let output = cmd
         .output()
+        .await
         .map_err(|e| format!("Failed to execute pandoc: {}", e))?;
 
     // Clean up temp file regardless of outcome.
-    let _ = std::fs::remove_file(&temp_path);
+    let _ = tokio::fs::remove_file(&temp_path).await;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

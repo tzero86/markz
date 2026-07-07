@@ -1,3 +1,12 @@
+## [0.8.63] - 2026-07-07
+
+### Fixed
+- **Shorter splash-screen wait** — Settings are now loaded inside the startup sequence instead of at module evaluation, and all remaining blocking `std::fs` calls in the session, settings, workspace, and pandoc commands have been converted to `tokio::fs`. This prevents synchronous disk I/O from starving the Tauri async runtime during startup.
+- **Preview pane no longer runs while hidden** — The editor/preview split pane now unmounts the hidden pane entirely in single-pane modes instead of keeping it alive with `display: none`. Toggling between Split, Editor-only, and Preview-only no longer pays the cost of a hidden preview render loop.
+- **DOCX export dependencies no longer load at startup** — `mermaid`, `katex`, and their styles were being pulled into the main JS bundle by the DOCX preparation module. They are now loaded on demand when exporting to DOCX, reducing initial bundle size and parse time.
+- **Pandoc checks no longer block the runtime** — `pandoc_available` and the pandoc export/copy commands now use `tokio::process` and `tokio::fs`, so spawning the pandoc binary can't stall other commands.
+
+
 ## [0.8.62] - 2026-07-07
 
 ### Added
