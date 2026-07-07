@@ -1,3 +1,12 @@
+## [0.8.61] - 2026-07-07
+
+### Fixed
+- **Faster session restore** — Restored tabs are now built in a single batch and set once, avoiding N Svelte re-renders during startup.
+- **Smaller initial bundle** — Mermaid, KaTeX, and highlight.js are now loaded on demand instead of being bundled into the startup JS. This reduces parse/compile time before the app can dismiss the splash screen.
+- **Non-blocking local image embedding** — `render_preview` now reads local image files asynchronously, so heavy image-heavy documents don't block the Tauri runtime.
+- **Backend render timing logs** — Added `[render_preview]` timing logs to pinpoint which phase (parse / HTML render / image embed) is slow.
+
+
 ## [0.8.60] - 2026-07-07
 
 ### Fixed

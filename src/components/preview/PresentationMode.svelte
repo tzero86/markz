@@ -419,14 +419,14 @@
 
   $effect(() => {
     if (slideEl && currentSlide) {
-      highlightCodeBlocks(slideEl);
+      highlightCodeBlocks(slideEl).catch(console.error);
     }
   });
 
   $effect(() => {
     const theme = document.documentElement.getAttribute("data-theme");
     if (theme) {
-      setHljsTheme(theme === "dark" ? "dark" : "light");
+      setHljsTheme(theme === "dark" ? "dark" : "light").catch(console.error);
     }
   });
 

@@ -1,4 +1,5 @@
 use crate::{parse_document, embed_local_images, DocumentInfo};
+use log::info;
 use tauri::AppHandle;
 
 #[tauri::command]
@@ -6,18 +7,29 @@ pub async fn render_preview(
     markdown: String,
     doc_path: Option<String>,
 ) -> Result<String, String> {
+    let t0 = std::time::Instant::now();
     let mut doc = markz_core::parser::parse(&markdown);
     let remaining = markz_core::frontmatter::parse_into_document(&markdown, &mut doc);
     if !remaining.is_empty() {
         doc.blocks = markz_core::parser::parse(&remaining).blocks;
     }
+    let t1 = std::time::Instant::now();
     let mut html = markz_core::html::render(&doc);
+    let t2 = std::time::Instant::now();
 
     if let Some(ref path) = doc_path {
         if let Some(base_dir) = std::path::Path::new(path).parent() {
-            html = embed_local_images(&html, base_dir);
+            html = embed_local_images(&html, base_dir).await;
         }
     }
+    let t3 = std::time::Instant::now();
+    info!(
+        "[render_preview] parse={:.1}ms render={:.1}ms embed={:.1}ms total={:.1}ms",
+        (t1 - t0).as_secs_f64() * 1000.0,
+        (t2 - t1).as_secs_f64() * 1000.0,
+        (t3 - t2).as_secs_f64() * 1000.0,
+        (t3 - t0).as_secs_f64() * 1000.0,
+    );
 
     Ok(html)
 }

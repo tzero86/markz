@@ -11,7 +11,7 @@ pub async fn render_slides(
     if let Some(ref path) = doc_path {
         if let Some(base_dir) = std::path::Path::new(path).parent() {
             for slide in &mut deck.slides {
-                slide.content = embed_local_images(&slide.content, base_dir);
+                slide.content = embed_local_images(&slide.content, base_dir).await;
             }
         }
     }

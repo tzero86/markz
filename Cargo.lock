@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "markz"
-version = "0.8.60"
+version = "0.8.61"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2548,6 +2548,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
+ "tokio",
  "tungstenite",
  "ureq",
  "uuid",
@@ -2556,7 +2557,7 @@ dependencies = [
 
 [[package]]
 name = "markz-config"
-version = "0.8.60"
+version = "0.8.61"
 dependencies = [
  "dirs",
  "log",
@@ -2567,7 +2568,7 @@ dependencies = [
 
 [[package]]
 name = "markz-convert"
-version = "0.8.60"
+version = "0.8.61"
 dependencies = [
  "base64 0.22.1",
  "docx-rs",
@@ -2581,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "markz-core"
-version = "0.8.60"
+version = "0.8.61"
 dependencies = [
  "htmd",
  "log",
@@ -2595,7 +2596,7 @@ dependencies = [
 
 [[package]]
 name = "markz-images"
-version = "0.8.60"
+version = "0.8.61"
 dependencies = [
  "chrono",
  "dirs",
@@ -2609,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "markz-templates"
-version = "0.8.60"
+version = "0.8.61"
 dependencies = [
  "chrono",
  "dirs",

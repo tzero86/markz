@@ -1,17 +1,27 @@
-import mermaid from "mermaid";
+import type { default as MermaidType } from "mermaid";
 
-let initialized = false;
+type MermaidApi = typeof MermaidType;
+
+let mermaidPromise: Promise<MermaidApi> | null = null;
 let currentMermaidTheme: "dark" | "default" = "dark";
 
 function getMermaidTheme(theme: "light" | "dark"): "dark" | "default" {
   return theme === "dark" ? "dark" : "default";
 }
 
-export async function renderMermaidBlocks(container: HTMLElement) {
-  if (!initialized) {
-    mermaid.initialize({ startOnLoad: false, theme: currentMermaidTheme });
-    initialized = true;
+async function getMermaid(): Promise<MermaidApi> {
+  if (!mermaidPromise) {
+    mermaidPromise = import("mermaid").then((m) => {
+      const mermaid = m.default;
+      mermaid.initialize({ startOnLoad: false, theme: currentMermaidTheme });
+      return mermaid;
+    });
   }
+  return await mermaidPromise;
+}
+
+export async function renderMermaidBlocks(container: HTMLElement) {
+  const mermaid = await getMermaid();
 
   const blocks = container.querySelectorAll("pre code.language-mermaid");
   for (const block of blocks) {
@@ -39,6 +49,7 @@ export async function renderMermaidBlocks(container: HTMLElement) {
 export async function rerenderMermaidBlocks(container: HTMLElement) {
   const diagrams = container.querySelectorAll(".mermaid-diagram");
   if (diagrams.length === 0) return;
+  const mermaid = await getMermaid();
 
   for (const div of diagrams) {
     const code = div.getAttribute("data-source") || "";
@@ -61,6 +72,7 @@ export async function setMermaidTheme(
   if (currentMermaidTheme === newTheme) return;
   currentMermaidTheme = newTheme;
 
+  const mermaid = await getMermaid();
   mermaid.initialize({ startOnLoad: false, theme: newTheme });
 
   const diagrams = container.querySelectorAll(".mermaid-diagram");

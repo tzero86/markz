@@ -92,7 +92,8 @@ pub fn guess_mime(path: &std::path::Path) -> &'static str {
 }
 
 /// Scan rendered HTML and embed local image files as base64 data URIs.
-pub fn embed_local_images(html: &str, base_dir: &std::path::Path) -> String {
+/// This is async so blocking file reads don't starve the Tauri runtime.
+pub async fn embed_local_images(html: &str, base_dir: &std::path::Path) -> String {
     let mut out = String::with_capacity(html.len() * 2);
     let mut rest = html;
 
@@ -121,7 +122,7 @@ pub fn embed_local_images(html: &str, base_dir: &std::path::Path) -> String {
                 base_dir.join(path_str)
             };
 
-            match std::fs::read(&full_path) {
+            match tokio::fs::read(&full_path).await {
                 Ok(data) => {
                     let mime = guess_mime(&full_path);
                     let b64 = base64::engine::general_purpose::STANDARD.encode(&data);

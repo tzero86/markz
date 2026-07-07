@@ -620,8 +620,11 @@ function createTabStore() {
     readFile: (path: string) => Promise<{ content: string; path: string }>,
     setActivePath: string | null = null
   ): Promise<boolean> {
+    const t0 = performance.now();
     const { getSession } = await import("./sessionStore");
     const session = await getSession();
+    const t1 = performance.now();
+    console.info(`[startup] load_session took ${(t1 - t0).toFixed(1)}ms`);
     if (!session || session.tabs.length === 0) return false;
 
     suppressPersist = true;
@@ -636,8 +639,6 @@ function createTabStore() {
     }
 
     // Read all file-backed tabs in parallel instead of sequentially.
-    // This is the main startup win: opening N files no longer takes N times
-    // the latency of a single disk read + workspace sync.
     const filePaths: string[] = [];
     for (const tab of session.tabs) {
       if (tab.path && !seenPaths.has(tab.path)) {
@@ -646,7 +647,10 @@ function createTabStore() {
       }
     }
 
+    const t2 = performance.now();
     const fileResults = await Promise.allSettled(filePaths.map((p) => readFile(p)));
+    const t3 = performance.now();
+    console.info(`[startup] read ${filePaths.length} restored files took ${(t3 - t2).toFixed(1)}ms`);
     const fileInfoByPath = new Map<string, { content: string; path: string }>();
     for (let i = 0; i < fileResults.length; i++) {
       const result = fileResults[i];
@@ -655,8 +659,9 @@ function createTabStore() {
       }
     }
 
-    // Recreate tabs in their original order, using the freshly read disk
-    // content for file tabs and the cached session content for untitled tabs.
+    // Build the restored tab list in one pass, then set the store once.
+    // Setting once avoids N Svelte re-renders during startup.
+    const restoredTabs: Tab[] = [];
     const restoredPaths = new Set<string>();
     for (const tab of session.tabs) {
       if (tab.path) {
@@ -664,7 +669,7 @@ function createTabStore() {
         restoredPaths.add(tab.path);
         const info = fileInfoByPath.get(tab.path);
         if (!info) continue; // file no longer exists or is unreadable
-        const restored: Tab = {
+        restoredTabs.push({
           id: genId(),
           content: info.content,
           path: info.path,
@@ -673,13 +678,9 @@ function createTabStore() {
           isLoading: false,
           pinned: tab.pinned ?? false,
           slideBreaks: breaksByPath.get(tab.path),
-        };
-        update((state) => ({
-          tabs: [...state.tabs, restored],
-          activeTabId: restored.id,
-        }));
+        });
       } else {
-        const restored: Tab = {
+        restoredTabs.push({
           id: genId(),
           content: tab.content,
           path: null,
@@ -688,30 +689,29 @@ function createTabStore() {
           isLoading: false,
           pinned: tab.pinned ?? false,
           slideBreaks: tab.slide_breaks,
-        };
-        update((state) => ({
-          tabs: [...state.tabs, restored],
-          activeTabId: restored.id,
-        }));
+        });
       }
     }
 
-    suppressPersist = false;
-    persistSession();
+    let activeTabId = restoredTabs[restoredTabs.length - 1]?.id ?? "";
+    if (setActivePath) {
+      const target = restoredTabs.find((t) => t.path === setActivePath);
+      if (target) activeTabId = target.id;
+    }
 
-    const state = get({ subscribe });
-    if (state.tabs.length === 0) {
+    if (restoredTabs.length === 0) {
       const fresh = makeDefaultTab();
       set({ tabs: [fresh], activeTabId: fresh.id });
+      suppressPersist = false;
       return false;
     }
 
-    if (setActivePath) {
-      const target = state.tabs.find((t) => t.path === setActivePath);
-      if (target) {
-        update((s) => ({ ...s, activeTabId: target.id }));
-      }
-    }
+    set({ tabs: restoredTabs, activeTabId });
+    suppressPersist = false;
+    persistSession();
+
+    const t4 = performance.now();
+    console.info(`[startup] restoreSession total ${(t4 - t0).toFixed(1)}ms (${restoredTabs.length} tabs)`);
     return true;
   }
 

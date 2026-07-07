@@ -1,10 +1,22 @@
-import hljs from "highlight.js";
+import type { HLJSApi } from "highlight.js";
+
+let hljsPromise: Promise<HLJSApi> | null = null;
+
+async function getHljs(): Promise<HLJSApi> {
+  if (!hljsPromise) {
+    hljsPromise = import("highlight.js").then((m) => m.default ?? (m as unknown as HLJSApi));
+  }
+  return await hljsPromise;
+}
 
 let currentHljsTheme: "light" | "dark" | null = null;
 
 export async function setHljsTheme(theme: "light" | "dark") {
   if (currentHljsTheme === theme) return;
   currentHljsTheme = theme;
+
+  // Ensure the library is loaded before swapping styles.
+  await getHljs();
 
   if (theme === "dark") {
     await import("highlight.js/styles/github-dark.css");
@@ -13,18 +25,20 @@ export async function setHljsTheme(theme: "light" | "dark") {
   }
 }
 
-export function highlightCodeBlocks(container: HTMLElement) {
-  container.querySelectorAll("pre code[class^='language-']").forEach((block) => {
-    const el = block as HTMLElement;
-    if (el.classList.contains("language-mermaid")) return;
-    highlightBlock(el);
-  });
-}
-
-function highlightBlock(el: HTMLElement) {
+async function highlightBlock(el: HTMLElement) {
   if (el.dataset.highlighted) return;
+  const hljs = await getHljs();
   hljs.highlightElement(el);
   el.dataset.highlighted = "true";
+}
+
+export async function highlightCodeBlocks(container: HTMLElement) {
+  const blocks = Array.from(container.querySelectorAll("pre code[class^='language-']"));
+  for (const block of blocks) {
+    const el = block as HTMLElement;
+    if (el.classList.contains("language-mermaid")) continue;
+    await highlightBlock(el);
+  }
 }
 
 /** Highlight code blocks in small batches, yielding to the browser between
@@ -44,7 +58,7 @@ export async function highlightCodeBlocksChunked(
     for (let j = i; j < end; j++) {
       const el = blocks[j];
       if (el.classList.contains("language-mermaid")) continue;
-      highlightBlock(el);
+      await highlightBlock(el);
     }
   }
 }
