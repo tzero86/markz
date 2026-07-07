@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import EditorPane from "./components/editor/EditorPane.svelte";
@@ -18,7 +19,7 @@
 import SearchPanel from "./components/layout/SearchPanel.svelte";
   import DebugPanel from "./components/layout/DebugPanel.svelte";
   import { debugLogStore } from "./lib/debugLogStore";
-  import { initKeyboardShortcuts, newDocument, openDocumentByPath } from "./lib/keyboard";
+  import { initKeyboardShortcuts, newDocument, openDocumentByPath, readDocument } from "./lib/keyboard";
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
   import { ttsStore, type TtsEngine } from "./lib/ttsStore";
@@ -162,17 +163,23 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     const active = state.tabs.find((t) => t.id === state.activeTabId);
     const path = active?.path ?? null;
 
-    // Sync file watcher with all open file paths
-    const openPaths = state.tabs.map((t) => t.path).filter((p): p is string => !!p);
-    invoke("watch_open_files", { paths: openPaths }).catch(() => {});
+    // During startup the restore process creates many tabs in quick succession.
+    // Avoid the repeated per-tab cost of re-watching files and re-scanning the
+    // workspace. We set these up once explicitly when startup finishes.
+    if (get(startupComplete)) {
+      // Sync file watcher with all open file paths
+      const openPaths = state.tabs.map((t) => t.path).filter((p): p is string => !!p);
+      invoke("watch_open_files", { paths: openPaths }).catch(() => {});
 
-    if (path === lastActivePath) return;
-    lastActivePath = path;
-    // Keep the file tree rooted at the active tab's directory.
-    workspaceStore.syncToFile(path).catch(() => {});
-    if (path) {
-      // If we switched to a file that was externally modified, prompt to reload
-      checkExternalChanges(path);
+      if (path !== lastActivePath) {
+        lastActivePath = path;
+        // Keep the file tree rooted at the active tab's directory.
+        workspaceStore.syncToFile(path).catch(() => {});
+        if (path) {
+          // If we switched to a file that was externally modified, prompt to reload
+          checkExternalChanges(path);
+        }
+      }
     }
   });
   let forceSinglePane = $derived(windowWidth > 0 && windowWidth < 900);
@@ -214,9 +221,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         if (session && session.tabs.length > 0) {
           await tabStore
             .restoreSession(
-              async (path: string) => {
-                await openDocumentByPath(path);
-              },
+              (path: string) => readDocument(path),
               session.activeTabPath
             )
             .catch(() => false);
@@ -224,6 +229,20 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         const paths = await invoke<string[]>("take_pending_open");
         if (paths.length > 0) {
           await openDocumentByPath(paths[0]);
+        }
+
+        // Sync the file tree once to the active tab's directory and start
+        // watching open files. Doing this once at the end instead of per tab
+        // avoids repeated workspace scans and watcher teardown/setup during
+        // session restore.
+        const active = tabStore.getActiveTab();
+        if (active?.path) {
+          await workspaceStore.syncToFile(active.path);
+        }
+        const state = get(tabStore);
+        const openPaths = state.tabs.map((t) => t.path).filter((p): p is string => !!p);
+        if (openPaths.length > 0) {
+          await invoke("watch_open_files", { paths: openPaths }).catch(() => {});
         }
       } finally {
         startupComplete.set(true);

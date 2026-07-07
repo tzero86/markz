@@ -100,6 +100,14 @@ export async function openDocumentByPath(path: string) {
   }
 }
 
+/** Read a document from disk without any side effects (no recent-file tracking,
+ *  no workspace sync, no loading spinner). Used during session restore so we
+ *  can read all restored files in parallel instead of paying the cost of a
+ *  full openDocumentByPath for each one. */
+export async function readDocument(path: string): Promise<{ content: string; path: string }> {
+  return await invoke<{ content: string; path: string }>("open_document", { path });
+}
+
 export async function openFolder() {
   await workspaceStore.openWorkspace();
 }

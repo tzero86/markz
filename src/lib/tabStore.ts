@@ -329,6 +329,12 @@ function createTabStore() {
   let autoSaveIntervalMs = 30000;
   let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // --- Session restore ---
+  // While restoring a session we create many tabs in quick succession.
+  // Skip the per-tab session persistence and let restoreSession persist once
+  // at the end. This avoids N redundant disk writes during startup.
+  let suppressPersist = false;
+
   // --- Recently saved tracking (to ignore self-triggered file-watch events) ---
   const recentlySavedPaths = new Set<string>();
 
@@ -398,7 +404,7 @@ function createTabStore() {
       newTabs[idx] = { ...newTabs[idx], content, isDirty: true };
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
     scheduleAutoSave();
   }
 
@@ -417,7 +423,7 @@ function createTabStore() {
       };
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
 
   function setPath(path: string | null) {
@@ -432,7 +438,7 @@ function createTabStore() {
       };
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
 
   function markClean() {
@@ -443,7 +449,7 @@ function createTabStore() {
       newTabs[idx] = { ...newTabs[idx], isDirty: false };
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
 
   function markDirty() {
@@ -454,7 +460,7 @@ function createTabStore() {
       newTabs[idx] = { ...newTabs[idx], isDirty: true };
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
   function setSlideBreaks(lines: number[]) {
     update((state) => {
@@ -464,7 +470,7 @@ function createTabStore() {
       newTabs[idx] = { ...newTabs[idx], slideBreaks: [...lines].sort((a, b) => a - b) };
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
 
   function setLoading(loading: boolean) {
@@ -495,7 +501,7 @@ function createTabStore() {
       const newTabs = [...state.tabs, tab];
       return { tabs: newTabs, activeTabId: tab.id };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
     return tab.id;
   }
 
@@ -507,7 +513,7 @@ function createTabStore() {
       newTabs[idx] = { ...newTabs[idx], pinned: !newTabs[idx].pinned };
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
 
   async function closeTab(id: string): Promise<boolean> {
@@ -536,7 +542,7 @@ function createTabStore() {
       return { tabs: newTabs, activeTabId: newTabs[0].id };
     });
 
-    persistSession();
+    if (!suppressPersist) persistSession();
     return true;
   }
   async function closeAllExcept(keepId: string): Promise<void> {
@@ -557,7 +563,7 @@ function createTabStore() {
       if (!keepTab) return { ...s, tabs: pinned, activeTabId: pinned[0]?.id ?? s.activeTabId };
       return { tabs: [keepTab, ...pinned], activeTabId: keepTab.id };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
   async function closeAll(): Promise<void> {
     const state = get({ subscribe });
@@ -579,7 +585,7 @@ function createTabStore() {
       }
       return { tabs: pinned, activeTabId: pinned[0].id };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
   function switchTab(id: string) {
     update((state) => {
@@ -588,7 +594,7 @@ function createTabStore() {
       if (newIdx === -1) return state;
       return { ...state, activeTabId: id };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
 
   function moveTab(fromIndex: number, toIndex: number) {
@@ -607,17 +613,18 @@ function createTabStore() {
       newTabs.splice(toIndex, 0, moved);
       return { ...state, tabs: newTabs };
     });
-    persistSession();
+    if (!suppressPersist) persistSession();
   }
 
   async function restoreSession(
-    openFile: (path: string) => Promise<void>,
+    readFile: (path: string) => Promise<{ content: string; path: string }>,
     setActivePath: string | null = null
   ): Promise<boolean> {
     const { getSession } = await import("./sessionStore");
     const session = await getSession();
     if (!session || session.tabs.length === 0) return false;
 
+    suppressPersist = true;
     set({ tabs: [], activeTabId: "" });
 
     const seenPaths = new Set<string>();
@@ -627,15 +634,50 @@ function createTabStore() {
         breaksByPath.set(tab.path, tab.slide_breaks);
       }
     }
+
+    // Read all file-backed tabs in parallel instead of sequentially.
+    // This is the main startup win: opening N files no longer takes N times
+    // the latency of a single disk read + workspace sync.
+    const filePaths: string[] = [];
+    for (const tab of session.tabs) {
+      if (tab.path && !seenPaths.has(tab.path)) {
+        seenPaths.add(tab.path);
+        filePaths.push(tab.path);
+      }
+    }
+
+    const fileResults = await Promise.allSettled(filePaths.map((p) => readFile(p)));
+    const fileInfoByPath = new Map<string, { content: string; path: string }>();
+    for (let i = 0; i < fileResults.length; i++) {
+      const result = fileResults[i];
+      if (result.status === "fulfilled") {
+        fileInfoByPath.set(filePaths[i], result.value);
+      }
+    }
+
+    // Recreate tabs in their original order, using the freshly read disk
+    // content for file tabs and the cached session content for untitled tabs.
+    const restoredPaths = new Set<string>();
     for (const tab of session.tabs) {
       if (tab.path) {
-        if (seenPaths.has(tab.path)) continue;
-        seenPaths.add(tab.path);
-        try {
-          await openFile(tab.path);
-        } catch {
-          // Skip files that no longer exist or are unreadable
-        }
+        if (restoredPaths.has(tab.path)) continue;
+        restoredPaths.add(tab.path);
+        const info = fileInfoByPath.get(tab.path);
+        if (!info) continue; // file no longer exists or is unreadable
+        const restored: Tab = {
+          id: genId(),
+          content: info.content,
+          path: info.path,
+          title: info.path.split(/[\\/]/).pop() || "Untitled",
+          isDirty: false,
+          isLoading: false,
+          pinned: tab.pinned ?? false,
+          slideBreaks: breaksByPath.get(tab.path),
+        };
+        update((state) => ({
+          tabs: [...state.tabs, restored],
+          activeTabId: restored.id,
+        }));
       } else {
         const restored: Tab = {
           id: genId(),
@@ -654,20 +696,8 @@ function createTabStore() {
       }
     }
 
-    // Restore slide breaks for file tabs
-    if (breaksByPath.size > 0) {
-      update((state) => {
-        let changed = false;
-        const newTabs = state.tabs.map((t) => {
-          if (t.path && breaksByPath.has(t.path)) {
-            changed = true;
-            return { ...t, slideBreaks: breaksByPath.get(t.path) };
-          }
-          return t;
-        });
-        return changed ? { ...state, tabs: newTabs } : state;
-      });
-    }
+    suppressPersist = false;
+    persistSession();
 
     const state = get({ subscribe });
     if (state.tabs.length === 0) {

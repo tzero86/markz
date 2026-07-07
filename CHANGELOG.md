@@ -1,3 +1,10 @@
+## [0.8.58] - 2026-07-06
+
+### Fixed
+- **Faster session restore** — Restored file tabs are now read in parallel instead of sequentially, and the per-tab workspace sync / file-watcher setup is skipped during restore. The workspace tree and open-files watcher are initialized once after all tabs are restored. This noticeably reduces the time the splash screen stays up when reopening many files.
+- **Fewer redundant disk writes during startup** — Tab creation during session restore no longer triggers a session save for every tab; the session is persisted once at the end of restore.
+
+
 ## [0.8.57] - 2026-07-06
 
 ### Fixed
