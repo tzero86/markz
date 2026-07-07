@@ -1,3 +1,9 @@
+## [0.8.64] - 2026-07-07
+
+### Fixed
+- **No more console flash when switching to split view** — `PreviewPane` checks for pandoc on mount; on Windows, spawning a `tokio::process::Command` without `CREATE_NO_WINDOW` caused a command-prompt window to flash. All pandoc invocations now use a shared command builder that sets `CREATE_NO_WINDOW` on Windows, so switching view modes is clean.
+
+
 ## [0.8.63] - 2026-07-07
 
 ### Fixed

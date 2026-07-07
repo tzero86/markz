@@ -4,6 +4,11 @@ use tokio::process::Command;
 const SUPPORTED_FORMATS: &[&str] = &["docx", "pdf", "html", "epub"];
 const SUPPORTED_CLIPBOARD_FORMATS: &[&str] = &["html", "rtf"];
 
+/// Windows process creation flag that prevents a console window from flashing
+/// when a GUI app spawns pandoc.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 fn is_supported_format(fmt: &str) -> bool {
     SUPPORTED_FORMATS.contains(&fmt)
 }
@@ -25,15 +30,24 @@ fn pandoc_binary() -> String {
     "pandoc".to_string()
 }
 
+/// Build a pandoc command with stdout/stderr captured and, on Windows, the
+/// `CREATE_NO_WINDOW` flag set so no console flashes when the frontend checks
+/// availability or runs an export/copy.
+fn build_pandoc_command() -> Command {
+    let mut cmd = Command::new(pandoc_binary());
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
 /// Check whether `pandoc` is available — first checking the custom path from
 /// settings (if set), then falling back to the system PATH.
 #[tauri::command]
 pub async fn pandoc_available() -> Result<bool, String> {
-    match Command::new(pandoc_binary())
-        .arg("--version")
-        .output()
-        .await
-    {
+    match build_pandoc_command().arg("--version").output().await {
         Ok(output) => Ok(output.status.success()),
         Err(_) => Ok(false),
     }
@@ -74,14 +88,12 @@ pub async fn export_via_pandoc(
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
 
     // Build Pandoc command.
-    let mut cmd = Command::new(pandoc_binary());
+    let mut cmd = build_pandoc_command();
     cmd.arg("--from=markdown")
         .arg(format!("--to={}", format))
         .arg("-o")
         .arg(&output_path)
-        .arg(&temp_path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .arg(&temp_path);
 
     if let Some(ref_path) = reference_doc {
         cmd.arg(format!("--reference-doc={}", ref_path));
@@ -139,14 +151,12 @@ pub async fn copy_via_pandoc(
         .map_err(|e| format!("Failed to write temp file: {}", e))?;
 
     // Build Pandoc command, writing to stdout.
-    let mut cmd = Command::new(pandoc_binary());
+    let mut cmd = build_pandoc_command();
     cmd.arg("--from=markdown")
         .arg(format!("--to={}", fmt))
         .arg("-o")
         .arg("-")
-        .arg(&temp_path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .arg(&temp_path);
 
     if let Some(ref_path) = reference_doc {
         cmd.arg(format!("--reference-doc={}", ref_path));
