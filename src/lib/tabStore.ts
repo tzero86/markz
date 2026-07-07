@@ -3,6 +3,7 @@ import { confirm } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { saveSession, type SessionTab } from "./sessionStore";
 import { workspaceStore } from "./workspaceStore";
+import { debugLogStore } from "./debugLogStore";
 export interface Tab {
   id: string;
   content: string;
@@ -624,7 +625,7 @@ function createTabStore() {
     const { getSession } = await import("./sessionStore");
     const session = await getSession();
     const t1 = performance.now();
-    console.info(`[startup] load_session took ${(t1 - t0).toFixed(1)}ms`);
+    debugLogStore.add("info", "startup", `load_session took ${(t1 - t0).toFixed(1)}ms`);
     if (!session || session.tabs.length === 0) return false;
 
     suppressPersist = true;
@@ -650,7 +651,7 @@ function createTabStore() {
     const t2 = performance.now();
     const fileResults = await Promise.allSettled(filePaths.map((p) => readFile(p)));
     const t3 = performance.now();
-    console.info(`[startup] read ${filePaths.length} restored files took ${(t3 - t2).toFixed(1)}ms`);
+    debugLogStore.add("info", "startup", `read ${filePaths.length} restored files took ${(t3 - t2).toFixed(1)}ms`);
     const fileInfoByPath = new Map<string, { content: string; path: string }>();
     for (let i = 0; i < fileResults.length; i++) {
       const result = fileResults[i];
@@ -711,7 +712,7 @@ function createTabStore() {
     persistSession();
 
     const t4 = performance.now();
-    console.info(`[startup] restoreSession total ${(t4 - t0).toFixed(1)}ms (${restoredTabs.length} tabs)`);
+    debugLogStore.add("info", "startup", `restoreSession total ${(t4 - t0).toFixed(1)}ms (${restoredTabs.length} tabs)`);
     return true;
   }
 

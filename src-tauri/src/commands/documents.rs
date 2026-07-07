@@ -1,9 +1,10 @@
 use crate::{parse_document, embed_local_images, DocumentInfo};
 use log::info;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 #[tauri::command]
 pub async fn render_preview(
+    app: AppHandle,
     markdown: String,
     doc_path: Option<String>,
 ) -> Result<String, String> {
@@ -23,12 +24,21 @@ pub async fn render_preview(
         }
     }
     let t3 = std::time::Instant::now();
-    info!(
-        "[render_preview] parse={:.1}ms render={:.1}ms embed={:.1}ms total={:.1}ms",
+    let message = format!(
+        "parse={:.1}ms render={:.1}ms embed={:.1}ms total={:.1}ms",
         (t1 - t0).as_secs_f64() * 1000.0,
         (t2 - t1).as_secs_f64() * 1000.0,
         (t3 - t2).as_secs_f64() * 1000.0,
         (t3 - t0).as_secs_f64() * 1000.0,
+    );
+    info!("[render_preview] {}", message);
+    let _ = app.emit(
+        "markz:log",
+        serde_json::json!({
+            "level": "info",
+            "source": "render_preview",
+            "message": message,
+        }),
     );
 
     Ok(html)

@@ -13,6 +13,7 @@
   import { contentZoomStore } from "../../lib/contentZoomStore";
   import { FORMAT_ICONS } from "../../lib/formatIcons";
   import { ttsStore } from "../../lib/ttsStore";
+  import { debugLogStore } from "../../lib/debugLogStore";
   import { onMount } from "svelte";
   import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
@@ -22,7 +23,7 @@
 
   function logRenderTiming(label: string, start: number) {
     const elapsed = performance.now() - start;
-    console.info(`[preview-render] ${label}: ${elapsed.toFixed(1)}ms`);
+    debugLogStore.add("info", "preview-render", `${label}: ${elapsed.toFixed(1)}ms`);
   }
 
   let htmlContent = $state("<p>Loading preview...</p>");

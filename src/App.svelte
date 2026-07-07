@@ -203,6 +203,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     startupCheckpoint("App mounted");
 
     let unlisten: UnlistenFn | undefined;
+    let unlistenLog: UnlistenFn | undefined;
 
     // Listen for files opened via OS association while the app is running.
     listen<string>("open-file", (event) => {
@@ -213,13 +214,24 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       unlisten = fn;
     });
 
+    // Listen for backend log events so they show up in the in-app debug panel.
+    listen<{ level: "trace" | "debug" | "info" | "warn" | "error"; source: string; message: string; details?: string }>(
+      "markz:log",
+      (event) => {
+        const { level, source, message, details } = event.payload;
+        debugLogStore.add(level, source, message, details);
+      }
+    ).then((fn) => {
+      unlistenLog = fn;
+    });
+
     // Restore previous session if one exists, then handle any file the OS
     // asked us to open on startup (OS file open takes precedence).
     async function finishStartup() {
       const t0 = performance.now();
       try {
         const session = await getSession();
-        console.info(`[startup] getSession took ${(performance.now() - t0).toFixed(1)}ms`);
+        debugLogStore.add("info", "startup", `getSession took ${(performance.now() - t0).toFixed(1)}ms`);
         if (session && session.tabs.length > 0) {
           const t1 = performance.now();
           await tabStore
@@ -228,13 +240,13 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
               session.activeTabPath
             )
             .catch(() => false);
-          console.info(`[startup] restoreSession took ${(performance.now() - t1).toFixed(1)}ms`);
+          debugLogStore.add("info", "startup", `restoreSession took ${(performance.now() - t1).toFixed(1)}ms`);
         }
         const paths = await invoke<string[]>("take_pending_open");
         if (paths.length > 0) {
           const t2 = performance.now();
           await openDocumentByPath(paths[0]);
-          console.info(`[startup] openDocumentByPath took ${(performance.now() - t2).toFixed(1)}ms`);
+          debugLogStore.add("info", "startup", `openDocumentByPath took ${(performance.now() - t2).toFixed(1)}ms`);
         }
 
         // Keep the file tree in sync with the active tab, but do not block the
@@ -244,7 +256,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         if (active?.path) {
           const t3 = performance.now();
           workspaceStore.syncToFile(active.path).then(() => {
-            console.info(`[startup] workspaceStore.syncToFile took ${(performance.now() - t3).toFixed(1)}ms`);
+            debugLogStore.add("info", "startup", `workspaceStore.syncToFile took ${(performance.now() - t3).toFixed(1)}ms`);
           }).catch(() => {});
         }
         const state = get(tabStore);
@@ -254,7 +266,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         }
       } finally {
         startupComplete.set(true);
-        console.info(`[startup] finishStartup total ${(performance.now() - t0).toFixed(1)}ms`);
+        debugLogStore.add("info", "startup", `finishStartup total ${(performance.now() - t0).toFixed(1)}ms`);
         // Dismiss splash screen now. The file tree continues to populate in the
         // background, so the user never waits on large directory scans.
         const splash = document.getElementById("splash");
@@ -270,6 +282,9 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     return () => {
       if (unlisten) {
         unlisten();
+      }
+      if (unlistenLog) {
+        unlistenLog();
       }
     };
   });

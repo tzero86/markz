@@ -1,3 +1,9 @@
+## [0.8.62] - 2026-07-07
+
+### Added
+- **In-app debug panel now captures startup and render timings** — `load_session`, `restoreSession`, `openDocumentByPath`, `finishStartup`, and backend `render_preview` timings are now logged directly to the built-in Debug Panel instead of only the browser console / log file.
+
+
 ## [0.8.61] - 2026-07-07
 
 ### Fixed
