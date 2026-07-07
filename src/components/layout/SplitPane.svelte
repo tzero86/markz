@@ -5,17 +5,32 @@
     left: Snippet;
     right: Snippet;
     direction?: "horizontal" | "vertical" | "vertical-reversed";
+    mode?: "split" | "editor" | "preview";
   }
 
-  let { left, right, direction = "horizontal" }: Props = $props();
+  let { left, right, direction = "horizontal", mode = "split" }: Props = $props();
 
   let splitRatio = $state(50);
   let isDragging = $state(false);
   let containerRef: HTMLDivElement;
 
   const isHorizontal = $derived(direction === "horizontal");
+  const isSplit = $derived(mode === "split");
+
+  function sizeStyle(forLeft: boolean): string {
+    const hidden = forLeft ? mode === "preview" : mode === "editor";
+    if (hidden) {
+      return isHorizontal ? "width: 0%; display: none;" : "height: 0%; display: none;";
+    }
+    if (!isSplit) {
+      return isHorizontal ? "width: 100%;" : "height: 100%;";
+    }
+    const pct = forLeft ? splitRatio : 100 - splitRatio;
+    return isHorizontal ? `width: ${pct}%;` : `height: ${pct}%;`;
+  }
 
   function onMouseDown(e: MouseEvent) {
+    if (!isSplit) return;
     isDragging = true;
     document.body.style.cursor = isHorizontal ? "col-resize" : "row-resize";
     document.body.style.userSelect = "none";
@@ -24,6 +39,7 @@
   }
 
   function onKeyDown(e: KeyboardEvent) {
+    if (!isSplit) return;
     if (isHorizontal) {
       if (e.key === "ArrowLeft") {
         splitRatio = Math.max(20, splitRatio - 5);
@@ -66,19 +82,23 @@
 
 <div class="split-pane" class:vertical={!isHorizontal} class:reversed={direction === "vertical-reversed"} bind:this={containerRef}>
   {#if direction === "vertical-reversed"}
-    <div class="pane top-left" style="height: {100 - splitRatio}%">
+    <div class="pane top-left" style={sizeStyle(false)}>
       {@render right()}
     </div>
-    <div class="divider" class:dragging={isDragging} class:vertical={true} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
-    <div class="pane bottom-right" style="height: {splitRatio}%">
+    {#if isSplit}
+      <div class="divider" class:dragging={isDragging} class:vertical={true} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
+    {/if}
+    <div class="pane bottom-right" style={sizeStyle(true)}>
       {@render left()}
     </div>
   {:else}
-    <div class="pane top-left" style={isHorizontal ? `width: ${splitRatio}%` : `height: ${splitRatio}%`}>
+    <div class="pane top-left" style={sizeStyle(true)}>
       {@render left()}
     </div>
-    <div class="divider" class:dragging={isDragging} class:vertical={!isHorizontal} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
-    <div class="pane bottom-right" style={isHorizontal ? `width: ${100 - splitRatio}%` : `height: ${100 - splitRatio}%`}>
+    {#if isSplit}
+      <div class="divider" class:dragging={isDragging} class:vertical={!isHorizontal} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
+    {/if}
+    <div class="pane bottom-right" style={sizeStyle(false)}>
       {@render right()}
     </div>
   {/if}

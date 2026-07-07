@@ -1,3 +1,13 @@
+## [0.8.60] - 2026-07-07
+
+### Fixed
+- **No more freeze when switching view modes** — The editor and preview panes are now kept mounted and shown/hidden with CSS. Toggling between Split, Editor-only, and Preview-only no longer destroys and recreates CodeMirror or the preview, eliminating the per-switch hang.
+- **Shorter startup freeze** — The heavy workspace (sidebar, editor, and preview) is not rendered until session restore finishes. This stops CodeMirror and the outline from doing expensive work while the splash screen is still visible.
+
+### Changed
+- Removed the unused recursive `list_workspace_files` backend command.
+
+
 ## [0.8.59] - 2026-07-06
 
 ### Fixed

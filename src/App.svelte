@@ -421,48 +421,48 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     onOpenHelp={() => { settingsInitialTab = "help"; settingsOpen = true; }}
   />
   <TabBar onNewTab={newDocument} />
-  <div class="workspace">
-    <ActivityBar
-      {activeActivity}
-      visible={sidebarPanelVisible}
-      onSelectActivity={handleSelectActivity}
-    />
-    {#if sidebarPanelVisible}
-      <div class="sidebar-wrapper" style="width: {sidebarWidth}px; min-width: {sidebarWidth}px;">
-        <OutlineSidebar activity={activeActivity} />
-        <div
-          class="sidebar-resize-handle"
-          role="separator"
-          aria-label="Resize sidebar"
-          onmousedown={(e) => {
-            e.preventDefault();
-            const startX = e.clientX;
-            const startWidth = sidebarWidth;
-            function onMove(ev: MouseEvent) {
-              const delta = ev.clientX - startX;
-              sidebarWidth = Math.max(180, Math.min(320, startWidth + delta));
-            }
-            function onUp() {
-              window.removeEventListener("mousemove", onMove);
-              window.removeEventListener("mouseup", onUp);
-              // Persist width
-              invoke("get_settings")
-                .then((s: any) => {
-                  if (s) {
-                    s.sidebar_width = sidebarWidth;
-                    invoke("update_settings", { settings: s }).catch(() => {});
-                  }
-                })
-                .catch(() => {});
-            }
-            window.addEventListener("mousemove", onMove);
-            window.addEventListener("mouseup", onUp);
-          }}
-        ></div>
-      </div>
-    {/if}
-    {#if effectiveViewMode === "split"}
-      <SplitPane direction={splitDirection}>
+  {#if $startupComplete}
+    <div class="workspace">
+      <ActivityBar
+        {activeActivity}
+        visible={sidebarPanelVisible}
+        onSelectActivity={handleSelectActivity}
+      />
+      {#if sidebarPanelVisible}
+        <div class="sidebar-wrapper" style="width: {sidebarWidth}px; min-width: {sidebarWidth}px;">
+          <OutlineSidebar activity={activeActivity} />
+          <div
+            class="sidebar-resize-handle"
+            role="separator"
+            aria-label="Resize sidebar"
+            onmousedown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startWidth = sidebarWidth;
+              function onMove(ev: MouseEvent) {
+                const delta = ev.clientX - startX;
+                sidebarWidth = Math.max(180, Math.min(320, startWidth + delta));
+              }
+              function onUp() {
+                window.removeEventListener("mousemove", onMove);
+                window.removeEventListener("mouseup", onUp);
+                // Persist width
+                invoke("get_settings")
+                  .then((s: any) => {
+                    if (s) {
+                      s.sidebar_width = sidebarWidth;
+                      invoke("update_settings", { settings: s }).catch(() => {});
+                    }
+                  })
+                  .catch(() => {});
+              }
+              window.addEventListener("mousemove", onMove);
+              window.addEventListener("mouseup", onUp);
+            }}
+          ></div>
+        </div>
+      {/if}
+      <SplitPane direction={splitDirection} mode={effectiveViewMode}>
         {#snippet left()}
           <EditorPane />
         {/snippet}
@@ -470,16 +470,8 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
           <PreviewPane />
         {/snippet}
       </SplitPane>
-    {:else if effectiveViewMode === "editor"}
-      <div class="single-pane">
-        <EditorPane />
-      </div>
-    {:else}
-      <div class="single-pane">
-        <PreviewPane />
-      </div>
-    {/if}
-  </div>
+    </div>
+  {/if}
   <DebugPanel />
   <StatusBar {viewMode} {splitDirection} onSetViewMode={(mode) => (viewMode = mode)} onToggleSplitDirection={() => {
     const order: ("horizontal" | "vertical" | "vertical-reversed")[] = ["horizontal", "vertical", "vertical-reversed"];
@@ -541,12 +533,5 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   .sidebar-resize-handle:hover,
   .sidebar-resize-handle:active {
     background: var(--accent-default);
-  }
-  .single-pane {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-width: 0;
   }
 </style>

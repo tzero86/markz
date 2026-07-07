@@ -358,17 +358,17 @@ test("view mode buttons switch between split, editor, and preview", async ({ pag
   await expect(previewPane).toBeVisible();
   await expect(splitPane).toBeVisible();
 
-  // Switch to editor-only
+  // Switch to editor-only — panes stay mounted, editor visible, preview hidden
   await page.locator('button[aria-label="Editor"]').click();
   await expect(editorPane).toBeVisible();
   await expect(previewPane).not.toBeVisible();
-  await expect(splitPane).not.toBeVisible();
+  await expect(splitPane).toBeVisible();
 
-  // Switch to preview-only
+  // Switch to preview-only — editor hidden, preview visible
   await page.locator('button[aria-label="Preview"]').click();
   await expect(editorPane).not.toBeVisible();
   await expect(previewPane).toBeVisible();
-  await expect(splitPane).not.toBeVisible();
+  await expect(splitPane).toBeVisible();
 
   // Switch back to split
   await page.locator('button[aria-label="Split"]').click();
