@@ -1,3 +1,11 @@
+## [0.8.59] - 2026-07-06
+
+### Fixed
+- **File tree no longer opens non-Markdown files** — Double-clicking a non-Markdown file (e.g. a PowerShell script) in the workspace explorer is now ignored instead of being loaded into the editor. This prevents the UI from freezing or flashing white when binary / large non-Markdown files are selected.
+- **Preview no longer re-renders on view-mode switches** — Switching between Split, Editor-only, and Preview-only modes no longer remounts the preview pane and re-runs the full Markdown render pipeline. A shared, LRU preview cache now survives remounts, so toggling view modes is instant.
+- **Shared preview cache** — Rendered preview HTML is cached across PreviewPane instances and reused when the same document content is shown again.
+
+
 ## [0.8.58] - 2026-07-06
 
 ### Fixed

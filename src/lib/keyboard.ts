@@ -4,7 +4,8 @@ import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
 import { contentZoomStore } from "./contentZoomStore";
 import { workspaceStore } from "./workspaceStore";
-import { logOperationStart, logOperationEnd, logError } from "./debugLogStore";
+import { logOperationStart, logOperationEnd, logError, logWarn } from "./debugLogStore";
+import { isMarkdownPath } from "./fileTypes";
 
 export async function saveDocument() {
   const doc = tabStore.getActiveTab();
@@ -50,6 +51,13 @@ export async function openDocument() {
     active.path === null &&
     active.content.trim() === "";
 
+  // Reject non-Markdown files selected via the "All Files" dialog filter.
+  if (!isMarkdownPath(result.path)) {
+    logWarn("file", `Refused to open non-Markdown file: ${result.path}`);
+    tabStore.setLoading(false);
+    return;
+  }
+
   tabStore.setLoading(true);
   logOperationStart("file", `Open: ${result.path}`);
   try {
@@ -70,6 +78,12 @@ export async function openDocument() {
 }
 
 export async function openDocumentByPath(path: string) {
+  if (!isMarkdownPath(path)) {
+    logWarn("file", `Refused to open non-Markdown file: ${path}`);
+    tabStore.setLoading(false);
+    return;
+  }
+
   const active = tabStore.getActiveTab();
   const shouldReplace =
     active &&

@@ -2,6 +2,11 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 function renderBlock(block: Element) {
+  // Skip blocks that have already been rendered by KaTeX. This matters when
+  // the preview cache restores post-processed HTML (e.g. after a view-mode
+  // switch) and the post-processing effect runs again.
+  if (block.querySelector(".katex")) return;
+
   const tex = block.textContent || "";
   const displayMode = block.tagName.toLowerCase() === "div";
   try {

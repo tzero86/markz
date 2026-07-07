@@ -51,9 +51,17 @@ function createWorkspaceStore() {
     // Stop any previous watcher
     await invoke("unwatch_workspace").catch(() => {});
 
-    update((s) => ({ ...s, rootPath: path, fileTree: [], expandedDirs: new Set() }));
+    update((s) => ({
+      ...s,
+      rootPath: path,
+      fileTree: [],
+      expandedDirs: new Set(),
+      searchQuery: "",
+      searchResults: [],
+      searchLoading: false,
+    }));
     try {
-      const tree = await invoke<FileTreeNode[]>("list_workspace_files", { root: path });
+      const tree = await invoke<FileTreeNode[]>("list_workspace_files_shallow", { root: path });
       update((s) => ({ ...s, fileTree: tree }));
       logOperationEnd("workspace", `Load workspace: ${path}`, `${tree.length} top-level items`);
       // Start watching for external changes
@@ -70,15 +78,37 @@ function createWorkspaceStore() {
     if (!state.rootPath) return;
     logOperationStart("workspace", "Refresh workspace");
     try {
-      const tree = await invoke<FileTreeNode[]>("list_workspace_files", { root: state.rootPath });
-      update((s) => ({ ...s, fileTree: tree }));
+      const tree = await invoke<FileTreeNode[]>("list_workspace_files_shallow", { root: state.rootPath });
+      update((s) => ({ ...s, fileTree: tree, expandedDirs: new Set() }));
       logOperationEnd("workspace", "Refresh workspace", `${tree.length} top-level items`);
     } catch (e) {
       logError("workspace", "Failed to refresh workspace", String(e));
     }
   }
 
-  function toggleDir(relPath: string) {
+  async function loadChildren(node: FileTreeNode) {
+    if (!node.is_dir) return;
+    const state = get({ subscribe });
+    if (!state.rootPath) return;
+    logOperationStart("workspace", `Load children: ${node.rel_path}`);
+    try {
+      const children = await invoke<FileTreeNode[]>("list_dir_children", {
+        path: node.path,
+        root: state.rootPath,
+      });
+      update((s) => ({ ...s, fileTree: setNodeChildren(s.fileTree, node.rel_path, children) }));
+      logOperationEnd("workspace", `Load children: ${node.rel_path}`, `${children.length} items`);
+    } catch (e) {
+      logError("workspace", `Failed to load children: ${node.rel_path}`, String(e));
+    }
+  }
+
+  async function toggleDir(node: FileTreeNode) {
+    const relPath = node.rel_path;
+    const isExpanded = get({ subscribe }).expandedDirs.has(relPath);
+    if (!isExpanded && node.is_dir && node.children.length === 0) {
+      await loadChildren(node);
+    }
     update((s) => {
       const next = new Set(s.expandedDirs);
       if (next.has(relPath)) {
@@ -139,8 +169,92 @@ function createWorkspaceStore() {
       return;
     }
     const parent = parentDirectory(path);
-    if (parent === state.rootPath) return;
-    await loadWorkspace(parent);
+    if (parent !== state.rootPath) {
+      await loadWorkspace(parent);
+    }
+    await revealFilePath(path);
+  }
+
+  async function revealFilePath(path: string) {
+    const state = get({ subscribe });
+    if (!state.rootPath) return;
+
+    // Make sure the root level is loaded.
+    if (state.fileTree.length === 0) {
+      try {
+        const tree = await invoke<FileTreeNode[]>("list_workspace_files_shallow", { root: state.rootPath });
+        update((s) => ({ ...s, fileTree: tree }));
+      } catch (e) {
+        logError("workspace", "Failed to load root for reveal", String(e));
+        return;
+      }
+    }
+
+    const relRaw = path.slice(state.rootPath.length).replace(/^[\\/]/, "");
+    const rel = relRaw.replace(/\\/g, "/");
+    const parts = rel.split("/").filter(Boolean);
+    if (parts.length === 0) return;
+
+    // Expand each directory on the path to the file.
+    let currentNodes = get({ subscribe }).fileTree;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const relSoFar = parts.slice(0, i + 1).join("/");
+      const dirNode = findNode(currentNodes, relSoFar);
+      if (!dirNode) break;
+
+      if (dirNode.is_dir && dirNode.children.length === 0) {
+        try {
+          const children = await invoke<FileTreeNode[]>("list_dir_children", {
+            path: dirNode.path,
+            root: state.rootPath,
+          });
+          update((s) => ({
+            ...s,
+            fileTree: setNodeChildren(s.fileTree, relSoFar, children),
+          }));
+        } catch (e) {
+          logError("workspace", `Failed to reveal ${relSoFar}`, String(e));
+          break;
+        }
+      }
+
+      update((s) => {
+        const next = new Set(s.expandedDirs);
+        next.add(relSoFar);
+        return { ...s, expandedDirs: next };
+      });
+
+      const fresh = get({ subscribe });
+      const node = findNode(fresh.fileTree, relSoFar);
+      currentNodes = node?.children ?? [];
+    }
+  }
+
+  function findNode(tree: FileTreeNode[], relPath: string): FileTreeNode | null {
+    for (const node of tree) {
+      if (node.rel_path === relPath) return node;
+      if (node.is_dir && node.children.length > 0) {
+        const found = findNode(node.children, relPath);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function setNodeChildren(
+    tree: FileTreeNode[],
+    relPath: string,
+    children: FileTreeNode[]
+  ): FileTreeNode[] {
+    return tree.map((node) => {
+      if (node.rel_path === relPath) {
+        return { ...node, children };
+      }
+      if (node.is_dir && node.children.length > 0) {
+        return { ...node, children: setNodeChildren(node.children, relPath, children) };
+      }
+      return node;
+    });
   }
 
   return {

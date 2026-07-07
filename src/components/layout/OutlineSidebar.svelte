@@ -5,6 +5,7 @@
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { openDocumentByPath } from "../../lib/keyboard";
   import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
+  import { isMarkdownPath } from "../../lib/fileTypes";
   import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight, ListTree } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
   let { activity }: { activity: "files" | "outline" | "links" } = $props();
@@ -87,6 +88,12 @@
     }
   }
   async function handleOpenFile(path: string) {
+    // MarkZ is a Markdown editor — only open Markdown files to avoid rendering
+    // huge/binary files as documents (which can freeze or crash the UI).
+    if (!isMarkdownPath(path)) {
+      console.warn("Ignoring non-Markdown file from file tree:", path);
+      return;
+    }
     // If the file is already open, focus its tab instead of creating a duplicate.
     const existing = get(tabStore).tabs.find((t) => t.path === path);
     if (existing) {
@@ -96,8 +103,8 @@
     await openDocumentByPath(path);
   }
 
-  function handleToggleDir(relPath: string) {
-    workspaceStore.toggleDir(relPath);
+  function handleToggleDir(node: FileTreeNode) {
+    workspaceStore.toggleDir(node);
   }
 
   function handleSearchInput(value: string) {
@@ -316,7 +323,7 @@
       <button
         class="tree-node tree-dir"
         style="padding-left: {12 + depth * 14}px"
-        onclick={() => handleToggleDir(node.rel_path)}
+        onclick={() => handleToggleDir(node)}
       >
         <span class="tree-chevron" class:expanded={$workspaceStore.expandedDirs.has(node.rel_path)}>
           <ChevronRight size={12} strokeWidth={2} />

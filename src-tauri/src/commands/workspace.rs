@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::path::Path;
 
 #[derive(Serialize, Clone)]
 pub struct FileTreeNode {
@@ -22,10 +23,7 @@ pub struct SearchResult {
 pub async fn open_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
 
-    let folder = app
-        .dialog()
-        .file()
-        .blocking_pick_folder();
+    let folder = app.dialog().file().blocking_pick_folder();
 
     match folder {
         Some(path) => Ok(Some(path.to_string())),
@@ -52,9 +50,80 @@ const IGNORED_DIRS: &[&str] = &[
 fn is_ignored_dir(name: &str) -> bool {
     IGNORED_DIRS.contains(&name)
 }
+
+fn normalize_rel(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn read_dir_shallow(dir: &Path, root: &Path) -> Result<Vec<FileTreeNode>, String> {
+    let mut children = Vec::new();
+    let mut entries: Vec<_> = std::fs::read_dir(dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok())
+        .collect();
+
+    entries.sort_by(|a, b| {
+        let a_is_dir = a.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        let b_is_dir = b.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        match (a_is_dir, b_is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.file_name().cmp(&b.file_name()),
+        }
+    });
+
+    for entry in entries {
+        let name = entry.file_name().to_string_lossy().to_string();
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+
+        // Skip hidden files and common non-document directories
+        if name.starts_with('.') || (is_dir && is_ignored_dir(&name)) {
+            continue;
+        }
+
+        let path = entry.path().to_string_lossy().to_string();
+        let rel_path = entry
+            .path()
+            .strip_prefix(root)
+            .map(normalize_rel)
+            .unwrap_or_else(|_| name.clone());
+
+        children.push(FileTreeNode {
+            name,
+            path,
+            rel_path,
+            is_dir,
+            children: Vec::new(),
+        });
+    }
+
+    Ok(children)
+}
+
+#[tauri::command]
+pub async fn list_workspace_files_shallow(root: String) -> Result<Vec<FileTreeNode>, String> {
+    let root_path = Path::new(&root);
+    if !root_path.exists() || !root_path.is_dir() {
+        return Err("Path is not a valid directory".to_string());
+    }
+
+    read_dir_shallow(root_path, root_path)
+}
+
+#[tauri::command]
+pub async fn list_dir_children(path: String, root: String) -> Result<Vec<FileTreeNode>, String> {
+    let dir = Path::new(&path);
+    let root_path = Path::new(&root);
+    if !dir.exists() || !dir.is_dir() {
+        return Err("Path is not a valid directory".to_string());
+    }
+
+    read_dir_shallow(dir, root_path)
+}
+
 #[tauri::command]
 pub async fn list_workspace_files(root: String) -> Result<Vec<FileTreeNode>, String> {
-    let root_path = std::path::Path::new(&root);
+    let root_path = Path::new(&root);
     if !root_path.exists() || !root_path.is_dir() {
         return Err("Path is not a valid directory".to_string());
     }
@@ -81,7 +150,7 @@ pub async fn list_workspace_files(root: String) -> Result<Vec<FileTreeNode>, Str
         let rel_path = entry
             .path()
             .strip_prefix(root_path)
-            .map(|p| p.to_string_lossy().to_string())
+            .map(normalize_rel)
             .unwrap_or_else(|_| name.clone());
         let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
 
@@ -115,10 +184,7 @@ pub async fn list_workspace_files(root: String) -> Result<Vec<FileTreeNode>, Str
     Ok(tree)
 }
 
-fn read_dir_recursive(
-    dir: &std::path::Path,
-    root: &std::path::Path,
-) -> Result<Vec<FileTreeNode>, String> {
+fn read_dir_recursive(dir: &Path, root: &Path) -> Result<Vec<FileTreeNode>, String> {
     let mut children = Vec::new();
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| e.to_string())?
@@ -148,7 +214,7 @@ fn read_dir_recursive(
         let rel_path = entry
             .path()
             .strip_prefix(root)
-            .map(|p| p.to_string_lossy().to_string())
+            .map(normalize_rel)
             .unwrap_or_else(|_| name.clone());
 
         children.push(FileTreeNode {
@@ -169,7 +235,7 @@ fn read_dir_recursive(
 
 #[tauri::command]
 pub async fn search_workspace(root: String, query: String) -> Result<Vec<SearchResult>, String> {
-    let root_path = std::path::Path::new(&root);
+    let root_path = Path::new(&root);
     if !root_path.exists() || !root_path.is_dir() {
         return Err("Invalid workspace directory".to_string());
     }
@@ -180,8 +246,8 @@ pub async fn search_workspace(root: String, query: String) -> Result<Vec<SearchR
 }
 
 fn search_dir(
-    dir: &std::path::Path,
-    root: &std::path::Path,
+    dir: &Path,
+    root: &Path,
     query: &str,
     results: &mut Vec<SearchResult>,
 ) -> Result<(), String> {
@@ -208,7 +274,7 @@ fn search_dir(
 
             let rel_path = path
                 .strip_prefix(root)
-                .map(|p| p.to_string_lossy().to_string())
+                .map(normalize_rel)
                 .unwrap_or_else(|_| name.clone());
 
             for (line_idx, line) in content.lines().enumerate() {
@@ -231,4 +297,3 @@ fn search_dir(
 
     Ok(())
 }
-

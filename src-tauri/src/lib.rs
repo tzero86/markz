@@ -249,6 +249,8 @@ pub fn run() {
             commands::session::clear_session_disk,
             commands::workspace::open_folder_dialog,
             commands::workspace::list_workspace_files,
+            commands::workspace::list_workspace_files_shallow,
+            commands::workspace::list_dir_children,
             commands::workspace::search_workspace,
             commands::watcher::watch_workspace,
             commands::watcher::unwatch_workspace,

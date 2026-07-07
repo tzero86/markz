@@ -216,38 +216,47 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     // Restore previous session if one exists, then handle any file the OS
     // asked us to open on startup (OS file open takes precedence).
     async function finishStartup() {
+      const t0 = performance.now();
       try {
         const session = await getSession();
+        console.info(`[startup] getSession took ${(performance.now() - t0).toFixed(1)}ms`);
         if (session && session.tabs.length > 0) {
+          const t1 = performance.now();
           await tabStore
             .restoreSession(
               (path: string) => readDocument(path),
               session.activeTabPath
             )
             .catch(() => false);
+          console.info(`[startup] restoreSession took ${(performance.now() - t1).toFixed(1)}ms`);
         }
         const paths = await invoke<string[]>("take_pending_open");
         if (paths.length > 0) {
+          const t2 = performance.now();
           await openDocumentByPath(paths[0]);
+          console.info(`[startup] openDocumentByPath took ${(performance.now() - t2).toFixed(1)}ms`);
         }
 
-        // Sync the file tree once to the active tab's directory and start
-        // watching open files. Doing this once at the end instead of per tab
-        // avoids repeated workspace scans and watcher teardown/setup during
-        // session restore.
+        // Keep the file tree in sync with the active tab, but do not block the
+        // splash screen on a potentially expensive recursive scan. The sync runs
+        // in the background; the tree populates once the data is ready.
         const active = tabStore.getActiveTab();
         if (active?.path) {
-          await workspaceStore.syncToFile(active.path);
+          const t3 = performance.now();
+          workspaceStore.syncToFile(active.path).then(() => {
+            console.info(`[startup] workspaceStore.syncToFile took ${(performance.now() - t3).toFixed(1)}ms`);
+          }).catch(() => {});
         }
         const state = get(tabStore);
         const openPaths = state.tabs.map((t) => t.path).filter((p): p is string => !!p);
         if (openPaths.length > 0) {
-          await invoke("watch_open_files", { paths: openPaths }).catch(() => {});
+          invoke("watch_open_files", { paths: openPaths }).catch(() => {});
         }
       } finally {
         startupComplete.set(true);
-        // Dismiss splash screen only after startup work is done so the user
-        // never sees the transient welcome tab flash when a session restores.
+        console.info(`[startup] finishStartup total ${(performance.now() - t0).toFixed(1)}ms`);
+        // Dismiss splash screen now. The file tree continues to populate in the
+        // background, so the user never waits on large directory scans.
         const splash = document.getElementById("splash");
         if (splash) {
           splash.classList.add("fade-out");

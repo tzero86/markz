@@ -37,8 +37,6 @@
   let slideOffsetX = $state(0);
   let slideOffsetY = $state(0);
 
-  let totalSlides = $derived(displaySlides.length);
-  let currentSlide = $derived(displaySlides[currentIndex] ?? null);
   let displayNumber = $derived(currentIndex + 1);
 
   function goTo(index: number) {
@@ -189,7 +187,7 @@
                 results.push({ title, content: currentBlocks.join("\n") });
                 currentBlocks = [];
               }
-              results.push(sub);
+              results.push({ title, ...sub });
             } else {
               const subH = measure([...currentBlocks, sub.content].join(""));
               if (subH <= 768) {
@@ -370,6 +368,9 @@
   // Re-split on resize (in case CSS/fonts change)
   // Use the fitted slides for display
   let displaySlides = $derived(fittedSlides.length > 0 ? fittedSlides : deck?.slides ?? []);
+
+  let totalSlides = $derived(displaySlides.length);
+  let currentSlide = $derived(displaySlides[currentIndex] ?? null);
 
   function computeScale() {
     if (!containerEl) return;

@@ -16,13 +16,9 @@
   import { onMount } from "svelte";
   import TableEditorModal from "../editor/TableEditorModal.svelte";
   import DOMPurify from "dompurify";
+  import { getCachedPreview, setCachedPreview } from "../../lib/previewCache";
 
   type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github" | "word-pandoc";
-
-  /** Cache of content → rendered HTML to avoid redundant re-renders.
-   *  Implemented as an LRU (least-recently-used) Map with a max size. */
-  const renderCache = new Map<string, string>();
-  const MAX_CACHE_SIZE = 10;
 
   function logRenderTiming(label: string, start: number) {
     const elapsed = performance.now() - start;
@@ -81,24 +77,32 @@
     // Bump generation so stale async renders (from a previous content) don't
     // overwrite the result of a newer render request.
     const myGen = ++renderGen;
-    // Clear cache on tab switch (path change) to prevent stale preview
-    if (docPath !== lastPath) {
-      renderCache.clear();
+    // Shared module-level cache survives PreviewPane remounts when the user
+    // switches view modes (Split -> Editor -> Preview -> Split). If we already
+    // have a rendered result for this exact document + content, use it
+    // immediately instead of re-running render_preview.
+    const cached = getCachedPreview(cacheKey);
+    if (cached) {
+      clearTimeout(timeout);
+      if (htmlContent !== cached) {
+        htmlContent = cached;
+      }
+      lastCacheKey = cacheKey;
       lastPath = docPath;
+      return;
+    }
+    // Only show the loading placeholder when switching to a different file
+    // without a cached render. For content edits, keep the previous preview
+    // visible until the new render completes.
+    if (docPath !== lastPath) {
       htmlContent = "<p>Loading preview...</p>";
+      lastPath = docPath;
     }
     // Skip re-render if content hasn't actually changed
     if (cacheKey === lastCacheKey && htmlContent !== "<p>Loading preview...</p>") {
       return;
     }
     lastCacheKey = cacheKey;
-    // Check cache — clear any pending render before returning
-    const cached = renderCache.get(cacheKey);
-    if (cached) {
-      clearTimeout(timeout);
-      htmlContent = cached;
-      return;
-    }
     clearTimeout(timeout);
     isRendering = true;
     const renderStart = performance.now();
@@ -114,14 +118,7 @@
         if (content !== $activeDocumentStore.content) return;
         if (myGen !== renderGen) return;
         htmlContent = result;
-        // LRU insertion: delete old key first to bump to most-recent position
-        renderCache.delete(cacheKey);
-        renderCache.set(cacheKey, result);
-        // Evict oldest entries if over max size
-        while (renderCache.size > MAX_CACHE_SIZE) {
-          const oldestKey = renderCache.keys().next().value;
-          if (oldestKey) renderCache.delete(oldestKey);
-        }
+        setCachedPreview(cacheKey, result);
       } catch (e) {
         if (myGen === renderGen) {
           htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
@@ -580,18 +577,31 @@
   $effect(() => {
     const _content = htmlContent;
     const isStartupComplete = $startupComplete;
+    const docPath = $activeDocumentStore.path;
+    const docContent = $activeDocumentStore.content;
     if (!contentDiv || !isStartupComplete) return;
+    const container = contentDiv;
     const postStart = performance.now();
     // Yield to the browser and run heavy post-processing in chunks so the
     // UI stays responsive during large previews (e.g. the welcome page).
     requestAnimationFrame(() => {
-      addHeadingAnchors(contentDiv);
+      addHeadingAnchors(container);
       requestAnimationFrame(async () => {
-        await renderMathBlocksChunked(contentDiv);
-        renderMermaidBlocks(contentDiv)
+        await renderMathBlocksChunked(container);
+        renderMermaidBlocks(container)
           .then(() => scaleMermaidDiagrams())
           .catch(console.error);
-        await highlightCodeBlocksChunked(contentDiv);
+        await highlightCodeBlocksChunked(container);
+        // Cache the fully post-processed HTML so view-mode remounts can skip
+        // the expensive math/mermaid/highlight passes next time. Guard against
+        // a stale callback overwriting the cache for a newer document state.
+        if (
+          $activeDocumentStore.path === docPath &&
+          $activeDocumentStore.content === docContent
+        ) {
+          const finalCacheKey = `${docPath ?? "null"}:${docContent}`;
+          setCachedPreview(finalCacheKey, container.innerHTML);
+        }
         logRenderTiming("post-processing complete", postStart);
       });
     });

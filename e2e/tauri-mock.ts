@@ -487,6 +487,46 @@ export const FORMATTING_TEST_MD = [
   "*Welcome to MarkZ — 2026-01-01*",
 ].join("\n");
 
+type MockTreeNode = { name: string; path: string; rel_path: string; is_dir: boolean; children: MockTreeNode[] };
+
+function makeShallow(nodes: MockTreeNode[]): MockTreeNode[] {
+  return nodes.map((n) => ({ ...n, children: n.is_dir ? [] : n.children }));
+}
+
+function findNodeByPath(nodes: MockTreeNode[], path: string): MockTreeNode | null {
+  for (const n of nodes) {
+    if (n.path === path) return n;
+    if (n.is_dir && n.children) {
+      const found = findNodeByPath(n.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function getWorkspaceTree(root: string): MockTreeNode[] {
+  const override = localStorage.getItem("__e2e_workspace_files");
+  if (override) {
+    try {
+      return JSON.parse(override);
+    } catch {
+      /* fall through */
+    }
+  }
+  return [
+    {
+      name: "docs",
+      path: root + "/docs",
+      rel_path: "docs",
+      is_dir: true,
+      children: [
+        { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
+      ],
+    },
+    { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+  ];
+}
+
 export function injectTauriMock() {
   const eventListeners: Record<string, Array<{ id: number; callbackId: number }>> = {};
   let nextEventId = 1;
@@ -669,26 +709,19 @@ export function injectTauriMock() {
     list_workspace_files: (args) => {
       const root = (args as { root?: string })?.root || "";
       if (!root) return [];
-      const override = localStorage.getItem("__e2e_workspace_files");
-      if (override) {
-        try {
-          return JSON.parse(override);
-        } catch {
-          /* fall through */
-        }
-      }
-      return [
-        {
-          name: "docs",
-          path: root + "/docs",
-          rel_path: "docs",
-          is_dir: true,
-          children: [
-            { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
-          ],
-        },
-        { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
-      ];
+      return getWorkspaceTree(root);
+    },
+    list_workspace_files_shallow: (args) => {
+      const root = (args as { root?: string })?.root || "";
+      if (!root) return [];
+      return makeShallow(getWorkspaceTree(root));
+    },
+    list_dir_children: (args) => {
+      const path = (args as { path?: string })?.path || "";
+      const root = (args as { root?: string })?.root || "";
+      if (!path || !root) return [];
+      const node = findNodeByPath(getWorkspaceTree(root), path);
+      return node && node.is_dir ? makeShallow(node.children) : [];
     },
     search_workspace: (args) => {
       const root = (args as { root?: string })?.root || "";
@@ -842,6 +875,18 @@ export const tauriMockInitFunc = new Function(
   'let nextEventId = 1;\n' +
   'const callbackRegistry = {};\n' +
   'let nextCallbackId = 1;\n' +
+  'function makeShallow(nodes) { return nodes.map((n) => ({ ...n, children: n.is_dir ? [] : n.children })); }\n' +
+  'function findNodeByPath(nodes, path) { for (const n of nodes) { if (n.path === path) return n; if (n.is_dir && n.children) { const found = findNodeByPath(n.children, path); if (found) return found; } } return null; }\n' +
+  'function getWorkspaceTree(root) {\n' +
+  '  const override = localStorage.getItem("__e2e_workspace_files");\n' +
+  '  if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }\n' +
+  '  return [\n' +
+  '    { name: "docs", path: root + "/docs", rel_path: "docs", is_dir: true, children: [\n' +
+  '      { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },\n' +
+  '    ]},\n' +
+  '    { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },\n' +
+  '  ];\n' +
+  '}\n' +
   'const responses = {\n' +
   '  get_settings: () => MOCK_SETTINGS,\n' +
   '  update_settings: () => null,\n' +
@@ -973,18 +1018,21 @@ export const tauriMockInitFunc = new Function(
   '  list_workspace_files: (args) => {\n' +
   '    const root = args?.root || "";\n' +
   '    if (!root) return [];\n' +
-  '    const override = localStorage.getItem("__e2e_workspace_files");\n' +
-  '    if (override) {\n' +
-  '      try { return JSON.parse(override); } catch { /* fall through */ }\n' +
-  '    }\n' +
-  '    return [\n' +
-  '      { name: "docs", path: root + "/docs", rel_path: "docs", is_dir: true, children: [\n' +
-  '        { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },\n' +
-  '      ]},\n' +
-  '      { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },\n' +
-  '    ];\n' +
+  '    return getWorkspaceTree(root);\n' +
   '  },\n' +
-  '  search_workspace: (args) => {\n' +
+  '  list_workspace_files_shallow: (args) => {\n' +
+  '    const root = args?.root || "";\n' +
+  '    if (!root) return [];\n' +
+  '    return makeShallow(getWorkspaceTree(root));\n' +
+  '  },\n' +
+  '  list_dir_children: (args) => {\n' +
+  '    const path = args?.path || "";\n' +
+  '    const root = args?.root || "";\n' +
+  '    if (!path || !root) return [];\n' +
+  '    const node = findNodeByPath(getWorkspaceTree(root), path);\n' +
+  '    return node && node.is_dir ? makeShallow(node.children) : [];\n' +
+  '  },\n' +
+'  search_workspace: (args) => {\n' +
   '    const root = args?.root || "";\n' +
   '    const query = (args?.query || "").toLowerCase();\n' +
   '    if (!root || !query) return [];\n' +
@@ -1126,6 +1174,19 @@ export const tauriMockScriptString = `
   const callbackRegistry = {};
   let nextCallbackId = 1;
 
+  function makeShallow(nodes) { return nodes.map((n) => ({ ...n, children: n.is_dir ? [] : n.children })); }
+  function findNodeByPath(nodes, path) { for (const n of nodes) { if (n.path === path) return n; if (n.is_dir && n.children) { const found = findNodeByPath(n.children, path); if (found) return found; } } return null; }
+  function getWorkspaceTree(root) {
+    const override = localStorage.getItem("__e2e_workspace_files");
+    if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }
+    return [
+      { name: "docs", path: root + "/docs", rel_path: "docs", is_dir: true, children: [
+        { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
+      ]},
+      { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+    ];
+  }
+
   const responses = {
     get_settings: () => MOCK_SETTINGS,
     update_settings: () => null,
@@ -1261,16 +1322,19 @@ export const tauriMockScriptString = `
     list_workspace_files: (args) => {
       const root = args?.root || "";
       if (!root) return [];
-      const override = localStorage.getItem("__e2e_workspace_files");
-      if (override) {
-        try { return JSON.parse(override); } catch { /* fall through */ }
-      }
-      return [
-        { name: "docs", path: root + "/docs", rel_path: "docs", is_dir: true, children: [
-          { name: "readme.md", path: root + "/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
-        ]},
-        { name: "notes.md", path: root + "/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
-      ];
+      return getWorkspaceTree(root);
+    },
+    list_workspace_files_shallow: (args) => {
+      const root = args?.root || "";
+      if (!root) return [];
+      return makeShallow(getWorkspaceTree(root));
+    },
+    list_dir_children: (args) => {
+      const path = args?.path || "";
+      const root = args?.root || "";
+      if (!path || !root) return [];
+      const node = findNodeByPath(getWorkspaceTree(root), path);
+      return node && node.is_dir ? makeShallow(node.children) : [];
     },
     search_workspace: (args) => {
       const root = args?.root || "";
