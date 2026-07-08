@@ -15,6 +15,7 @@
 - **Preview max-width visual guide** — `.preview-content` now has a subtle theme-aware box-shadow boundary at the 820px max-width column so wide windows no longer look empty on both sides.
 - **Tab overflow dropdown** — A new "Open tabs" dropdown button at the right end of the tab bar lists every open tab (pinned and unpinned), lets you switch by click, and closes on selection or outside click.
 - **Loading skeletons** — New `Skeleton` component used in the preview pane while rendering and in the Links panel while backlinks/outgoing links load, replacing plain text placeholders.
+- **Clickable title-bar breadcrumb** — The title bar now renders the active document path as clickable segments (last 5). Clicking any segment loads that folder as the workspace root, making it easy to jump up the directory tree.
 
 ## [0.8.66] - 2026-07-08
 

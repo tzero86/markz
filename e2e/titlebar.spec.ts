@@ -29,6 +29,27 @@ test.describe("Title bar", () => {
     await page.locator('button[aria-label="Save file"]').click();
     await expect(page.locator(".app")).toBeVisible();
   });
+
+  test("clickable breadcrumb re-roots workspace", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_file_result", "/projects/markz/notes.md");
+    });
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("notes.md")', { timeout: 5000 });
+
+    // Title bar should show clickable breadcrumbs for the file path.
+    const crumbs = page.locator(".titlebar-breadcrumbs .breadcrumb-crumb");
+    await expect(crumbs.last()).toContainText("notes.md");
+
+    // Click the parent folder segment (second-to-last crumb) to re-root the workspace.
+    const count = await crumbs.count();
+    expect(count).toBeGreaterThanOrEqual(2);
+    await crumbs.nth(count - 2).click();
+
+    // Files panel should now show the parent folder contents.
+    await page.click('.activity-btn[aria-label="Files"]');
+    await expect(page.locator(".file-tree-breadcrumbs")).toContainText("markz");
+  });
 });
 
 test.describe("Export dropdown", () => {

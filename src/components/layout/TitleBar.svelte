@@ -13,6 +13,7 @@
   import logo from "../../assets/logo.png";
   import Toast from "../../components/ui/Toast.svelte";
   import { logOperationStart, logOperationEnd, logError } from "../../lib/debugLogStore";
+  import { workspaceStore } from "../../lib/workspaceStore";
 
   interface Props {
     onOpenSettings: () => void;
@@ -47,11 +48,25 @@
   let triggerRef: HTMLButtonElement | undefined = $state();
   let pandocAvailable = $state(false);
 
-  let breadcrumb = $derived(
-    $activeDocumentStore.path
-      ? $activeDocumentStore.path.split(/[\\/]/).filter(Boolean).slice(-3).join(" \u203A ")
-      : "MarkZ"
-  );
+  interface BreadcrumbCrumb {
+    name: string;
+    path: string;
+  }
+  let breadcrumbs = $derived.by<BreadcrumbCrumb[]>(() => {
+    const path = $activeDocumentStore.path;
+    if (!path) return [];
+    const normalized = path.replace(/\\/g, "/");
+    const leading = normalized.startsWith("/") ? "/" : "";
+    const parts = normalized.split("/").filter(Boolean);
+    const out: BreadcrumbCrumb[] = [];
+    let acc = "";
+    for (let i = 0; i < parts.length; i++) {
+      acc = acc ? `${acc}/${parts[i]}` : `${leading}${parts[i]}`;
+      out.push({ name: parts[i], path: acc });
+    }
+    // Show the last 5 segments to keep the title bar compact.
+    return out.slice(-5);
+  });
 
   onMount(() => {
     invoke("pandoc_available")
@@ -284,7 +299,22 @@
   <div class="titlebar-left">
     <div class="brand">
       <img src={logo} alt="" class="brand-icon" width="18" height="18" />
-      <span class="app-name" title={$activeDocumentStore.path || "MarkZ"}>{breadcrumb}</span>
+      {#if breadcrumbs.length > 0}
+        <nav class="titlebar-breadcrumbs" aria-label="Document path" title={$activeDocumentStore.path}>
+          {#each breadcrumbs as crumb, i (crumb.path)}
+            {#if i > 0}<span class="breadcrumb-sep" aria-hidden="true">›</span>{/if}
+            <button
+              class="breadcrumb-crumb"
+              onclick={() => workspaceStore.loadWorkspace(crumb.path)}
+              title="Open {crumb.path} in workspace"
+            >
+              {crumb.name}
+            </button>
+          {/each}
+        </nav>
+      {:else}
+        <span class="app-name" title="MarkZ">MarkZ</span>
+      {/if}
     </div>
     {#if $updateReady}
       <button
@@ -488,6 +518,43 @@
     color: var(--text-accent);
     letter-spacing: -0.01em;
     font-family: "MarkZEmoji", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", var(--font-sans);
+  }
+  .titlebar-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-accent);
+    font-family: "MarkZEmoji", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", var(--font-sans);
+  }
+  .breadcrumb-sep {
+    color: var(--text-tertiary);
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+  .breadcrumb-crumb {
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    margin: 0;
+    color: var(--text-accent);
+    font-size: inherit;
+    font-weight: inherit;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .breadcrumb-crumb:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
   .doc-info {
     display: flex;

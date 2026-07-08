@@ -162,6 +162,12 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** Reusable skeleton component for async panels. Used during preview render and while the Links panel loads backlinks / outgoing links.
 - **Effort:** Small (½ day)
 
+### P1 — Clickable Title-Bar Breadcrumb
+- **Status:** `[x]` Done
+- **Files:** `src/components/layout/TitleBar.svelte`
+- **Scope:** Render active document path as clickable segments. Click re-roots the workspace to that folder.
+- **Effort:** Small (½ day)
+
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
 - **Status:** `[x]` Done
 - **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`

@@ -36,13 +36,10 @@
 **Status:** Fixed in current development.  
 `App.svelte` now stores a separate width for each activity: Files = 280px, Outline = 220px, Links = 260px. The values are persisted in settings as `sidebar_width_files`, `sidebar_width_outline`, and `sidebar_width_links` (added to `markz_config::Settings`), and the resize handle updates the active activity's width.
 
-### 2.2 Missing Breadcrumbs
+### 2.2 Clickable Title-Bar Breadcrumb — ✅ Done
 
-**Current:** `TitleBar.svelte` now shows the last 3 segments of the active document path as plain text (e.g. `docs › api › auth.md`).
-
-**Problem:** The path is informative but not clickable, and it only shows the trailing segments. Users can't jump to a parent folder.
-
-**Recommendation:** Make the path segments clickable and show the full hierarchy (or at least one more level). Click a segment to re-root the file tree to that folder.
+**Status:** Fixed in current development.  
+`TitleBar.svelte` now renders the active document path as clickable breadcrumb segments (last 5, with earlier segments elided). Each segment is a button that calls `workspaceStore.loadWorkspace(segmentPath)`, re-rooting the file tree to that folder.
 
 ### 2.3 Document Navigation History — ✅ Done
 
@@ -279,7 +276,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | # | Issue | Effort | Files | Status |
 |---|-------|--------|-------|--------|
 | 8 | Per-activity sidebar widths | ½ day | `App.svelte`, `markz_config::Settings` | Done |
-| 9 | Clickable title-bar breadcrumb | 1 day | `TitleBar.svelte` | Partial |
+| 9 | Clickable title-bar breadcrumb | 1 day | `TitleBar.svelte` | Done |
 | 10 | Zen / focus mode | 1 day | `App.svelte` | Not done |
 | 11 | Image paste preview + alt text | 1 day | `EditorPane.svelte`, new modal | Not done |
 | 12 | Custom CSS editor (resizable / CodeMirror) | 1 day | `AdvancedSettings.svelte` | Not done |
@@ -346,7 +343,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | File tree context menu | ✓ | N/A | N/A | ✓ | ✓ |
 | Skip link | ✓ | — | — | — | ✓ |
 
-**Gaps that matter most now:** zen/focus mode, completing title-bar breadcrumb navigation, image paste preview + alt text, and a better custom CSS editor. These are table stakes for a polished 2026 editor.
+**Gaps that matter most now:** zen/focus mode, image paste preview + alt text, and a better custom CSS editor. These are table stakes for a polished 2026 editor.
 
 ---
 
