@@ -2,7 +2,7 @@
 
 > This document tracks planned refactors, features, and bugfixes. Update as work progresses.
 >
-> **Current version:** v0.8.66
+> **Current version:** v0.8.67
 > **Last updated:** 2026-07-08
 ---
 

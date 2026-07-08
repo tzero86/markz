@@ -1,5 +1,7 @@
 ## Unreleased
 
+## [0.8.67] - 2026-07-08
+
 ### Added
 - **Zen / focus mode** — `Ctrl+K Z` hides the title bar, tab bar, activity bar, sidebar, status bar, and debug panel, leaving only the editor and preview. Exit via `Esc` twice, the floating "Exit Zen Mode" button, or `Ctrl+K Z` again.
 - **Image paste preview + alt-text prompt** — Pasting or dropping an image into the editor now opens an "Insert Image" modal with a thumbnail preview, an alt-text input, and Cancel/Insert buttons. The image is only saved to `assets/` after confirmation, and the inserted markdown uses the provided alt text.
@@ -7,6 +9,7 @@
 - **Skip-to-editor link** — A visually hidden "Skip to editor" link is now the first focusable element in the app. Keyboard users can press Tab on page load to reveal it and jump directly to the CodeMirror editor.
 
 ### Fixed
+- **Opening a folder no longer leaves stale tabs** — `openFolder` now closes existing tabs before loading the new workspace, so unrelated previously-opened files no longer appear next to the new folder's file tree.
 - **Markdown auto-pair for emphasis and code** — Typing `*`, `_`, or `` ` `` now auto-inserts the closing delimiter alongside the existing bracket/quote pairs. Covered by E2E tests for all three characters plus a regression check for `[]`.
 - **Focus traps in all modals** — `use:trapFocus` is now applied to Settings, Command Palette, Template Browser, Table Editor, Save Template Dialog, and Git Diff modals. Tab cycles within the modal and the first focusable element is auto-focused on open.
 - **Command palette frecency + categories** — Commands are now grouped under File, View, Export, and Tools headers. When the query is empty, items are sorted by usage frequency within each category; when searching, frequently used commands get a small score boost. Usage counts persist in localStorage.
@@ -23,7 +26,6 @@
 ## [0.8.66] - 2026-07-08
 
 ### Fixed
-- **Opening a folder no longer leaves stale tabs** — `openFolder` now closes existing tabs before loading the new workspace, so unrelated previously-opened files no longer appear next to the new folder's file tree.
 - **Workspace replace-all in SearchPanel** — `replaceAll` now reads each file's current contents and persists the replaced text via `save_document`, then refreshes search results.
 - **Panes stay mounted across view modes** — `SplitPane` now keeps both editor and preview panes mounted and toggles visibility with CSS, eliminating remount delays when switching between Split, Editor-only, and Preview-only.
 

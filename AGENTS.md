@@ -4,7 +4,7 @@
 
 **MarkZ** is an open-source dual-pane Markdown editor for engineers. The goal is to replace the current workflow (VS Code + Sublime + Markdown Preview) with a single, fast, offline-first desktop tool that supports live preview, image handling, and reliable conversion to JIRA, Confluence, Slack, and GitHub formats.
 
-**Current State:** This repository is an **active, shipping Tauri desktop application**. It is no longer in the planning phase: the Rust workspace, Svelte 5 frontend, Tauri shell, and converter crates are all implemented and under ongoing development. The latest released version is **v0.8.66** (see `Cargo.toml`, `package.json`, and `src-tauri/tauri.conf.json`).
+**Current State:** This repository is an **active, shipping Tauri desktop application**. It is no longer in the planning phase: the Rust workspace, Svelte 5 frontend, Tauri shell, and converter crates are all implemented and under ongoing development. The latest released version is **v0.8.67** (see `Cargo.toml`, `package.json`, and `src-tauri/tauri.conf.json`).
 
 Key shipped capabilities include:
 
