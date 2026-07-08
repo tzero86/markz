@@ -128,6 +128,25 @@ test.describe("Settings modal", () => {
     await expect(modal.locator('input#auto-save-interval')).not.toBeVisible();
   });
 
+  test("custom CSS editor modal edits and applies CSS", async ({ page }) => {
+    const modal = await openSettings(page);
+    await modal.locator('.sidebar-item').filter({ hasText: "Advanced" }).click();
+
+    await modal.locator('button:has-text("Open CSS Editor")').click();
+    const cssModal = page.getByRole("dialog", { name: "Custom CSS Editor" });
+    await expect(cssModal).toBeVisible();
+
+    const textarea = cssModal.locator('textarea.css-editor');
+    await expect(textarea).toBeVisible();
+    await textarea.fill(":root { --accent-default: #ff6b6b; }");
+
+    await cssModal.locator('button:has-text("Apply CSS")').click();
+    await expect(cssModal).not.toBeVisible();
+
+    const preview = modal.locator('.css-preview');
+    await expect(preview).toContainText(":root { --accent-default: #ff6b6b; }");
+  });
+
   test("changing theme in settings dropdown updates selection", async ({ page }) => {
     const modal = await openSettings(page);
     await modal.locator('select#theme-select').selectOption("light");

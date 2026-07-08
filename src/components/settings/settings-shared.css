@@ -139,6 +139,41 @@
   background: transparent;
   color: var(--text-secondary);
 }
+.settings-modal .css-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.settings-modal .css-preview {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 80px;
+  max-height: 160px;
+  overflow: auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.settings-modal .css-preview.empty {
+  color: var(--text-tertiary);
+}
+.settings-modal .css-btn.open-editor {
+  align-self: flex-start;
+  background: var(--accent-default);
+  color: var(--text-inverse);
+  border-color: transparent;
+}
+.settings-modal .css-btn.open-editor:hover {
+  filter: brightness(1.1);
+}
 
 .settings-modal .custom-dict-input {
   width: 100%;

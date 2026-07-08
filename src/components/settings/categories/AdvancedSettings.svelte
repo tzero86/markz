@@ -2,6 +2,7 @@
   import { RotateCcw, Play } from "@lucide/svelte";
   import type { AppSettings } from "../../../lib/settingsTypes";
   import { ttsStore, type TtsEngine } from "../../../lib/ttsStore";
+  import CssEditorModal from "../../ui/CssEditorModal.svelte";
 
   let {
     settings,
@@ -13,11 +14,20 @@
     sectionMatches: (terms: string[]) => boolean;
   } = $props();
 
+  let cssEditorOpen = $state(false);
+
   const CSS_TEMPLATE = `/* Custom CSS Template */\n:root {\n  --accent-default: #3b82f6;\n}`;
 
   function resetCustomCss() {
     if (!settings) return;
     settings.custom_css = "";
+  }
+  function openCssEditor() {
+    cssEditorOpen = true;
+  }
+  function saveCustomCss(value: string) {
+    if (!settings) return;
+    settings.custom_css = value;
   }
   function resetTts() {
     if (!settings) return;
@@ -49,16 +59,20 @@
         </button>
       </div>
       <p class="field-hint">Override CSS variables or add custom styles. Applied globally.</p>
-      <textarea
-        class="custom-css-input"
-        bind:value={settings.custom_css}
-        rows={6}
-        placeholder={"/* Example: change accent color */\n:root {\n  --accent-default: #ff6b6b;\n}"}
-      ></textarea>
+      <div class="css-preview-wrap">
+        <pre class="css-preview" class:empty={!settings.custom_css.trim()}>{settings.custom_css.trim() || "No custom CSS configured"}</pre>
+        <button class="css-btn open-editor" onclick={openCssEditor}>Open CSS Editor</button>
+      </div>
       <div class="css-actions">
         <button class="css-btn" onclick={() => { if (!settings) return; settings.custom_css = CSS_TEMPLATE; }}>Load Template</button>
         <button class="css-btn secondary" onclick={() => { if (!settings) return; settings.custom_css = ""; }}>Clear</button>
       </div>
+      <CssEditorModal
+        open={cssEditorOpen}
+        value={settings.custom_css}
+        onSave={saveCustomCss}
+        onClose={() => { cssEditorOpen = false; }}
+      />
     </div>
   {/if}
 

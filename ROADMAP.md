@@ -168,6 +168,24 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** Render active document path as clickable segments. Click re-roots the workspace to that folder.
 - **Effort:** Small (½ day)
 
+### P1 — Custom CSS Editor Modal
+- **Status:** `[x]` Done
+- **Files:** `src/components/ui/CssEditorModal.svelte`, `src/components/settings/categories/AdvancedSettings.svelte`, `src/components/settings/settings-shared.css`, `e2e/settings.spec.ts`
+- **Scope:** Replace the 6-row inline custom CSS textarea in Settings → Advanced with a compact preview summary and a dedicated modal editor. The modal has a 20-row resizable textarea, Tab-to-indent, Ctrl+Enter to apply, Escape/click-backdrop to cancel, and a focus trap.
+- **Effort:** Small (½ day)
+
+### P1 — Image Paste Preview + Alt-Text Prompt
+- **Status:** `[ ]` Not Started
+- **Files:** TBD (`src/components/editor/EditorPane.svelte`, `src/lib/imageStore.ts`)
+- **Scope:** On paste/drop, show a modal with the image thumbnail, an alt-text input, and Confirm / Cancel buttons. Confirm saves the image to assets and inserts the markdown with the provided alt text; Cancel aborts the paste.
+- **Effort:** Medium (1–2 days)
+
+### P1 — Zen / Focus Mode
+- **Status:** `[ ]` Not Started
+- **Files:** TBD (`src/App.svelte`, `src/lib/keyboard.ts`)
+- **Scope:** `Ctrl+K Z` hides title bar, status bar, sidebar, tab bar, and activity bar, leaving only the editor + optional preview. Exit via `Esc` twice or `Ctrl+K Z`. Persist preference in session.
+- **Effort:** Small (1 day)
+
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
 - **Status:** `[x]` Done
 - **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`

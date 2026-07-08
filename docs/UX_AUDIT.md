@@ -18,12 +18,11 @@
 | Performance Perception | 8/10 | Fast startup, chunked preview post-processing, session restore no longer flashes |
 | Content & Copy | 8/10 | Clear labels, good empty states, About credits now mention key libraries |
 
-**Top 5 issues still to fix:**
+**Top 4 issues still to fix:**
 1. **Zen / focus mode** — no way to hide all chrome and write distraction-free.
-2. **Per-activity sidebar widths** — one width for Files / Outline / Links forces compromise.
-3. **Clickable title-bar breadcrumb** — path segments are informative but not navigable.
-4. **Image paste preview + alt text** — images are committed immediately without confirmation.
-5. **Custom CSS editor** — the textarea is too small for real editing.
+2. **Image paste preview + alt text** — images are committed immediately without confirmation.
+
+> **Progress note:** The remaining P1 items from the latest UX sweep are Zen / focus mode and image paste preview + alt-text prompt. Most of the original P0/P1 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore, per-activity sidebar widths, clickable breadcrumb, navigation history, focus traps, custom CSS editor) has shipped between v0.8.6 and the current development build.
 
 > **Progress note:** Most of the original P0 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore) has shipped between v0.8.6 and v0.8.66. The remaining gaps are smaller but still matter for competitive parity.
 
@@ -83,15 +82,10 @@ The right-side stat badges in `StatusBar.svelte` are now collapsed into a single
 **Status:** Fixed in current development.  
 `PreviewPane.svelte` applies a subtle `box-shadow` to `.preview-content` using `color-mix(in srgb, var(--border-default) 25%, transparent)`, creating a faint boundary at the 820px max-width column without adding a heavy border.
 
-### 3.4 Custom CSS Textarea Too Small
+### 3.4 Custom CSS Textarea Too Small — ✅ Done
 
-### 3.4 Custom CSS Textarea Too Small
-
-**Current:** The custom CSS field in `AdvancedSettings.svelte` is still 6 rows.
-
-**Problem:** Writing CSS in a tiny box is painful.
-
-**Fix:** Make it resizable (`resize: vertical`), minimum 12 rows, or open it in a dedicated "Custom CSS Editor" modal with line numbers and basic syntax highlighting.
+**Status:** Fixed in current development.  
+`AdvancedSettings.svelte` now shows a compact CSS preview summary and an **Open CSS Editor** button. The new `CssEditorModal.svelte` provides a 20-row resizable textarea, Tab-to-indent (two spaces), Ctrl+Enter to apply, Escape/click-backdrop to cancel, and a focus trap. The modal is wired into Settings → Advanced and covered by an E2E test.
 
 ### 3.5 No Focus Mode / Zen Mode
 
