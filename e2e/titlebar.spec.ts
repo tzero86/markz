@@ -77,10 +77,10 @@ test.describe("Export dropdown", () => {
     await expect(page.locator('.toast:has-text("Copy as HTML")')).toBeVisible({ timeout: 3000 });
   });
 
-  test("export as DOCX closes dropdown when dialog cancelled", async ({ page }) => {
+  test("export as DOCX closes dropdown immediately", async ({ page }) => {
     await page.locator('button[aria-label="Copy as"]').click();
     await page.locator('button:has-text("Export as DOCX")').click();
-    // Mock save_file_dialog returns null, dropdown should close
+    // Dropdown should close right away, before the export finishes
     await expect(page.locator('[role="menu"]')).not.toBeVisible({ timeout: 3000 });
   });
 

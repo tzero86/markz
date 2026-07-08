@@ -155,12 +155,13 @@
         filterName,
         filterExtensions,
       });
+      dropdownOpen = false;
+      activeIndex = -1;
       if (!outputPath) {
         logOperationEnd("export", `${label}`, "cancelled");
-        dropdownOpen = false;
-        activeIndex = -1;
         return;
       }
+      triggerRef?.focus();
       logOperationStart("export", `${label} → ${outputPath}`);
       try {
         if (command === "export_via_pandoc") {
