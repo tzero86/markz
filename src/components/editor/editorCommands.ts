@@ -111,37 +111,70 @@ export function toggleLinePrefix(view: EditorView, prefix: string) {
 
 /** Toggle heading level at the current line(s).
  *  If already at the requested level, remove the heading.
+ *  The selection is adjusted so the cursor stays on the correct side of the
+ *  inserted/removed prefix and the user can keep typing.
  */
 export function toggleHeading(view: EditorView, level: number) {
   const { from, to } = view.state.selection.main;
   const startLine = view.state.doc.lineAt(from);
   const endLine = view.state.doc.lineAt(to);
 
+  const changes: { from: number; to: number; insert: string }[] = [];
+  const lineDeltas = new Map<number, number>();
+
   for (let i = startLine.number; i <= endLine.number; i++) {
     const line = view.state.doc.line(i);
     const match = line.text.match(/^(#{1,6})\s/);
+    const newPrefix = "#".repeat(level) + " ";
     if (match && match[1].length === level) {
       // Remove heading
-      view.dispatch({
-        changes: {
-          from: line.from,
-          to: line.from + match[0].length,
-          insert: "",
-        },
+      const prefixLen = match[0].length;
+      changes.push({
+        from: line.from,
+        to: line.from + prefixLen,
+        insert: "",
       });
+      lineDeltas.set(i, -prefixLen);
     } else {
       // Replace or add heading
-      const prefix = match ? match[0] : "";
-      const newPrefix = "#".repeat(level) + " ";
-      view.dispatch({
-        changes: {
-          from: line.from,
-          to: line.from + prefix.length,
-          insert: newPrefix,
-        },
+      const prefixLen = match ? match[0].length : 0;
+      changes.push({
+        from: line.from,
+        to: line.from + prefixLen,
+        insert: newPrefix,
       });
+      lineDeltas.set(i, newPrefix.length - prefixLen);
     }
   }
+
+  if (changes.length === 0) {
+    view.focus();
+    return;
+  }
+
+  const adjustPos = (pos: number): number => {
+    const line = view.state.doc.lineAt(pos);
+    const delta = lineDeltas.get(line.number);
+    if (delta === undefined) return pos;
+    if (delta > 0) {
+      return pos + delta;
+    }
+    // Heading removed: keep cursor at line start if it was inside the prefix.
+    const removedLen = -delta;
+    if (pos <= line.from + removedLen) {
+      return line.from;
+    }
+    return pos + delta;
+  };
+
+  const newSelection = EditorSelection.create(
+    view.state.selection.ranges.map((r) =>
+      EditorSelection.range(adjustPos(r.from), adjustPos(r.to), r.goalColumn)
+    ),
+    view.state.selection.mainIndex
+  );
+
+  view.dispatch({ changes, selection: newSelection });
   view.focus();
 }
 

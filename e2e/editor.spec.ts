@@ -172,6 +172,133 @@ test.describe("Editor toolbar", () => {
   });
 });
 
+test.describe("Live preview markdown typing", () => {
+  test("manually typed heading in default tab renders as H1 in preview", async ({ page }) => {
+    // Override render_preview so we can observe the markdown being sent.
+    await page.evaluate(() => {
+      const origInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!origInvoke) return;
+      (window as any).__TAURI_INTERNALS__.invoke = async function(cmd: string, args?: any) {
+        if (cmd === "render_preview") {
+          const md = args?.markdown || "";
+          const firstLine = md.split("\n")[0] || "";
+          if (/^#{1,6}\s/.test(firstLine)) {
+            const level = firstLine.match(/^(#{1,6})\s/)?.[1].length ?? 1;
+            const text = firstLine.replace(/^#{1,6}\s+/, "").trim();
+            return `<h${level}>${text}</h${level}>`;
+          }
+          return `<p>${md.slice(0, 30) || "empty"}</p>`;
+        }
+        return origInvoke(cmd, args);
+      };
+    });
+
+    // Place cursor at the start of the default welcome content and type a heading.
+    await page.locator(".cm-content").click();
+    await page.evaluate(() => {
+      const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+      if (view) {
+        view.dispatch({ selection: { anchor: 0 } });
+      }
+    });
+    await page.keyboard.type("# Heading\n");
+
+    // Wait for the debounced render + post-processing.
+    await page.waitForTimeout(400);
+
+    const previewHTML = await page.locator(".preview-content").innerHTML();
+    expect(previewHTML).toMatch(/<h1[^>]*>Heading<\/h1>/);
+  });
+
+  test("manually typed heading renders as H1 in preview", async ({ page }) => {
+    // Replace the fixed preview mock with a content-aware one so we can
+    // verify the markdown the backend receives, not just the welcome HTML.
+    await page.evaluate(() => {
+      const origInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!origInvoke) return;
+      (window as any).__TAURI_INTERNALS__.invoke = async function(cmd: string, args?: any) {
+        if (cmd === "render_preview") {
+          const md = args?.markdown || "";
+          if (/^#{1,6}\s/.test(md)) {
+            const level = md.match(/^(#{1,6})\s/)?.[1].length ?? 1;
+            const text = md.replace(/^#{1,6}\s+/, "").trim();
+            return `<h${level}>${text}</h${level}>`;
+          }
+          return `<p>${md || "empty"}</p>`;
+        }
+        return origInvoke(cmd, args);
+      };
+    });
+
+    // Clear the default welcome content and type a heading manually.
+    await setEditorContent(page, "", 0);
+    await page.locator(".cm-content").click();
+    await page.keyboard.type("# Heading");
+
+    // Wait for the debounced render + post-processing.
+    await page.waitForTimeout(400);
+
+    const previewHTML = await page.locator(".preview-content").innerHTML();
+    expect(previewHTML).toMatch(/<h1[^>]*>Heading<\/h1>/);
+  });
+
+  test("toolbar-inserted heading renders as H1 in preview", async ({ page }) => {
+    await page.evaluate(() => {
+      const origInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!origInvoke) return;
+      (window as any).__TAURI_INTERNALS__.invoke = async function(cmd: string, args?: any) {
+        if (cmd === "render_preview") {
+          const md = args?.markdown || "";
+          if (/^#{1,6}\s/.test(md)) {
+            const level = md.match(/^(#{1,6})\s/)?.[1].length ?? 1;
+            const text = md.replace(/^#{1,6}\s+/, "").trim();
+            return `<h${level}>${text}</h${level}>`;
+          }
+          return `<p>${md || "empty"}</p>`;
+        }
+        return origInvoke(cmd, args);
+      };
+    });
+
+    await setEditorContent(page, "", 0);
+    await page.locator('button[title="Heading 1"]').click();
+    await page.keyboard.type("Heading");
+
+    // Wait for the debounced render + post-processing.
+    await page.waitForTimeout(400);
+
+    const previewHTML = await page.locator(".preview-content").innerHTML();
+    expect(previewHTML).toMatch(/<h1[^>]*>Heading<\/h1>/);
+  });
+
+  test("toolbar heading button converts selected text to H1", async ({ page }) => {
+    await page.evaluate(() => {
+      const origInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!origInvoke) return;
+      (window as any).__TAURI_INTERNALS__.invoke = async function(cmd: string, args?: any) {
+        if (cmd === "render_preview") {
+          const md = args?.markdown || "";
+          if (/^#{1,6}\s/.test(md)) {
+            const level = md.match(/^(#{1,6})\s/)?.[1].length ?? 1;
+            const text = md.replace(/^#{1,6}\s+/, "").trim();
+            return `<h${level}>${text}</h${level}>`;
+          }
+          return `<p>${md || "empty"}</p>`;
+        }
+        return origInvoke(cmd, args);
+      };
+    });
+
+    await setEditorContent(page, "Heading", 7);
+    await page.locator('button[title="Heading 1"]').click();
+
+    await page.waitForTimeout(400);
+
+    const previewHTML = await page.locator(".preview-content").innerHTML();
+    expect(previewHTML).toMatch(/<h1[^>]*>Heading<\/h1>/);
+  });
+});
+
 test.describe("Editor pane interactions", () => {
   test("editor container is present", async ({ page }) => {
     await expect(page.locator('.editor-container[role="application"]')).toBeVisible();

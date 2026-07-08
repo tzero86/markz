@@ -176,9 +176,12 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
       if (path !== lastActivePath) {
         lastActivePath = path;
-        // Keep the file tree rooted at the active tab's directory.
-        workspaceStore.syncToFile(path).catch(() => {});
+        // Keep the file tree rooted at the active tab's directory.  We only
+        // sync for actual file paths here; null paths are handled explicitly
+        // by the tab lifecycle so that an opened folder is not accidentally
+        // closed when the active tab becomes an Untitled tab.
         if (path) {
+          workspaceStore.syncToFile(path).catch(() => {});
           // If we switched to a file that was externally modified, prompt to reload
           checkExternalChanges(path);
         }
@@ -189,6 +192,49 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   let effectiveViewMode = $derived(
     forceSinglePane ? "editor" : viewMode
   );
+
+  // When a folder is opened/re-rooted, make sure the active tab belongs to
+  // that workspace. If no open file lives inside the new folder, create a
+  // clean Untitled tab (or reuse an existing empty one) so the editor does not
+  // keep showing an unrelated file next to the new file tree.
+  let lastWorkspaceRoot: string | null = null;
+  $effect(() => {
+    const ws = $workspaceStore;
+    const started = $startupComplete;
+    if (!started) return;
+    if (ws.rootPath === lastWorkspaceRoot) return;
+    lastWorkspaceRoot = ws.rootPath;
+    if (!ws.rootPath) return;
+
+    function isInWorkspace(path: string | null): boolean {
+      if (!path) return false;
+      const root = ws.rootPath!.replace(/[/\\]+$/, "").replace(/\\/g, "/");
+      const norm = path.replace(/\\/g, "/");
+      return norm === root || norm.startsWith(root + "/");
+    }
+
+    const tabState = get(tabStore);
+    const activeTab = tabState.tabs.find((t) => t.id === tabState.activeTabId);
+    if (activeTab && isInWorkspace(activeTab.path)) return;
+
+    const existing = tabState.tabs.find((t) => isInWorkspace(t.path));
+    if (existing) {
+      tabStore.switchTab(existing.id);
+      return;
+    }
+
+    if (
+      activeTab &&
+      activeTab.path === null &&
+      !activeTab.isDirty &&
+      activeTab.content.trim() === ""
+    ) {
+      // Reuse the clean Untitled tab as the folder context.
+      return;
+    }
+
+    tabStore.newTab("", "Untitled", null);
+  });
 
   function handleSelectActivity(activity: "files" | "outline" | "links") {
     console.log("[App] handleSelectActivity called:", activity, "current:", activeActivity, "visible:", sidebarPanelVisible);

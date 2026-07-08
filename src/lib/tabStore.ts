@@ -517,6 +517,14 @@ function createTabStore() {
     if (!suppressPersist) persistSession();
   }
 
+  async function maybeCloseWorkspace() {
+    const state = get({ subscribe });
+    const hasFileTabs = state.tabs.some((t) => t.path);
+    if (!hasFileTabs && get(workspaceStore).rootPath) {
+      await workspaceStore.closeWorkspace();
+    }
+  }
+
   async function closeTab(id: string): Promise<boolean> {
     const state = get({ subscribe });
     const tab = state.tabs.find((t) => t.id === id);
@@ -543,6 +551,7 @@ function createTabStore() {
       return { tabs: newTabs, activeTabId: newTabs[0].id };
     });
 
+    await maybeCloseWorkspace();
     if (!suppressPersist) persistSession();
     return true;
   }
@@ -564,6 +573,8 @@ function createTabStore() {
       if (!keepTab) return { ...s, tabs: pinned, activeTabId: pinned[0]?.id ?? s.activeTabId };
       return { tabs: [keepTab, ...pinned], activeTabId: keepTab.id };
     });
+
+    await maybeCloseWorkspace();
     if (!suppressPersist) persistSession();
   }
   async function closeAll(): Promise<void> {
@@ -586,6 +597,8 @@ function createTabStore() {
       }
       return { tabs: pinned, activeTabId: pinned[0].id };
     });
+
+    await maybeCloseWorkspace();
     if (!suppressPersist) persistSession();
   }
   function switchTab(id: string) {
