@@ -14,6 +14,25 @@ test("app loads with editor and preview panes", async ({ page }) => {
   await expect(page.locator(".tab-bar .tab")).toHaveText(/Untitled/);
 });
 
+test("skip link moves focus to editor", async ({ page }) => {
+  const skipLink = page.locator(".skip-link");
+
+  // Hidden off-screen until focused
+  await expect(skipLink).toHaveCSS("top", "-40px");
+
+  // Focus the skip link with Tab
+  await page.keyboard.press("Tab");
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+
+  // Activate it
+  await skipLink.click();
+
+  // Focus should now be inside the CodeMirror editor
+  const activeElement = await page.evaluate(() => document.activeElement?.classList.contains("cm-content") || document.activeElement?.closest(".cm-content") !== null);
+  expect(activeElement).toBe(true);
+});
+
 test("preview renders default content", async ({ page }) => {
   const preview = page.locator(".preview-scroller");
   await expect(preview.locator("h1:has-text('Welcome to MarkZ')")).toBeVisible({ timeout: 5000 });

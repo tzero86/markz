@@ -1,5 +1,8 @@
 ## Unreleased
 
+### Added
+- **Skip-to-editor link** — A visually hidden "Skip to editor" link is now the first focusable element in the app. Keyboard users can press Tab on page load to reveal it and jump directly to the CodeMirror editor.
+
 ### Fixed
 - **Markdown auto-pair for emphasis and code** — Typing `*`, `_`, or `` ` `` now auto-inserts the closing delimiter alongside the existing bracket/quote pairs. Covered by E2E tests for all three characters plus a regression check for `[]`.
 

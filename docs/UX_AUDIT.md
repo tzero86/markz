@@ -197,13 +197,12 @@ Clicking a checkbox in the preview dispatches `markz:toggle-checkbox`; `EditorPa
 
 **Fix:** Apply `use:trapFocus` consistently to all modal containers. Auto-focus the first focusable element on open and close on `Escape`.
 
-### 5.3 No Skip Link
+### 5.3 No Skip Link — ✅ Done
 
-**Current:** No way to skip the title bar + sidebar and jump directly to the editor.
+**Status:** Fixed in current development.  
+`App.svelte` now renders a `.skip-link` anchor as the first focusable element. It is visually hidden off-screen by default and slides into view on focus; activating it moves focus to `.cm-content`.
 
-**Problem:** Keyboard users must tab through many elements to reach the editor.
-
-**Fix:** Add a visually hidden "Skip to editor" link as the first focusable element. Visible on focus.
+**Note:** The link uses `--accent-default` background with `--text-inverse` text and a 2px inverse outline to satisfy WCAG focus visibility.
 
 ### 5.4 No High Contrast Theme — ✅ Done
 
@@ -283,7 +282,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | 4 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` | Not done |
 | 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Done |
 | 6 | Focus trap in all modals | ½ day | All modal components | Partial |
-| 7 | Skip to editor link | ¼ day | `App.svelte` | Not done |
+| 7 | Skip to editor link | ¼ day | `App.svelte` | Done |
 
 ### P1 — Next Sprint
 
@@ -355,7 +354,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | Focus trap | partial | ✓ | ✓ | ✓ | ✓ |
 | High contrast | ✓ | — | — | ✓ | ✓ |
 | File tree context menu | — | N/A | N/A | ✓ | ✓ |
-| Skip link | — | — | — | — | ✓ |
+| Skip link | ✓ | — | — | — | ✓ |
 
 **Gaps that matter most now:** preview inline search, file tree context menu, command palette frecency, document navigation history, zen/focus mode, and completing focus-trap coverage. These are table stakes for a polished 2026 editor.
 

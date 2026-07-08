@@ -483,6 +483,17 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 </script>
 
 <div class="app">
+  <a
+    href="#editor"
+    class="skip-link"
+    onclick={(e) => {
+      e.preventDefault();
+      const editor = document.querySelector(".cm-content") as HTMLElement | null;
+      editor?.focus();
+    }}
+  >
+    Skip to editor
+  </a>
   <TitleBar
     onOpenSettings={() => { settingsInitialTab = "settings"; settingsOpen = true; }}
     onOpenTemplateBrowser={() => (templateBrowserOpen = true)}
@@ -603,5 +614,25 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   .sidebar-resize-handle:hover,
   .sidebar-resize-handle:active {
     background: var(--accent-default);
+  }
+
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: var(--space-3);
+    z-index: 9999;
+    padding: var(--space-2) var(--space-3);
+    background: var(--accent-default);
+    color: var(--text-inverse);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    transition: top 150ms var(--ease-out);
+  }
+  .skip-link:focus {
+    top: var(--space-3);
+    outline: 2px solid var(--text-inverse);
+    outline-offset: 2px;
   }
 </style>
