@@ -504,6 +504,33 @@ function findNodeByPath(nodes: MockTreeNode[], path: string): MockTreeNode | nul
   return null;
 }
 
+function findNodeAndParent(nodes: MockTreeNode[], path: string): { node: MockTreeNode | null; parent: MockTreeNode[] | null } {
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].path === path) return { node: nodes[i], parent: nodes };
+    if (nodes[i].is_dir && nodes[i].children) {
+      const found = findNodeAndParent(nodes[i].children, path);
+      if (found.node) return found;
+    }
+  }
+  return { node: null, parent: null };
+}
+
+function relPathFor(root: string, path: string): string {
+  const prefix = root.replace(/\\/g, "/") + "/";
+  return path.replace(/\\/g, "/").startsWith(prefix) ? path.replace(/\\/g, "/").slice(prefix.length) : path.replace(/\\/g, "/");
+}
+
+function renameNodeRecursively(node: MockTreeNode, oldPath: string, newPath: string, root: string) {
+  node.path = node.path.replace(oldPath, newPath);
+  node.rel_path = relPathFor(root, node.path);
+  node.name = node.path.split(/[\\/]/).pop() || node.name;
+  if (node.is_dir && node.children) {
+    for (const child of node.children) {
+      renameNodeRecursively(child, oldPath, newPath, root);
+    }
+  }
+}
+
 function getWorkspaceTree(root: string): MockTreeNode[] {
   const override = localStorage.getItem("__e2e_workspace_files");
   if (override) {
@@ -723,6 +750,66 @@ export function injectTauriMock() {
       const node = findNodeByPath(getWorkspaceTree(root), path);
       return node && node.is_dir ? makeShallow(node.children) : [];
     },
+    create_workspace_file: (args) => {
+      const path = (args as { path?: string })?.path || "";
+      const root = path.substring(0, path.lastIndexOf("/"));
+      const tree = getWorkspaceTree(root);
+      const parentPath = path.substring(0, path.lastIndexOf("/"));
+      const parent = parentPath === root ? tree : findNodeByPath(tree, parentPath);
+      const target = parent && parent.is_dir ? parent.children : tree;
+      const name = path.split("/").pop() || "untitled.md";
+      target.push({ name, path, rel_path: relPathFor(root, path), is_dir: false, children: [] });
+      localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));
+      const calls = JSON.parse(localStorage.getItem("__e2e_create_file_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_create_file_calls", JSON.stringify(calls));
+      return path;
+    },
+    create_workspace_folder: (args) => {
+      const path = (args as { path?: string })?.path || "";
+      const root = path.substring(0, path.lastIndexOf("/"));
+      const tree = getWorkspaceTree(root);
+      const parentPath = path.substring(0, path.lastIndexOf("/"));
+      const parent = parentPath === root ? tree : findNodeByPath(tree, parentPath);
+      const target = parent && parent.is_dir ? parent.children : tree;
+      const name = path.split("/").pop() || "New Folder";
+      target.push({ name, path, rel_path: relPathFor(root, path), is_dir: true, children: [] });
+      localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));
+      const calls = JSON.parse(localStorage.getItem("__e2e_create_folder_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_create_folder_calls", JSON.stringify(calls));
+      return path;
+    },
+    rename_workspace_entry: (args) => {
+      const oldPath = (args as { oldPath?: string })?.oldPath || "";
+      const newName = (args as { newName?: string })?.newName || "";
+      const root = oldPath.substring(0, oldPath.lastIndexOf("/"));
+      const tree = getWorkspaceTree(root);
+      const found = findNodeAndParent(tree, oldPath);
+      if (!found.node) return oldPath;
+      const newPath = oldPath.substring(0, oldPath.lastIndexOf("/") + 1) + newName;
+      renameNodeRecursively(found.node, oldPath, newPath, root);
+      localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));
+      const calls = JSON.parse(localStorage.getItem("__e2e_rename_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_rename_calls", JSON.stringify(calls));
+      return newPath;
+    },
+    delete_workspace_entry: (args) => {
+      const path = (args as { path?: string })?.path || "";
+      const root = path.substring(0, path.lastIndexOf("/"));
+      const tree = getWorkspaceTree(root);
+      const found = findNodeAndParent(tree, path);
+      if (found.parent && found.node) {
+        const idx = found.parent.findIndex((n) => n.path === path);
+        if (idx !== -1) found.parent.splice(idx, 1);
+      }
+      localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));
+      const calls = JSON.parse(localStorage.getItem("__e2e_delete_calls") || "[]");
+      calls.push(args);
+      localStorage.setItem("__e2e_delete_calls", JSON.stringify(calls));
+      return null;
+    },
     search_workspace: (args) => {
       const root = (args as { root?: string })?.root || "";
       const query = ((args as { query?: string })?.query || "").toLowerCase();
@@ -877,6 +964,9 @@ export const tauriMockInitFunc = new Function(
   'let nextCallbackId = 1;\n' +
   'function makeShallow(nodes) { return nodes.map((n) => ({ ...n, children: n.is_dir ? [] : n.children })); }\n' +
   'function findNodeByPath(nodes, path) { for (const n of nodes) { if (n.path === path) return n; if (n.is_dir && n.children) { const found = findNodeByPath(n.children, path); if (found) return found; } } return null; }\n' +
+  'function findNodeAndParent(nodes, path) { for (let i = 0; i < nodes.length; i++) { if (nodes[i].path === path) return { node: nodes[i], parent: nodes }; if (nodes[i].is_dir && nodes[i].children) { const found = findNodeAndParent(nodes[i].children, path); if (found.node) return found; } } return { node: null, parent: null }; }\n' +
+  'function relPathFor(root, path) { var prefix = root.replace(/\\\\/g, "/") + "/"; var normalized = path.replace(/\\\\/g, "/"); return normalized.startsWith(prefix) ? normalized.slice(prefix.length) : normalized; }\n' +
+  'function renameNodeRecursively(node, oldPath, newPath, root) { node.path = node.path.replace(oldPath, newPath); node.rel_path = relPathFor(root, node.path); node.name = node.path.split(/[\\\\/]/).pop() || node.name; if (node.is_dir && node.children) { for (var i = 0; i < node.children.length; i++) { renameNodeRecursively(node.children[i], oldPath, newPath, root); } } }\n' +
   'function getWorkspaceTree(root) {\n' +
   '  const override = localStorage.getItem("__e2e_workspace_files");\n' +
   '  if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }\n' +
@@ -1035,6 +1125,54 @@ export const tauriMockInitFunc = new Function(
   '    if (!path || !root) return [];\n' +
   '    const node = findNodeByPath(getWorkspaceTree(root), path);\n' +
   '    return node && node.is_dir ? makeShallow(node.children) : [];\n' +
+  '  },\n' +
+  '  create_workspace_file: (args) => {\n' +
+  '    var path = args?.path || "";\n' +
+  '    var root = path.substring(0, path.lastIndexOf("/"));\n' +
+  '    var tree = getWorkspaceTree(root);\n' +
+  '    var parentPath = path.substring(0, path.lastIndexOf("/"));\n' +
+  '    var parent = parentPath === root ? tree : findNodeByPath(tree, parentPath);\n' +
+  '    var target = parent && parent.is_dir ? parent.children : tree;\n' +
+  '    var name = path.split("/").pop() || "untitled.md";\n' +
+  '    target.push({ name: name, path: path, rel_path: relPathFor(root, path), is_dir: false, children: [] });\n' +
+  '    localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));\n' +
+  '    return path;\n' +
+  '  },\n' +
+  '  create_workspace_folder: (args) => {\n' +
+  '    var path = args?.path || "";\n' +
+  '    var root = path.substring(0, path.lastIndexOf("/"));\n' +
+  '    var tree = getWorkspaceTree(root);\n' +
+  '    var parentPath = path.substring(0, path.lastIndexOf("/"));\n' +
+  '    var parent = parentPath === root ? tree : findNodeByPath(tree, parentPath);\n' +
+  '    var target = parent && parent.is_dir ? parent.children : tree;\n' +
+  '    var name = path.split("/").pop() || "New Folder";\n' +
+  '    target.push({ name: name, path: path, rel_path: relPathFor(root, path), is_dir: true, children: [] });\n' +
+  '    localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));\n' +
+  '    return path;\n' +
+  '  },\n' +
+  '  rename_workspace_entry: (args) => {\n' +
+  '    var oldPath = args?.oldPath || "";\n' +
+  '    var newName = args?.newName || "";\n' +
+  '    var root = oldPath.substring(0, oldPath.lastIndexOf("/"));\n' +
+  '    var tree = getWorkspaceTree(root);\n' +
+  '    var found = findNodeAndParent(tree, oldPath);\n' +
+  '    if (!found.node) return oldPath;\n' +
+  '    var newPath = oldPath.substring(0, oldPath.lastIndexOf("/") + 1) + newName;\n' +
+  '    renameNodeRecursively(found.node, oldPath, newPath, root);\n' +
+  '    localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));\n' +
+  '    return newPath;\n' +
+  '  },\n' +
+  '  delete_workspace_entry: (args) => {\n' +
+  '    var path = args?.path || "";\n' +
+  '    var root = path.substring(0, path.lastIndexOf("/"));\n' +
+  '    var tree = getWorkspaceTree(root);\n' +
+  '    var found = findNodeAndParent(tree, path);\n' +
+  '    if (found.parent && found.node) {\n' +
+  '      var idx = found.parent.findIndex(function(n) { return n.path === path; });\n' +
+  '      if (idx !== -1) found.parent.splice(idx, 1);\n' +
+  '    }\n' +
+  '    localStorage.setItem("__e2e_workspace_files", JSON.stringify(tree));\n' +
+  '    return null;\n' +
   '  },\n' +
 '  search_workspace: (args) => {\n' +
   '    const root = args?.root || "";\n' +

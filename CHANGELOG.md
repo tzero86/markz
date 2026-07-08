@@ -9,6 +9,7 @@
 - **Command palette frecency + categories** — Commands are now grouped under File, View, Export, and Tools headers. When the query is empty, items are sorted by usage frequency within each category; when searching, frequently used commands get a small score boost. Usage counts persist in localStorage.
 - **Preview inline search** — `Ctrl+F` inside the preview pane now opens a search bar with previous/next navigation, match highlighting, and a result counter. `Escape` closes the search bar.
 - **Document navigation history** — WikiLink jumps and file opens now maintain a back/forward stack. `Alt+Left` navigates back, `Alt+Right` navigates forward, and "Go Back" / "Go Forward" commands are available in the Command Palette. History is bounded to 50 entries and skips duplicate consecutive paths.
+- **File tree context menu** — Right-click any file or folder in the workspace explorer to create, rename, or delete. New files/folders open a name prompt; rename is inline; delete confirms via the native dialog. Open tabs are updated when a file is renamed and closed when a file is deleted. Header also adds New File and New Folder buttons.
 
 ## [0.8.66] - 2026-07-08
 

@@ -126,6 +126,12 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** Bounded 50-entry stack of opened document paths. `openDocumentByPath` pushes by default; WikiLink jumps and file-tree opens feed the stack. `Alt+Left` / `Alt+Right` navigate back/forward without re-pushing, and "Go Back" / "Go Forward" commands are exposed in the Command Palette.
 - **Effort:** Small (½ day)
 
+### P1 — File Tree Context Menu
+- **Status:** `[x]` Done
+- **Files:** `src/components/layout/OutlineSidebar.svelte`, `src/components/ui/ContextMenu.svelte`, `src/components/ui/NamePromptDialog.svelte`, `src/lib/workspaceStore.ts`, `src/lib/tabStore.ts`, `src-tauri/src/commands/workspace.rs`
+- **Scope:** Right-click any file or folder to create, rename, or delete. Files get New File, Rename, Delete; directories also get New Folder. Inline rename input and modal name prompt. Backend commands create/rename/delete on disk; open tabs are renamed or closed to match.
+- **Effort:** Small (1 day)
+
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
 - **Status:** `[x]` Done
 - **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`

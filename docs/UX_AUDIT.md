@@ -12,17 +12,18 @@
 | Area | Score | Verdict |
 |------|-------|---------|
 | Visual Design | 8/10 | Strong token system, good dark/light themes and 17 color presets, minor inconsistencies remain |
-| Information Architecture | 7/10 | Sidebar is now resizable, tabs overflow handled, file tree still lacks file-management actions |
+| Information Architecture | 8/10 | Sidebar is now resizable, tabs overflow handled, file tree supports create/rename/delete |
 | Interaction Design | 7/10 | Editor table-stakes are in (smart lists, auto-pair, checkbox toggle), preview search done, history now supported |
 | Accessibility | 6/10 | ARIA labels improved, focus trap only in some modals, no skip link, high-contrast preset added |
 | Performance Perception | 8/10 | Fast startup, chunked preview post-processing, session restore no longer flashes |
 | Content & Copy | 8/10 | Clear labels, good empty states, About credits now mention key libraries |
 
 **Top 5 issues still to fix:**
-1. **Preview inline search** — search helper code exists but there is no user-facing search bar or `Ctrl+F` wiring.
-2. **File tree context menu** — no New File, Rename, or Delete in the workspace explorer.
-3. **Command palette frecency/categories** — flat list, no learning from usage or grouping.
-5. **Zen / focus mode** — no way to hide all chrome and write distraction-free.
+1. **Zen / focus mode** — no way to hide all chrome and write distraction-free.
+2. **Per-activity sidebar widths** — one width for Files / Outline / Links forces compromise.
+3. **Clickable title-bar breadcrumb** — path segments are informative but not navigable.
+4. **Image paste preview + alt text** — images are committed immediately without confirmation.
+5. **Custom CSS editor** — the textarea is too small for real editing.
 
 > **Progress note:** Most of the original P0 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore) has shipped between v0.8.6 and v0.8.66. The remaining gaps are smaller but still matter for competitive parity.
 
@@ -60,6 +61,11 @@
 
 **Status:** Shipped in v0.8.8 and extended in v0.8.39.  
 Right-click any tab → Pin/Unpin. Pinned tabs stay fixed on the left, show a pin icon, have no close button, survive "Close All", and persist in session restore.
+
+### 2.6 File Tree Context Menu — ✅ Done
+
+**Status:** Fixed in current development.  
+`OutlineSidebar.svelte` now responds to right-clicks on any file or folder node. Files expose **New File**, **Rename**, and **Delete**; directories also expose **New Folder**. Rename swaps the label for an inline input; New / Folder open a small `NamePromptDialog`. The header adds dedicated **New File** and **New Folder** buttons. Backend commands in `src-tauri/src/commands/workspace.rs` handle create/rename/delete on disk; `tabStore` updates or closes any affected open tabs.
 
 ---
 
@@ -268,7 +274,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | # | Issue | Effort | Files | Status |
 |---|-------|--------|-------|--------|
 | 1 | Preview inline search (wire existing helpers to UI/keyboard) | 1 day | `PreviewPane.svelte` | Done |
-| 2 | File tree context menu (New File, Rename, Delete) | 1 day | `OutlineSidebar.svelte`, `workspaceStore.ts`, backend | Not done |
+| 2 | File tree context menu (New File, Rename, Delete) | 1 day | `OutlineSidebar.svelte`, `workspaceStore.ts`, backend | Done |
 | 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Done |
 | 4 | Document navigation history (Back/Forward) | 1 day | `navHistoryStore.ts` + `keyboard.ts` | Done |
 | 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Done |
@@ -344,10 +350,10 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | Settings search | ✓ | — | — | ✓ | ✓ |
 | Focus trap | ✓ | ✓ | ✓ | ✓ | ✓ |
 | High contrast | ✓ | — | — | ✓ | ✓ |
-| File tree context menu | — | N/A | N/A | ✓ | ✓ |
+| File tree context menu | ✓ | N/A | N/A | ✓ | ✓ |
 | Skip link | ✓ | — | — | — | ✓ |
 
-**Gaps that matter most now:** file tree context menu, zen/focus mode, per-activity sidebar widths, and completing title-bar breadcrumb navigation. These are table stakes for a polished 2026 editor.
+**Gaps that matter most now:** zen/focus mode, per-activity sidebar widths, completing title-bar breadcrumb navigation, image paste preview + alt text, and a better custom CSS editor. These are table stakes for a polished 2026 editor.
 
 ---
 

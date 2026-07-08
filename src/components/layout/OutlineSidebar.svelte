@@ -2,12 +2,15 @@
   import { get } from "svelte/store";
   import EmptyState from "../ui/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { confirm } from "@tauri-apps/plugin-dialog";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { openDocumentByPath } from "../../lib/keyboard";
   import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
   import { isMarkdownPath } from "../../lib/fileTypes";
-  import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight, ListTree } from "@lucide/svelte";
+  import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight, ListTree, FilePlus, FolderPlus } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
+  import ContextMenu, { type ContextMenuItem } from "../ui/ContextMenu.svelte";
+  import NamePromptDialog from "../ui/NamePromptDialog.svelte";
   let { activity }: { activity: "files" | "outline" | "links" } = $props();
   let toc = $state<TocEntry[]>([]);
   let activeAnchor = $state<string | null>(null);
@@ -18,6 +21,24 @@
   let outgoingLinks = $state<string[]>([]);
   let linksLoading = $state(false);
   let linksError = $state<string | null>(null);
+
+  // Context menu + rename state
+  let contextMenu = $state<{ open: boolean; x: number; y: number; items: ContextMenuItem[] }>({
+    open: false,
+    x: 0,
+    y: 0,
+    items: [],
+  });
+  let renamingNode = $state<FileTreeNode | null>(null);
+  let renameValue = $state("");
+  let promptDialog = $state<{
+    open: boolean;
+    title: string;
+    label: string;
+    confirmLabel: string;
+    parentPath: string;
+    isFolder: boolean;
+  } | null>(null);
 
   $effect(() => {
     const content = $activeDocumentStore.content;
@@ -147,6 +168,111 @@
   function handleCrumbClick(path: string) {
     workspaceStore.loadWorkspace(path);
   }
+
+  function parentPathForNode(node: FileTreeNode): string {
+    return node.is_dir ? node.path : node.path.substring(0, node.path.lastIndexOf("/"));
+  }
+
+  function buildContextMenuItems(node: FileTreeNode): ContextMenuItem[] {
+    const parentPath = parentPathForNode(node);
+    const items: ContextMenuItem[] = [];
+    if (node.is_dir) {
+      items.push(
+        { id: "new-file", label: "New File", action: () => openNewFilePrompt(parentPath) },
+        { id: "new-folder", label: "New Folder", action: () => openNewFolderPrompt(parentPath) }
+      );
+    } else {
+      items.push({ id: "new-file", label: "New File", action: () => openNewFilePrompt(parentPath) });
+    }
+    items.push(
+      { id: "rename", label: "Rename", action: () => startRename(node) },
+      { id: "delete", label: "Delete", danger: true, action: () => handleDelete(node) }
+    );
+    return items;
+  }
+
+  function handleContextMenu(event: MouseEvent, node: FileTreeNode) {
+    event.preventDefault();
+    contextMenu = {
+      open: true,
+      x: event.clientX,
+      y: event.clientY,
+      items: buildContextMenuItems(node),
+    };
+  }
+
+  function closeContextMenu() {
+    contextMenu = { ...contextMenu, open: false };
+  }
+
+  function openNewFilePrompt(parentPath: string) {
+    promptDialog = {
+      open: true,
+      title: "New File",
+      label: "File name",
+      confirmLabel: "Create",
+      parentPath,
+      isFolder: false,
+    };
+  }
+
+  function openNewFolderPrompt(parentPath: string) {
+    promptDialog = {
+      open: true,
+      title: "New Folder",
+      label: "Folder name",
+      confirmLabel: "Create",
+      parentPath,
+      isFolder: true,
+    };
+  }
+
+  async function handlePromptConfirm(name: string) {
+    if (!promptDialog) return;
+    const { parentPath, isFolder } = promptDialog;
+    if (isFolder) {
+      await workspaceStore.createFolder(parentPath, name);
+    } else {
+      const path = await workspaceStore.createFile(parentPath, name);
+      if (path && isMarkdownPath(path)) {
+        await openDocumentByPath(path);
+      }
+    }
+    promptDialog = null;
+  }
+
+  function startRename(node: FileTreeNode) {
+    renamingNode = node;
+    renameValue = node.name;
+  }
+
+  async function commitRename() {
+    if (!renamingNode) return;
+    const newName = renameValue.trim();
+    if (!newName || newName === renamingNode.name) {
+      renamingNode = null;
+      return;
+    }
+    const oldPath = renamingNode.path;
+    const newPath = await workspaceStore.renameEntry(oldPath, newName);
+    if (newPath) {
+      tabStore.renameTabPath(oldPath, newPath);
+    }
+    renamingNode = null;
+  }
+
+  function cancelRename() {
+    renamingNode = null;
+  }
+
+  async function handleDelete(node: FileTreeNode) {
+    const confirmed = await confirm(`Delete "${node.name}"?`);
+    if (!confirmed) return;
+    const ok = await workspaceStore.deleteEntry(node.path);
+    if (ok) {
+      tabStore.closeTabByPath(node.path);
+    }
+  }
 </script>
 <div class="sidebar">
   {#if activity === "outline"}
@@ -259,10 +385,26 @@
             {/each}
           </div>
           <div class="file-tree-actions">
-            <button class="tree-open-folder" aria-label="Open folder" title="Open folder" onclick={() => workspaceStore.openWorkspace()}>
+            <button
+              class="tree-action-btn"
+              aria-label="New file"
+              title="New file"
+              onclick={() => openNewFilePrompt($workspaceStore.rootPath!)}
+            >
+              <FilePlus size={13} strokeWidth={2} />
+            </button>
+            <button
+              class="tree-action-btn"
+              aria-label="New folder"
+              title="New folder"
+              onclick={() => openNewFolderPrompt($workspaceStore.rootPath!)}
+            >
+              <FolderPlus size={13} strokeWidth={2} />
+            </button>
+            <button class="tree-action-btn" aria-label="Open folder" title="Open folder" onclick={() => workspaceStore.openWorkspace()}>
               <FolderOpen size={13} strokeWidth={2} />
             </button>
-            <button class="refresh-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
+            <button class="tree-action-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
               <span style="font-size: 11px;">↻</span>
             </button>
           </div>
@@ -318,20 +460,56 @@
   {/if}
 </div>
 
+<ContextMenu
+  bind:open={contextMenu.open}
+  x={contextMenu.x}
+  y={contextMenu.y}
+  items={contextMenu.items}
+  onClose={closeContextMenu}
+/>
+
+{#if promptDialog}
+  <NamePromptDialog
+    open={promptDialog.open}
+    title={promptDialog.title}
+    label={promptDialog.label}
+    confirmLabel={promptDialog.confirmLabel}
+    onConfirm={handlePromptConfirm}
+    onClose={() => (promptDialog = null)}
+  />
+{/if}
+
 {#snippet fileTreeNode(node: FileTreeNode, depth: number)}
   {#if node.is_dir}
     <li>
-      <button
-        class="tree-node tree-dir"
-        style="padding-left: {12 + depth * 14}px"
-        onclick={() => handleToggleDir(node)}
-      >
-        <span class="tree-chevron" class:expanded={$workspaceStore.expandedDirs.has(node.rel_path)}>
-          <ChevronRight size={12} strokeWidth={2} />
-        </span>
-        <Folder size={12} strokeWidth={2} />
-        <span class="tree-label">{node.name}</span>
-      </button>
+      {#if renamingNode?.path === node.path}
+        <form
+          class="tree-node tree-rename"
+          style="padding-left: {12 + depth * 14}px"
+          onsubmit={(e) => { e.preventDefault(); commitRename(); }}
+        >
+          <Folder size={12} strokeWidth={2} />
+          <input
+            type="text"
+            bind:value={renameValue}
+            onblur={commitRename}
+            onkeydown={(e) => { if (e.key === "Escape") cancelRename(); }}
+          />
+        </form>
+      {:else}
+        <button
+          class="tree-node tree-dir"
+          style="padding-left: {12 + depth * 14}px"
+          onclick={() => handleToggleDir(node)}
+          oncontextmenu={(e) => handleContextMenu(e, node)}
+        >
+          <span class="tree-chevron" class:expanded={$workspaceStore.expandedDirs.has(node.rel_path)}>
+            <ChevronRight size={12} strokeWidth={2} />
+          </span>
+          <Folder size={12} strokeWidth={2} />
+          <span class="tree-label">{node.name}</span>
+        </button>
+      {/if}
       {#if $workspaceStore.expandedDirs.has(node.rel_path) && node.children.length > 0}
         <ul class="file-tree">
           {#each node.children as child (child.path)}
@@ -342,15 +520,32 @@
     </li>
   {:else}
     <li>
-      <button
-        class="tree-node tree-file"
-        class:active={isActiveFile(node.path)}
-        style="padding-left: {26 + depth * 14}px"
-        onclick={() => handleOpenFile(node.path)}
-      >
-        <FileText size={12} strokeWidth={2} />
-        <span class="tree-label">{node.name}</span>
-      </button>
+      {#if renamingNode?.path === node.path}
+        <form
+          class="tree-node tree-rename"
+          style="padding-left: {26 + depth * 14}px"
+          onsubmit={(e) => { e.preventDefault(); commitRename(); }}
+        >
+          <FileText size={12} strokeWidth={2} />
+          <input
+            type="text"
+            bind:value={renameValue}
+            onblur={commitRename}
+            onkeydown={(e) => { if (e.key === "Escape") cancelRename(); }}
+          />
+        </form>
+      {:else}
+        <button
+          class="tree-node tree-file"
+          class:active={isActiveFile(node.path)}
+          style="padding-left: {26 + depth * 14}px"
+          onclick={() => handleOpenFile(node.path)}
+          oncontextmenu={(e) => handleContextMenu(e, node)}
+        >
+          <FileText size={12} strokeWidth={2} />
+          <span class="tree-label">{node.name}</span>
+        </button>
+      {/if}
     </li>
   {/if}
 {/snippet}
@@ -520,8 +715,7 @@
     gap: 2px;
     flex: none;
   }
-  .tree-open-folder,
-  .refresh-btn {
+  .tree-action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -533,8 +727,7 @@
     border-radius: var(--radius-sm);
     transition: background 150ms ease, color 150ms ease;
   }
-  .tree-open-folder:hover,
-  .refresh-btn:hover {
+  .tree-action-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
@@ -584,6 +777,20 @@
   .tree-node.active {
     background: var(--accent-muted);
     color: var(--accent-default);
+  }
+  .tree-rename {
+    background: var(--bg-hover);
+  }
+  .tree-rename input {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--accent-default);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    outline: none;
   }
   .tree-chevron {
     display: inline-flex;

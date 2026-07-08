@@ -134,6 +134,48 @@ pub async fn list_dir_children(path: String, root: String) -> Result<Vec<FileTre
 }
 
 #[tauri::command]
+pub async fn create_workspace_file(path: String) -> Result<String, String> {
+    let p = Path::new(&path);
+    if let Some(parent) = p.parent() {
+        tokio::fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+    }
+    tokio::fs::write(p, "").await.map_err(|e| e.to_string())?;
+    Ok(path)
+}
+
+#[tauri::command]
+pub async fn create_workspace_folder(path: String) -> Result<String, String> {
+    tokio::fs::create_dir_all(&path).await.map_err(|e| e.to_string())?;
+    Ok(path)
+}
+
+#[tauri::command]
+pub async fn rename_workspace_entry(old_path: String, new_name: String) -> Result<String, String> {
+    let old = Path::new(&old_path);
+    let parent = old.parent().ok_or("Cannot rename root directory")?;
+    let new_path = parent.join(&new_name);
+    if new_path.exists() {
+        return Err("A file or folder with that name already exists".to_string());
+    }
+    tokio::fs::rename(old, &new_path)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(new_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn delete_workspace_entry(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    let meta = tokio::fs::metadata(p).await.map_err(|e| e.to_string())?;
+    if meta.is_dir() {
+        tokio::fs::remove_dir_all(p).await.map_err(|e| e.to_string())?;
+    } else {
+        tokio::fs::remove_file(p).await.map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn search_workspace(root: String, query: String) -> Result<Vec<SearchResult>, String> {
     let root_path = Path::new(&root);
     if !root_path.exists() || !root_path.is_dir() {
@@ -196,4 +238,80 @@ pub async fn search_workspace(root: String, query: String) -> Result<Vec<SearchR
     }
 
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn temp_dir_with_file(name: &str, content: &str) -> (tempfile::TempDir, String) {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().to_string_lossy().to_string();
+        let path = dir.path().join(name);
+        if let Some(parent) = path.parent() {
+            tokio::fs::create_dir_all(parent).await.unwrap();
+        }
+        tokio::fs::write(&path, content.as_bytes()).await.unwrap();
+        (dir, root)
+    }
+
+    #[tokio::test]
+    async fn create_workspace_file_creates_file() {
+        let (_dir, root) = temp_dir_with_file("existing.md", "# ok").await;
+        let path = format!("{}/nested/new.md", root);
+        let result = create_workspace_file(path.clone()).await.unwrap();
+        assert_eq!(result, path);
+        assert!(tokio::fs::metadata(&path).await.unwrap().is_file());
+    }
+
+    #[tokio::test]
+    async fn create_workspace_folder_creates_directory() {
+        let (_dir, root) = temp_dir_with_file("existing.md", "# ok").await;
+        let path = format!("{}/nested/folder", root);
+        let result = create_workspace_folder(path.clone()).await.unwrap();
+        assert_eq!(result, path);
+        assert!(tokio::fs::metadata(&path).await.unwrap().is_dir());
+    }
+
+    #[tokio::test]
+    async fn rename_workspace_entry_renames_file() {
+        let (_dir, root) = temp_dir_with_file("old.md", "# ok").await;
+        let old_path = format!("{}/old.md", root);
+        let new_path = rename_workspace_entry(old_path.clone(), "new.md".to_string())
+            .await
+            .unwrap();
+        assert_eq!(new_path, format!("{}/new.md", root));
+        assert!(!std::path::Path::new(&old_path).exists());
+        assert!(std::path::Path::new(&new_path).exists());
+    }
+
+    #[tokio::test]
+    async fn rename_workspace_entry_rejects_duplicate_name() {
+        let (_dir, root) = temp_dir_with_file("a.md", "# a").await;
+        tokio::fs::write(format!("{}/b.md", root), "# b")
+            .await
+            .unwrap();
+        let old_path = format!("{}/a.md", root);
+        let result = rename_workspace_entry(old_path, "b.md".to_string()).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn delete_workspace_entry_removes_file() {
+        let (_dir, root) = temp_dir_with_file("delete-me.md", "# ok").await;
+        let path = format!("{}/delete-me.md", root);
+        delete_workspace_entry(path.clone()).await.unwrap();
+        assert!(!std::path::Path::new(&path).exists());
+    }
+
+    #[tokio::test]
+    async fn delete_workspace_entry_removes_directory_recursively() {
+        let (_dir, root) = temp_dir_with_file("nested/keep.md", "# ok").await;
+        tokio::fs::write(format!("{}/nested/child.md", root), "# child")
+            .await
+            .unwrap();
+        let path = format!("{}/nested", root);
+        delete_workspace_entry(path.clone()).await.unwrap();
+        assert!(!std::path::Path::new(&path).exists());
+    }
 }

@@ -257,6 +257,84 @@ function createWorkspaceStore() {
     });
   }
 
+  function uniqueName(parentPath: string, baseName: string, isDir: boolean): string {
+    let candidate = baseName;
+    let counter = 1;
+    const ext = isDir ? "" : baseName.slice(baseName.lastIndexOf("."));
+    const stem = isDir ? baseName : baseName.slice(0, baseName.lastIndexOf("."));
+    while (get({ subscribe }).fileTree.find((n) => n.path === `${parentPath}/${candidate}`)) {
+      counter++;
+      candidate = isDir ? `${stem}-${counter}` : `${stem}-${counter}${ext}`;
+    }
+    return candidate;
+  }
+
+  async function createFile(parentPath: string, name?: string) {
+    const state = get({ subscribe });
+    if (!state.rootPath) return null;
+    const baseName = name?.trim() || "untitled.md";
+    const fileName = uniqueName(parentPath, baseName, false);
+    const path = parentPath.replace(/\\/g, "/") + "/" + fileName;
+    logOperationStart("workspace", `Create file: ${path}`);
+    try {
+      await invoke("create_workspace_file", { path });
+      logOperationEnd("workspace", `Create file: ${path}`);
+      await refresh();
+      return path;
+    } catch (e) {
+      logError("workspace", `Failed to create file: ${path}`, String(e));
+      return null;
+    }
+  }
+
+  async function createFolder(parentPath: string, name?: string) {
+    const state = get({ subscribe });
+    if (!state.rootPath) return null;
+    const baseName = name?.trim() || "New Folder";
+    const folderName = uniqueName(parentPath, baseName, true);
+    const path = parentPath.replace(/\\/g, "/") + "/" + folderName;
+    logOperationStart("workspace", `Create folder: ${path}`);
+    try {
+      await invoke("create_workspace_folder", { path });
+      logOperationEnd("workspace", `Create folder: ${path}`);
+      await refresh();
+      return path;
+    } catch (e) {
+      logError("workspace", `Failed to create folder: ${path}`, String(e));
+      return null;
+    }
+  }
+
+  async function renameEntry(path: string, newName: string) {
+    const state = get({ subscribe });
+    if (!state.rootPath) return null;
+    logOperationStart("workspace", `Rename: ${path} -> ${newName}`);
+    try {
+      const newPath = await invoke<string>("rename_workspace_entry", { oldPath: path, newName });
+      logOperationEnd("workspace", `Rename: ${path} -> ${newPath}`);
+      await refresh();
+      return newPath;
+    } catch (e) {
+      logError("workspace", `Failed to rename: ${path}`, String(e));
+      return null;
+    }
+  }
+
+  async function deleteEntry(path: string) {
+    const state = get({ subscribe });
+    if (!state.rootPath) return false;
+    logOperationStart("workspace", `Delete: ${path}`);
+    try {
+      await invoke("delete_workspace_entry", { path });
+      logOperationEnd("workspace", `Delete: ${path}`);
+      await refresh();
+      return true;
+    } catch (e) {
+      logError("workspace", `Failed to delete: ${path}`, String(e));
+      return false;
+    }
+  }
+
   return {
     subscribe,
     openWorkspace,
@@ -266,6 +344,10 @@ function createWorkspaceStore() {
     search,
     closeWorkspace,
     syncToFile,
+    createFile,
+    createFolder,
+    renameEntry,
+    deleteEntry,
   };
 }
 

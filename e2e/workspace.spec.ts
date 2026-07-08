@@ -256,7 +256,7 @@ test.describe("File tree navigation", () => {
 
     await expect(page.locator(".file-tree-breadcrumbs")).toBeVisible();
     await expect(page.locator(".tree-crumb.active")).toContainText("docs");
-    await expect(page.locator(".tree-open-folder")).toBeVisible();
+    await expect(page.locator('.tree-action-btn[aria-label="Open folder"]')).toBeVisible();
   });
 
   test("clicking an ancestor crumb re-roots the tree", async ({ page }) => {
@@ -316,6 +316,88 @@ test.describe("Document navigation history", () => {
     // Alt+Right should go forward to readme.md
     await page.keyboard.press("Alt+ArrowRight");
     await expect(page.locator('.tab.active')).toContainText("readme.md");
+  });
+});
+
+test.describe("File tree context menu", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+  });
+
+  test("right-clicking a file shows New File, Rename, Delete", async ({ page }) => {
+    await openFolderInTree(page, "/test-workspace");
+    await page.locator(".tree-file", { hasText: "notes.md" }).click({ button: "right" });
+
+    await expect(page.locator("[role='menuitem']", { hasText: "New File" })).toBeVisible();
+    await expect(page.locator("[role='menuitem']", { hasText: "Rename" })).toBeVisible();
+    await expect(page.locator("[role='menuitem']", { hasText: "Delete" })).toBeVisible();
+    await expect(page.locator("[role='menuitem']", { hasText: "New Folder" })).toHaveCount(0);
+  });
+
+  test("right-clicking a directory shows New File, New Folder, Rename, Delete", async ({ page }) => {
+    await openFolderInTree(page, "/test-workspace");
+    await page.locator(".tree-dir", { hasText: "docs" }).click({ button: "right" });
+
+    await expect(page.locator("[role='menuitem']", { hasText: "New File" })).toBeVisible();
+    await expect(page.locator("[role='menuitem']", { hasText: "New Folder" })).toBeVisible();
+    await expect(page.locator("[role='menuitem']", { hasText: "Rename" })).toBeVisible();
+    await expect(page.locator("[role='menuitem']", { hasText: "Delete" })).toBeVisible();
+  });
+
+  test("New File creates and opens the file", async ({ page }) => {
+    await openFolderInTree(page, "/test-workspace");
+    await page.locator(".tree-file").first().click({ button: "right" });
+    await page.locator("[role='menuitem']", { hasText: "New File" }).click();
+
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await page.locator('#prompt-input').fill("new-doc.md");
+    await page.locator('[role="dialog"] .btn-primary').click();
+
+    await expect(page.locator('.tab:has-text("new-doc.md")')).toBeVisible();
+    await expect(page.locator(".tree-file", { hasText: "new-doc.md" })).toBeVisible();
+  });
+
+  test("New Folder creates the folder", async ({ page }) => {
+    await openFolderInTree(page, "/test-workspace");
+    await page.locator(".tree-dir", { hasText: "docs" }).click({ button: "right" });
+    await page.locator("[role='menuitem']", { hasText: "New Folder" }).click();
+
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await page.locator('#prompt-input').fill("archive");
+    await page.locator('[role="dialog"] .btn-primary').click();
+
+    await expect(page.locator(".tree-dir", { hasText: "archive" })).toBeVisible();
+  });
+
+  test("Rename renames a file and updates its tab", async ({ page }) => {
+    await openFolderInTree(page, "/test-workspace");
+    await page.locator(".tree-file", { hasText: "notes.md" }).click();
+    await expect(page.locator('.tab:has-text("notes.md")')).toBeVisible();
+
+    await page.locator(".tree-file", { hasText: "notes.md" }).click({ button: "right" });
+    await page.locator("[role='menuitem']", { hasText: "Rename" }).click();
+
+    const renameInput = page.locator('.tree-rename input');
+    await renameInput.fill("renamed.md");
+    await renameInput.blur();
+
+    await expect(page.locator(".tree-file", { hasText: "renamed.md" })).toBeVisible();
+    await expect(page.locator('.tab:has-text("renamed.md")')).toBeVisible();
+    await expect(page.locator(".tree-file", { hasText: "notes.md" })).toHaveCount(0);
+  });
+
+  test("Delete removes a file and closes its tab", async ({ page }) => {
+    await openFolderInTree(page, "/test-workspace");
+    await page.locator(".tree-file", { hasText: "notes.md" }).click();
+    await expect(page.locator('.tab:has-text("notes.md")')).toBeVisible();
+
+    await page.locator(".tree-file", { hasText: "notes.md" }).click({ button: "right" });
+    await page.locator("[role='menuitem']", { hasText: "Delete" }).click();
+
+    await expect(page.locator(".tree-file", { hasText: "notes.md" })).toHaveCount(0);
+    await expect(page.locator('.tab:has-text("notes.md")')).toHaveCount(0);
   });
 });
 

@@ -442,6 +442,36 @@ function createTabStore() {
     if (!suppressPersist) persistSession();
   }
 
+  function renameTabPath(oldPath: string, newPath: string) {
+    update((state) => {
+      const idx = state.tabs.findIndex((t) => t.path === oldPath);
+      if (idx === -1) return state;
+      const newTabs = [...state.tabs];
+      newTabs[idx] = {
+        ...newTabs[idx],
+        path: newPath,
+        title: newPath.split(/[\\/]/).pop() || "Untitled",
+      };
+      return { ...state, tabs: newTabs };
+    });
+    if (!suppressPersist) persistSession();
+  }
+
+  function closeTabByPath(path: string) {
+    update((state) => {
+      const idx = state.tabs.findIndex((t) => t.path === path);
+      if (idx === -1) return state;
+      const tab = state.tabs[idx];
+      const newTabs = state.tabs.filter((t) => t.id !== tab.id);
+      let activeTabId = state.activeTabId;
+      if (activeTabId === tab.id) {
+        activeTabId = newTabs[Math.min(idx, newTabs.length - 1)]?.id ?? "";
+      }
+      return { ...state, tabs: newTabs, activeTabId };
+    });
+    if (!suppressPersist) persistSession();
+  }
+
   function markClean() {
     update((state) => {
       const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
@@ -753,6 +783,9 @@ function createTabStore() {
     markDirty,
     setLoading,
     setSlideBreaks,
+    // Path-based mutations for workspace operations
+    renameTabPath,
+    closeTabByPath,
   };
 }
 export const autoSaveFlash = writable(false);
