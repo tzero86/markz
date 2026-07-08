@@ -284,7 +284,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | 11 | Image paste preview + alt text | 1 day | `EditorPane.svelte`, new modal | Not done |
 | 12 | Custom CSS editor (resizable / CodeMirror) | 1 day | `AdvancedSettings.svelte` | Not done |
 | 13 | Loading skeletons | ½ day | New component | Not done |
-| 14 | Tab dropdown when overflow | ½ day | `TabBar.svelte` | Not done |
+| 14 | Tab dropdown when overflow | ½ day | `TabBar.svelte` | Done |
 | 15 | Status bar metric collapse | ¼ day | `StatusBar.svelte` | Done |
 | 16 | Preview max-width visual guide | ¼ day | `PreviewPane.svelte` | Done |
 
@@ -346,7 +346,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | File tree context menu | ✓ | N/A | N/A | ✓ | ✓ |
 | Skip link | ✓ | — | — | — | ✓ |
 
-**Gaps that matter most now:** zen/focus mode, completing title-bar breadcrumb navigation, image paste preview + alt text, a better custom CSS editor, loading skeletons, and tab overflow dropdown. These are table stakes for a polished 2026 editor.
+**Gaps that matter most now:** zen/focus mode, completing title-bar breadcrumb navigation, image paste preview + alt text, a better custom CSS editor, and loading skeletons. These are table stakes for a polished 2026 editor.
 
 ---
 

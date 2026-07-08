@@ -174,6 +174,25 @@ test.describe("Tab management", () => {
     await expect(page.locator(".tab-bar .tab.pinned")).toHaveCount(0);
   });
 
+  test("tab dropdown lists all open tabs", async ({ page }) => {
+    // Open a few tabs.
+    await page.locator('button[aria-label="New tab"]').click();
+    await page.locator('button[aria-label="New tab"]').click();
+    await expect(page.locator(".tab-bar .tab")).toHaveCount(3, { timeout: 3000 });
+
+    await page.locator('button[aria-label="Open tabs"]').click();
+    const menu = page.locator(".tab-dropdown-menu");
+    await expect(menu).toBeVisible();
+
+    const items = menu.locator("[role='menuitem']");
+    await expect(items).toHaveCount(3);
+
+    // Click the first item in the dropdown; it should switch to that tab.
+    await items.first().click();
+    await expect(menu).not.toBeVisible();
+    await expect(page.locator(".tab-bar .tab.active")).toBeVisible();
+  });
+
 test.describe("Draggable tabs", () => {
   test("tabs have draggable attribute", async ({ page }) => {
     const tabs = page.locator(".tab-bar .tab");

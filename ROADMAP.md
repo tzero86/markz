@@ -150,6 +150,12 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** Add a subtle theme-aware `box-shadow` boundary to `.preview-content` at the 820px max-width column.
 - **Effort:** Tiny (¼ day)
 
+### P1 — Tab Overflow Dropdown
+- **Status:** `[x]` Done
+- **Files:** `src/components/layout/TabBar.svelte`
+- **Scope:** "Open tabs" dropdown button listing all open tabs; click to switch. Appears next to the new-tab button.
+- **Effort:** Tiny (½ day)
+
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
 - **Status:** `[x]` Done
 - **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`

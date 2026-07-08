@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, Plus, Pin, ChevronLeft, ChevronRight } from "@lucide/svelte";
+  import { X, Plus, Pin, ChevronLeft, ChevronRight, ChevronDown } from "@lucide/svelte";
   import { tabStore, type Tab } from "../../lib/tabStore";
 
   let { onNewTab }: { onNewTab?: () => void } = $props();
@@ -11,6 +11,8 @@
   let tabScrollEl: HTMLElement | null = $state(null);
   let canScrollLeft = $state(false);
   let canScrollRight = $state(false);
+  let tabsDropdownOpen = $state(false);
+  let tabsDropdownBtn: HTMLButtonElement | null = $state(null);
 
   // Drag state
   let draggingId: string | null = $state(null);
@@ -75,6 +77,16 @@
   function closeCtxMenu() {
     ctxMenuOpen = false;
     ctxTab = null;
+  }
+
+  function toggleTabsDropdown(e: MouseEvent) {
+    e.stopPropagation();
+    tabsDropdownOpen = !tabsDropdownOpen;
+  }
+
+  function switchTabFromDropdown(tab: Tab) {
+    tabStore.switchTab(tab.id);
+    tabsDropdownOpen = false;
   }
 
   async function ctxCloseTab() {
@@ -155,7 +167,7 @@
   }
 </script>
 
-<svelte:window onclick={() => { if (ctxMenuOpen) closeCtxMenu(); }} />
+<svelte:window onclick={() => { if (ctxMenuOpen) closeCtxMenu(); if (tabsDropdownOpen) tabsDropdownOpen = false; }} />
 
 <div class="tab-bar">
   {#if canScrollLeft}
@@ -257,6 +269,39 @@
     >
       <ChevronRight size={14} strokeWidth={2.5} />
     </button>
+  {/if}
+  <button
+    bind:this={tabsDropdownBtn}
+    class="tab-dropdown-btn"
+    class:active={tabsDropdownOpen}
+    onclick={(e) => toggleTabsDropdown(e)}
+    aria-label="Open tabs"
+    aria-expanded={tabsDropdownOpen}
+    aria-haspopup="menu"
+    title="Open tabs"
+  >
+    <ChevronDown size={14} strokeWidth={2.5} />
+  </button>
+  {#if tabsDropdownOpen}
+    <div
+      class="tab-dropdown-menu"
+      role="menu"
+      style="top: {tabsDropdownBtn?.getBoundingClientRect().bottom ?? 36}px; left: {tabsDropdownBtn?.getBoundingClientRect().left ?? 0}px;"
+    >
+      {#each $tabStore.tabs as tab (tab.id)}
+        <button
+          class="tab-dropdown-item"
+          class:active={tab.id === $tabStore.activeTabId}
+          class:pinned={tab.pinned}
+          role="menuitem"
+          onclick={() => switchTabFromDropdown(tab)}
+        >
+          {#if tab.pinned}<Pin size={10} strokeWidth={2} />{/if}
+          <span class="tab-dropdown-title">{tab.title}</span>
+          {#if tab.isDirty}<span class="tab-dot" aria-label="Unsaved changes"></span>{/if}
+        </button>
+      {/each}
+    </div>
   {/if}
   <button
     class="new-tab-btn"
@@ -424,6 +469,70 @@
   .new-tab-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+
+  /* Tabs dropdown */
+  .tab-dropdown-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 28px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 150ms var(--ease-out);
+  }
+  .tab-dropdown-btn:hover,
+  .tab-dropdown-btn.active {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .tab-dropdown-menu {
+    position: fixed;
+    z-index: 100;
+    min-width: 160px;
+    max-width: 260px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+  }
+  .tab-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+    white-space: nowrap;
+  }
+  .tab-dropdown-item:hover,
+  .tab-dropdown-item.active {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .tab-dropdown-item.pinned {
+    color: var(--accent-default);
+  }
+  .tab-dropdown-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Context menu */
