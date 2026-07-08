@@ -387,5 +387,59 @@ test.describe("Editor pane interactions", () => {
   });
 });
 
+test.describe("Image paste", () => {
+  const MINI_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  async function pasteImage(page: any) {
+    await page.evaluate(async (dataUrl: string) => {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "test.png", { type: "image/png" });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      const target = document.querySelector(".cm-content") || document.querySelector(".editor-container");
+      const event = new ClipboardEvent("paste", {
+        clipboardData: dataTransfer,
+        bubbles: true,
+        cancelable: true,
+      });
+      target?.dispatchEvent(event);
+    }, MINI_PNG);
+  }
+
+  test("paste shows image preview modal and inserts markdown on confirm", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+
+    await pasteImage(page);
+
+    const modal = page.getByRole("dialog", { name: "Insert image" });
+    await expect(modal).toBeVisible();
+    await expect(modal.locator("img")).toBeVisible();
+    await expect(modal.locator("text=test.png")).toBeVisible();
+
+    await modal.locator('input[type="text"]').fill("A test image");
+    await modal.locator('button:has-text("Insert Image")').click();
+
+    await expect(modal).not.toBeVisible();
+    const state = await getEditorState(page);
+    expect(state.text).toContain("![A test image](images/test.png)");
+  });
+
+  test("paste modal can be cancelled", async ({ page }) => {
+    await setEditorContent(page, "hello", 5);
+
+    await pasteImage(page);
+
+    const modal = page.getByRole("dialog", { name: "Insert image" });
+    await expect(modal).toBeVisible();
+
+    await modal.locator('button:has-text("Cancel")').click();
+    await expect(modal).not.toBeVisible();
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("hello");
+  });
+});
+
 
 

@@ -18,11 +18,10 @@
 | Performance Perception | 8/10 | Fast startup, chunked preview post-processing, session restore no longer flashes |
 | Content & Copy | 8/10 | Clear labels, good empty states, About credits now mention key libraries |
 
-**Top 4 issues still to fix:**
+**Top issue still to fix:**
 1. **Zen / focus mode** — no way to hide all chrome and write distraction-free.
-2. **Image paste preview + alt text** — images are committed immediately without confirmation.
 
-> **Progress note:** The remaining P1 items from the latest UX sweep are Zen / focus mode and image paste preview + alt-text prompt. Most of the original P0/P1 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore, per-activity sidebar widths, clickable breadcrumb, navigation history, focus traps, custom CSS editor) has shipped between v0.8.6 and the current development build.
+> **Progress note:** The remaining P1 item from the latest UX sweep is Zen / focus mode. Most of the original P0/P1 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore, per-activity sidebar widths, clickable breadcrumb, navigation history, focus traps, custom CSS editor, image paste preview) has shipped between v0.8.6 and the current development build.
 
 > **Progress note:** Most of the original P0 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore) has shipped between v0.8.6 and v0.8.66. The remaining gaps are smaller but still matter for competitive parity.
 
@@ -127,13 +126,10 @@ CodeMirror's `@codemirror/search` panel is enabled. `Ctrl+F` opens find, `Ctrl+H
 **Status:** Shipped in v0.8.65.  
 Clicking an item in `OutlineSidebar.svelte` dispatches `markz:scroll-to-heading`, which scrolls both the editor and the preview to the corresponding heading.
 
-### 4.6 Image Paste Flow
+### 4.6 Image Paste Flow — ✅ Done
 
-**Current:** Paste/drop image → copied to the assets folder → relative path inserted (`EditorPane.svelte`). No preview of the image and no alt-text prompt.
-
-**Problem:** Users don't get a chance to confirm the save location or add alt text before the image is committed.
-
-**Fix:** Show a small modal on paste: image thumbnail + alt text input + confirm/cancel. Pre-fill alt text if an LLM alt-text feature is ever added.
+**Status:** Fixed in current development.  
+Pasting or dropping an image into `EditorPane.svelte` now queues the file and opens an **Insert Image** modal with a thumbnail preview, filename, alt-text input, and Cancel/Insert buttons. The image is only saved via `save_image` after the user confirms; the inserted markdown uses the provided alt text (falling back to the filename if left empty). Multiple images are processed sequentially through the same modal. Covered by E2E tests.
 
 ### 4.7 No Smart List Continuation — ✅ Done
 

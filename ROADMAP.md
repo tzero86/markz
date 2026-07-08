@@ -175,9 +175,9 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Effort:** Small (½ day)
 
 ### P1 — Image Paste Preview + Alt-Text Prompt
-- **Status:** `[ ]` Not Started
-- **Files:** TBD (`src/components/editor/EditorPane.svelte`, `src/lib/imageStore.ts`)
-- **Scope:** On paste/drop, show a modal with the image thumbnail, an alt-text input, and Confirm / Cancel buttons. Confirm saves the image to assets and inserts the markdown with the provided alt text; Cancel aborts the paste.
+- **Status:** `[x]` Done
+- **Files:** `src/components/ui/ImagePasteModal.svelte`, `src/components/editor/EditorPane.svelte`, `e2e/editor.spec.ts`
+- **Scope:** On paste/drop, queue image files and open a modal with a thumbnail preview, filename, alt-text input, and Insert / Cancel buttons. Confirm saves the image via `save_image` and inserts markdown with the provided alt text; Cancel aborts and revokes the object URL. Multiple images are processed sequentially.
 - **Effort:** Medium (1–2 days)
 
 ### P1 — Zen / Focus Mode

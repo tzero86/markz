@@ -9,8 +9,14 @@
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
+  import ImagePasteModal from "../ui/ImagePasteModal.svelte";
   import { startupCheckpoint } from "../../lib/debug";
   import { contentZoomStore } from "../../lib/contentZoomStore";
+
+  interface PendingImage {
+    file: File;
+    previewUrl: string;
+  }
 
   let container: HTMLDivElement;
   let editorView = $state<EditorView | null>(null);
@@ -29,6 +35,9 @@
   let contextMenuY = $state(0);
   let contextMenuWord = $state("");
   let slideBreakMode = $state(false);
+  let pendingImages = $state<PendingImage[]>([]);
+
+  let currentPendingImage = $derived(pendingImages[0] ?? null);
 
   function detectSlideBreaks(content: string): number[] {
     const lines = content.split("\n");
@@ -170,20 +179,7 @@
     for (const item of imageItems) {
       const file = item.getAsFile();
       if (!file) continue;
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const imageData = new Uint8Array(arrayBuffer);
-        const filename = file.name || "pasted.png";
-        const result = await invoke<{
-          relative_path: string;
-          absolute_path: string;
-          filename: string;
-        }>("save_image", { imageData, filename });
-        insertMarkdownImage(editorView, result.filename, result.relative_path);
-        triggerPasteFlash();
-      } catch (err) {
-        console.error("Failed to process pasted image:", err);
-      }
+      pendingImages = [...pendingImages, { file, previewUrl: URL.createObjectURL(file) }];
     }
   }
 
@@ -226,20 +222,41 @@
     if (imageFiles.length === 0) return;
 
     for (const file of imageFiles) {
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const imageData = new Uint8Array(arrayBuffer);
-        const result = await invoke<{
-          relative_path: string;
-          absolute_path: string;
-          filename: string;
-        }>("save_image", { imageData, filename: file.name });
-        insertMarkdownImage(editorView, result.filename, result.relative_path);
-        triggerPasteFlash();
-      } catch (err) {
-        console.error("Failed to process dropped image:", err);
-      }
+      pendingImages = [...pendingImages, { file, previewUrl: URL.createObjectURL(file) }];
     }
+  }
+
+  function removeCurrentPendingImage() {
+    const current = currentPendingImage;
+    if (current) {
+      URL.revokeObjectURL(current.previewUrl);
+    }
+    pendingImages = pendingImages.slice(1);
+  }
+
+  async function confirmImagePaste(altText: string) {
+    const current = currentPendingImage;
+    if (!current || !editorView) return;
+
+    try {
+      const arrayBuffer = await current.file.arrayBuffer();
+      const imageData = new Uint8Array(arrayBuffer);
+      const result = await invoke<{
+        relative_path: string;
+        absolute_path: string;
+        filename: string;
+      }>("save_image", { imageData, filename: current.file.name || "pasted.png" });
+      insertMarkdownImage(editorView, altText || result.filename, result.relative_path);
+      triggerPasteFlash();
+    } catch (err) {
+      console.error("Failed to save pasted image:", err);
+    } finally {
+      removeCurrentPendingImage();
+    }
+  }
+
+  function cancelImagePaste() {
+    removeCurrentPendingImage();
   }
 
   function applyEditorFont() {
@@ -532,6 +549,13 @@
       </div>
     </div>
   {/if}
+  <ImagePasteModal
+    open={currentPendingImage !== null}
+    previewUrl={currentPendingImage?.previewUrl ?? ""}
+    filename={currentPendingImage?.file.name ?? ""}
+    onConfirm={confirmImagePaste}
+    onCancel={cancelImagePaste}
+  />
 </div>
 
 <style>
