@@ -11,6 +11,7 @@
   import { generateToc, type TocEntry } from "../../lib/toc";
   import ContextMenu, { type ContextMenuItem } from "../ui/ContextMenu.svelte";
   import NamePromptDialog from "../ui/NamePromptDialog.svelte";
+  import Skeleton from "../ui/Skeleton.svelte";
   let { activity }: { activity: "files" | "outline" | "links" } = $props();
   let toc = $state<TocEntry[]>([]);
   let activeAnchor = $state<string | null>(null);
@@ -303,7 +304,7 @@
   {:else if activity === "links"}
     <div class="toc-scroller">
       {#if linksLoading}
-        <div class="empty">Loading links…</div>
+        <Skeleton lines={4} width="80%" />
       {:else if linksError}
         <div class="empty error">{linksError}</div>
       {:else if !$activeDocumentStore.path}

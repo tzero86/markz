@@ -14,6 +14,7 @@
 - **Status bar metric collapse** — The three right-side stat badges are collapsed into one: `{words} words · ~{minutes} min`. The tooltip still shows word count, char count, and read time.
 - **Preview max-width visual guide** — `.preview-content` now has a subtle theme-aware box-shadow boundary at the 820px max-width column so wide windows no longer look empty on both sides.
 - **Tab overflow dropdown** — A new "Open tabs" dropdown button at the right end of the tab bar lists every open tab (pinned and unpinned), lets you switch by click, and closes on selection or outside click.
+- **Loading skeletons** — New `Skeleton` component used in the preview pane while rendering and in the Links panel while backlinks/outgoing links load, replacing plain text placeholders.
 
 ## [0.8.66] - 2026-07-08
 

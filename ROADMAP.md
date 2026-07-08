@@ -156,6 +156,12 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** "Open tabs" dropdown button listing all open tabs; click to switch. Appears next to the new-tab button.
 - **Effort:** Tiny (½ day)
 
+### P1 — Loading Skeletons
+- **Status:** `[x]` Done
+- **Files:** `src/components/ui/Skeleton.svelte`, `src/components/preview/PreviewPane.svelte`, `src/components/layout/OutlineSidebar.svelte`
+- **Scope:** Reusable skeleton component for async panels. Used during preview render and while the Links panel loads backlinks / outgoing links.
+- **Effort:** Small (½ day)
+
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
 - **Status:** `[x]` Done
 - **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`

@@ -1,5 +1,6 @@
 <script lang="ts">
   import EmptyState from "../ui/EmptyState.svelte";
+  import Skeleton from "../ui/Skeleton.svelte";
   import { Eye, Copy, Check, Volume2, Volume, Square, ChevronDown, ChevronUp, Search, X, Presentation } from "@lucide/svelte";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { startupComplete } from "../../lib/startupStore";
@@ -26,7 +27,7 @@
     debugLogStore.add("info", "preview-render", `${label}: ${elapsed.toFixed(1)}ms`);
   }
 
-  let htmlContent = $state("<p>Loading preview...</p>");
+  let htmlContent = $state("");
   let isRendering = $state(false);
   let previewDiv: HTMLDivElement;
   let contentDiv: HTMLDivElement | undefined = $state();
@@ -72,7 +73,7 @@
     // that gets replaced by session restore). Wait until App.svelte finishes
     // its startup sequence.
     if (!isStartupComplete) {
-      htmlContent = "<p>Loading preview...</p>";
+      htmlContent = "";
       return;
     }
     // Bump generation so stale async renders (from a previous content) don't
@@ -96,11 +97,11 @@
     // without a cached render. For content edits, keep the previous preview
     // visible until the new render completes.
     if (docPath !== lastPath) {
-      htmlContent = "<p>Loading preview...</p>";
+      htmlContent = "";
       lastPath = docPath;
     }
     // Skip re-render if content hasn't actually changed
-    if (cacheKey === lastCacheKey && htmlContent !== "<p>Loading preview...</p>") {
+    if (cacheKey === lastCacheKey && htmlContent !== "") {
       return;
     }
     lastCacheKey = cacheKey;
@@ -955,9 +956,11 @@
       title="Nothing to preview"
       subtitle="Open or create a document to see the live preview."
     />
-      {:else}
-        {@html htmlContent}
-      {/if}
+  {:else if htmlContent === ""}
+    <Skeleton lines={8} />
+  {:else}
+    {@html htmlContent}
+  {/if}
     </div>
   </div>
   <TableEditorModal
