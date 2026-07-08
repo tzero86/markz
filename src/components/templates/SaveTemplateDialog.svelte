@@ -3,6 +3,7 @@
   import { get } from "svelte/store";
   import { X } from "@lucide/svelte";
   import { tabStore } from "../../lib/tabStore";
+  import { trapFocus } from "../../lib/focusTrap";
 
   let { open = $bindable(false) } = $props();
 
@@ -71,7 +72,7 @@
 
 {#if open}
   <div class="modal-backdrop" onclick={handleBackdropClick} role="presentation">
-    <div class="modal-panel" role="dialog" aria-label="Save as Template">
+    <div class="modal-panel" role="dialog" aria-label="Save as Template" use:trapFocus>
       <div class="modal-header">
         <h2>Save as Template</h2>
         <button class="close-btn" onclick={() => (open = false)} aria-label="Close">

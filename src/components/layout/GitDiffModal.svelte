@@ -1,6 +1,7 @@
 <script lang="ts">
   import { X, GitBranch } from "@lucide/svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { trapFocus } from "../../lib/focusTrap";
 
   let { open = $bindable(false), docPath = "" } = $props();
 
@@ -123,7 +124,7 @@
 
 {#if open}
   <div class="modal-backdrop" onclick={handleBackdropClick} role="presentation">
-    <div class="modal-panel" role="dialog" aria-label="Git diff">
+    <div class="modal-panel" role="dialog" aria-label="Git diff" use:trapFocus>
       <div class="modal-header">
         <div class="header-left">
           <GitBranch size={14} strokeWidth={2} />

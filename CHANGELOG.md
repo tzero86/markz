@@ -5,6 +5,7 @@
 
 ### Fixed
 - **Markdown auto-pair for emphasis and code** — Typing `*`, `_`, or `` ` `` now auto-inserts the closing delimiter alongside the existing bracket/quote pairs. Covered by E2E tests for all three characters plus a regression check for `[]`.
+- **Focus traps in all modals** — `use:trapFocus` is now applied to Settings, Command Palette, Template Browser, Table Editor, Save Template Dialog, and Git Diff modals. Tab cycles within the modal and the first focusable element is auto-focused on open.
 
 ## [0.8.66] - 2026-07-08
 

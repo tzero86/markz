@@ -94,7 +94,7 @@
 - [x] Auto-pair markdown delimiters (`closeBrackets`) — standard brackets/quotes plus `*`, `_`, `` ` `` auto-close.
 - [ ] Preview inline search (`Ctrl+F` in preview) — helper code exists in `PreviewPane.svelte`, but the search UI is not rendered and `Ctrl+F` is not yet wired to open it.
 - [x] Click-to-toggle task list checkboxes
-- [ ] Focus traps in all modals (Settings, Templates, Palette, TableEditor) — `focusTrap.ts` exists and is used by `SearchPanel.svelte` only; other modals do not yet apply it.
+- [x] Focus traps in all modals (Settings, Templates, Palette, TableEditor, SaveTemplateDialog, GitDiffModal) — `use:trapFocus` applied to all modal containers; first focusable element auto-focused on open.
 - [x] Export progress toasts + breadcrumb in title bar
 - [x] CodeMirror search panel themed to match app
 

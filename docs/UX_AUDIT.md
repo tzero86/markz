@@ -189,13 +189,12 @@ Clicking a checkbox in the preview dispatches `markz:toggle-checkbox`; `EditorPa
 
 **Fix:** Audit all interactive elements. Every modal should point `aria-labelledby` to its title. Every icon-only button needs a persistent `aria-label`.
 
-### 5.2 Focus Trap in Modals — Partially Done
+### 5.2 Focus Trap in Modals — ✅ Done
 
-**Current:** `focusTrap.ts` exists and is used by `SearchPanel.svelte`. `CommandPalette.svelte` and `TableEditorModal.svelte` import it but do not apply it; `SettingsModal.svelte`, `SaveTemplateDialog.svelte`, `GitDiffModal.svelte`, and `TemplateBrowser.svelte` do not trap focus at all.
+**Status:** Fixed in current development.  
+`focusTrap.ts` is used by `SearchPanel.svelte`, `SettingsModal.svelte`, `CommandPalette.svelte`, `TemplateBrowser.svelte`, `TableEditorModal.svelte`, `SaveTemplateDialog.svelte`, and `GitDiffModal.svelte`. Tab cycles within each modal and the first focusable element is auto-focused on open.
 
-**Problem:** Tab key can escape a modal and focus elements behind it.
-
-**Fix:** Apply `use:trapFocus` consistently to all modal containers. Auto-focus the first focusable element on open and close on `Escape`.
+**Note:** `Escape` already closed most modals; the remaining gaps were the missing `use:trapFocus` application.
 
 ### 5.3 No Skip Link — ✅ Done
 
@@ -281,7 +280,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Not done |
 | 4 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` | Not done |
 | 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Done |
-| 6 | Focus trap in all modals | ½ day | All modal components | Partial |
+| 6 | Focus trap in all modals | ½ day | All modal components | Done |
 | 7 | Skip to editor link | ¼ day | `App.svelte` | Done |
 
 ### P1 — Next Sprint
@@ -351,7 +350,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | Checkbox toggle (preview) | ✓ | — | ✓ | plugin | plugin |
 | Breadcrumbs | partial | — | — | ✓ | ✓ |
 | Settings search | ✓ | — | — | ✓ | ✓ |
-| Focus trap | partial | ✓ | ✓ | ✓ | ✓ |
+| Focus trap | ✓ | ✓ | ✓ | ✓ | ✓ |
 | High contrast | ✓ | — | — | ✓ | ✓ |
 | File tree context menu | — | N/A | N/A | ✓ | ✓ |
 | Skip link | ✓ | — | — | — | ✓ |

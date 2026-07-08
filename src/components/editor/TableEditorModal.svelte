@@ -94,7 +94,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="modal-backdrop" onclick={onClose} onkeydown={handleKeydown}>
-    <div class="modal" onclick={(e) => e.stopPropagation()}>
+    <div class="modal" onclick={(e) => e.stopPropagation()} use:trapFocus>
       <div class="modal-header">
         <h3>Edit Table</h3>
         <button class="close-btn" onclick={onClose} aria-label="Close">×</button>

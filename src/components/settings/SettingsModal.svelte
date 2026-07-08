@@ -22,6 +22,7 @@
   import ShortcutsSettings from "./categories/ShortcutsSettings.svelte";
   import AdvancedSettings from "./categories/AdvancedSettings.svelte";
   import AboutSettings from "./categories/AboutSettings.svelte";
+  import { trapFocus } from "../../lib/focusTrap";
 
   type CategoryId = "general" | "editor" | "preview" | "shortcuts" | "advanced" | "about";
 
@@ -169,7 +170,7 @@
 
 {#if open}
   <div class="modal-backdrop" onclick={handleBackdropClick} role="presentation">
-    <div class="modal-panel settings-modal" role="dialog" aria-label="Settings">
+    <div class="modal-panel settings-modal" role="dialog" aria-label="Settings" use:trapFocus>
       <div class="modal-header">
         <h2>Settings</h2>
         <button class="close-btn" onclick={() => (open = false)} aria-label="Close">

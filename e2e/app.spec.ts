@@ -352,6 +352,31 @@ test("Settings button opens modal on General category", async ({ page }) => {
   await expect(modal).not.toBeVisible();
 });
 
+test("settings modal traps focus", async ({ page }) => {
+  await page.locator('button[aria-label="Settings"]').click();
+  const modal = page.locator('[role="dialog"]');
+  await expect(modal).toBeVisible({ timeout: 3000 });
+
+  // Focus should start inside the modal
+  const initiallyInside = await page.evaluate(() =>
+    document.activeElement?.closest('[role="dialog"]') !== null
+  );
+  expect(initiallyInside).toBe(true);
+
+  // Tab through several elements; focus should stay inside the modal
+  for (let i = 0; i < 10; i++) {
+    await page.keyboard.press("Tab");
+    const inside = await page.evaluate(() =>
+      document.activeElement?.closest('[role="dialog"]') !== null
+    );
+    expect(inside).toBe(true);
+  }
+
+  // Close
+  await page.keyboard.press("Escape");
+  await expect(modal).not.toBeVisible();
+});
+
 test("sidebar panel can be toggled with Ctrl+B", async ({ page }) => {
   // Panel is collapsed by default
   await expect(page.locator(".sidebar")).toHaveCount(0);

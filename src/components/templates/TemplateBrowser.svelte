@@ -99,7 +99,7 @@
 
 {#if open}
   <div class="modal-backdrop" onclick={handleBackdropClick} role="presentation">
-    <div class="modal-panel" role="dialog" aria-label="Templates">
+    <div class="modal-panel" role="dialog" aria-label="Templates" use:trapFocus>
       <div class="modal-header">
         <h2>New from Template</h2>
         <button class="close-btn" onclick={() => (open = false)} aria-label="Close">
