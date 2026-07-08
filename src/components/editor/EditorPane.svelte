@@ -1,7 +1,7 @@
 <script lang="ts">
   import { FileText } from "@lucide/svelte";
   import { onMount } from "svelte";
-  import type { EditorView } from "@codemirror/view";
+  import { EditorView } from "@codemirror/view";
   import { invoke } from "@tauri-apps/api/core";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
@@ -352,6 +352,20 @@
       count++;
     }
   }
+
+  function handleScrollToHeading(event: CustomEvent<{ anchor: string; line: number }>) {
+    if (!editorView) return;
+    const { line } = event.detail;
+    try {
+      const docLine = editorView.state.doc.line(line);
+      editorView.dispatch({
+        selection: { anchor: docLine.from },
+        effects: EditorView.scrollIntoView(docLine.from, { y: "start" }),
+      });
+    } catch {
+      // Line out of range — ignore
+    }
+  }
   let suppressChange = false;
   onMount(() => {
     startupCheckpoint("EditorPane mounting");
@@ -437,6 +451,10 @@
       "markz:toggle-checkbox",
       handleToggleCheckbox as EventListener
     );
+    window.addEventListener(
+      "markz:scroll-to-heading",
+      handleScrollToHeading as EventListener
+    );
 
     const unsubZoom = contentZoomStore.subscribe(() => {
       applyEditorFont();
@@ -451,6 +469,10 @@
       window.removeEventListener(
         "markz:toggle-checkbox",
         handleToggleCheckbox as EventListener
+      );
+      window.removeEventListener(
+        "markz:scroll-to-heading",
+        handleScrollToHeading as EventListener
       );
       observer.disconnect();
       unsub();

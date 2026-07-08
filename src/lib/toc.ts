@@ -2,19 +2,21 @@ export interface TocEntry {
   level: number;
   text: string;
   anchor: string;
+  line: number;
 }
 
 export function generateToc(markdown: string): TocEntry[] {
   const entries: TocEntry[] = [];
   const lines = markdown.split("\n");
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const match = line.match(/^(#{1,6})\s+(.+)$/);
     if (match) {
       const level = match[1].length;
       const rawText = match[2].trim();
       const text = cleanHeadingText(rawText);
       const anchor = slugify(text);
-      entries.push({ level, text, anchor });
+      entries.push({ level, text, anchor, line: i + 1 });
     }
   }
   return entries;

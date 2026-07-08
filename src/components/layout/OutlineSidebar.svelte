@@ -57,12 +57,13 @@
       });
   });
 
-  function scrollToAnchor(anchor: string) {
-    const el = document.querySelector(`#${anchor}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      activeAnchor = anchor;
-    }
+  function scrollToHeading(entry: TocEntry) {
+    window.dispatchEvent(
+      new CustomEvent("markz:scroll-to-heading", {
+        detail: { anchor: entry.anchor, line: entry.line },
+      })
+    );
+    activeAnchor = entry.anchor;
   }
 
   async function handleOpenLink(path: string) {
@@ -164,7 +165,7 @@
               <button
                 class="toc-link"
                 class:active={activeAnchor === entry.anchor}
-                onclick={() => scrollToAnchor(entry.anchor)}
+                onclick={() => scrollToHeading(entry)}
               >
                 {entry.text}
               </button>

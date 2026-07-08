@@ -1,3 +1,9 @@
+## [0.8.65] - 2026-07-07
+
+### Fixed
+- **Outline headings are now clickable** — Clicking an item in the outline sidebar now scrolls both the editor and the preview to the corresponding heading. The TOC now carries the source line number, and a shared `markz:scroll-to-heading` event coordinates navigation between panes.
+
+
 ## [0.8.64] - 2026-07-07
 
 ### Fixed

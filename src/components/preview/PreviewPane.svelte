@@ -629,10 +629,20 @@
       .catch(() => { pandocAvailable = false; });
   }
 
+  function handleScrollToHeading(event: CustomEvent<{ anchor: string; line: number }>) {
+    if (!contentDiv) return;
+    const { anchor } = event.detail;
+    const el = contentDiv.querySelector(`#${anchor}`) as HTMLElement | null;
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   onMount(() => {
     checkPandoc();
     const onSettingsChanged = () => checkPandoc();
     window.addEventListener("markz:settings-changed", onSettingsChanged);
+    window.addEventListener("markz:scroll-to-heading", handleScrollToHeading as EventListener);
 
     function onPrint() {
       if (!contentDiv) {
@@ -745,6 +755,7 @@
       window.removeEventListener("markz:print", onPrint);
       window.removeEventListener("markz:slide-breaks-changed", onSlideBreaksChanged);
       window.removeEventListener("markz:settings-changed", onSettingsChanged);
+      window.removeEventListener("markz:scroll-to-heading", handleScrollToHeading as EventListener);
     };
   });
 

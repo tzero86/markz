@@ -41,6 +41,60 @@ test.describe("Outline sidebar", () => {
     await page.keyboard.press("Control+b");
     await expect(page.locator(".sidebar")).toHaveCount(0);
   });
+
+  test("clicking an outline item scrolls editor and preview to the heading", async ({ page }) => {
+    // Open Outline panel first
+    await page.click('.activity-btn[aria-label="Outline"]');
+
+    const sidebar = page.locator(".sidebar");
+    // Use the default welcome content heading; it is already rendered in editor/preview.
+    const targetLink = sidebar.locator('.toc-link:has-text("What Makes MarkZ Different")');
+    await expect(targetLink).toBeVisible({ timeout: 3000 });
+
+    // Wait for the preview to render the target heading
+    const targetHeading = page.locator('.preview-content :is(h1,h2,h3):has-text("What Makes MarkZ Different")');
+    await expect(targetHeading).toBeVisible({ timeout: 3000 });
+
+    // Scroll preview to top first to ensure we actually move on click
+    await page.evaluate(() => {
+      const scroller = document.querySelector(".preview-scroller");
+      if (scroller) scroller.scrollTop = 0;
+    });
+
+    const scrollTopBefore = await page.evaluate(() => {
+      const scroller = document.querySelector(".preview-scroller");
+      return scroller ? scroller.scrollTop : 0;
+    });
+
+    await targetLink.click();
+
+    // Give smooth preview scroll a moment to settle
+    await page.waitForTimeout(600);
+
+    // Editor cursor should now be on the target heading line
+    const cursorLine = await page.evaluate(() => {
+      const cm = document.querySelector(".cm-content");
+      if (!cm) return null;
+      const view = (window as any).EditorView?.findFromDOM?.(cm) ?? (window as any).__markz_editorView;
+      if (!view) return null;
+      const pos = view.state.selection.main.head;
+      return view.state.doc.lineAt(pos).number;
+    });
+    expect(cursorLine).toBeGreaterThanOrEqual(5);
+
+    // Preview should have scrolled down toward the target heading
+    const scrollTopAfter = await page.evaluate(() => {
+      const scroller = document.querySelector(".preview-scroller");
+      return scroller ? scroller.scrollTop : 0;
+    });
+    expect(scrollTopAfter).toBeGreaterThan(scrollTopBefore);
+    // Heading should be at or near the top of the preview viewport
+    const headingBox = await targetHeading.boundingBox();
+    const scrollerBox = await page.locator(".preview-scroller").boundingBox();
+    expect(headingBox).not.toBeNull();
+    expect(scrollerBox).not.toBeNull();
+    expect(headingBox!.y).toBeLessThanOrEqual(scrollerBox!.y + 120);
+  });
 });
 
 test.describe("Preview pane Copy dropdown", () => {
