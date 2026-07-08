@@ -605,3 +605,62 @@ test("preview shows correct content when switching tabs rapidly", async ({
   await page.waitForTimeout(500);
   expect(await getEditorText()).toContain("Second Doc");
 });
+
+test.describe("Command palette", () => {
+  test("command palette opens and shows categories", async ({ page }) => {
+    await page.click('.app');
+    await page.keyboard.press("Control+Shift+p");
+
+    const palette = page.locator('[role="dialog"][aria-label="Command Palette"]');
+    await expect(palette).toBeVisible({ timeout: 3000 });
+
+    // Category headers should be visible
+    await expect(palette.locator('.palette-category').filter({ hasText: "File" })).toBeVisible();
+    await expect(palette.locator('.palette-category').filter({ hasText: "View" })).toBeVisible();
+  });
+
+  test("command palette filters by query", async ({ page }) => {
+    await page.click('.app');
+    await page.keyboard.press("Control+Shift+p");
+
+    const palette = page.locator('[role="dialog"][aria-label="Command Palette"]');
+    await expect(palette).toBeVisible({ timeout: 3000 });
+
+    const input = palette.locator('.palette-input');
+    await input.fill("export docx");
+
+    // The top result should be the Export to DOCX command
+    const items = palette.locator('.palette-item');
+    await expect(items.first()).toContainText("Export to DOCX");
+    await expect(items).toHaveCount(1);
+  });
+
+  test("command palette sorts by frecency when query is empty", async ({ page }) => {
+    // Seed frecency so "New File" is the most-used File command, then reload
+    // so the palette module reads the seeded value at startup.
+    await page.evaluate(() => {
+      localStorage.setItem("markz:command-frecency", JSON.stringify({ "new-file": 5, "open-file": 1, "save": 2 }));
+    });
+    await page.addInitScript(tauriMockInitFunc);
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+
+    await page.click('.app');
+    await page.keyboard.press("Control+Shift+p");
+
+    const palette = page.locator('[role="dialog"][aria-label="Command Palette"]');
+    await expect(palette).toBeVisible({ timeout: 3000 });
+
+    const firstFileLabel = await page.evaluate(() => {
+      const cats = Array.from(document.querySelectorAll('.palette-category'));
+      const fileCat = cats.find((c) => c.textContent?.trim() === 'File');
+      if (!fileCat) return null;
+      let next = fileCat.nextElementSibling;
+      while (next && !next.classList.contains('palette-item')) {
+        next = next.nextElementSibling;
+      }
+      return next?.querySelector('.palette-item-label')?.textContent ?? null;
+    });
+    expect(firstFileLabel).toBe("New File");
+  });
+});

@@ -15,10 +15,41 @@ export interface PaletteItem {
   label: string;
   detail?: string;
   icon?: string;
+  category?: string;
   action: () => void | Promise<void>;
 }
 
 export type PaletteMode = "commands" | "files";
+
+const FRECENCY_KEY = "markz:command-frecency";
+
+function loadFrecency(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(FRECENCY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFrecency(map: Record<string, number>) {
+  try {
+    localStorage.setItem(FRECENCY_KEY, JSON.stringify(map));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+let frecencyMap = loadFrecency();
+
+export function recordCommandUse(id: string) {
+  frecencyMap[id] = (frecencyMap[id] ?? 0) + 1;
+  saveFrecency(frecencyMap);
+}
+
+export function getCommandFrecency(id: string): number {
+  return frecencyMap[id] ?? 0;
+}
 
 function fuzzyScore(query: string, text: string): number {
   if (!query) return 1;
@@ -68,14 +99,44 @@ export function getCommandItems(): PaletteItem[] {
   return commandRegistry;
 }
 
+// Category ordering for command mode when no query is entered.
+const CATEGORY_ORDER = ["File", "View", "Export", "Tools"];
+
+function categoryPriority(category?: string): number {
+  const idx = CATEGORY_ORDER.indexOf(category ?? "");
+  return idx === -1 ? 999 : idx;
+}
+
+function sortByFrecencyThenLabel(a: PaletteItem, b: PaletteItem): number {
+  const fa = getCommandFrecency(a.id);
+  const fb = getCommandFrecency(b.id);
+  if (fb !== fa) return fb - fa;
+  return a.label.localeCompare(b.label);
+}
+
 // ---- Search ----
 
 export function searchPalette(query: string, mode: PaletteMode): PaletteItem[] {
   if (mode === "commands") {
-    const items = commandRegistry;
-    if (!query) return items;
+    let items = commandRegistry;
+    if (!query) {
+      return items
+        .slice()
+        .sort((a, b) => {
+          const pa = categoryPriority(a.category);
+          const pb = categoryPriority(b.category);
+          if (pa !== pb) return pa - pb;
+          return sortByFrecencyThenLabel(a, b);
+        });
+    }
     return items
-      .map((item) => ({ item, score: fuzzyScore(query, item.label + " " + (item.detail || "")) }))
+      .map((item) => {
+        const base = fuzzyScore(query, item.label + " " + (item.detail || ""));
+        return {
+          item,
+          score: base > 0 ? base + getCommandFrecency(item.id) * 0.05 : 0,
+        };
+      })
       .filter((r) => r.score > 0)
       .sort((a, b) => b.score - a.score)
       .map((r) => r.item);
@@ -97,6 +158,7 @@ export function searchPalette(query: string, mode: PaletteMode): PaletteItem[] {
         label: tab.title,
         detail: tab.path,
         icon: "file",
+        category: "Recent",
         action: () => {
           const existing = get(tabStore).tabs.find((t) => t.path === tab.path);
           if (existing) {
@@ -120,6 +182,7 @@ export function searchPalette(query: string, mode: PaletteMode): PaletteItem[] {
           label: f.name,
           detail: f.rel_path,
           icon: "file",
+          category: "Workspace",
           action: () => {
             const existing = get(tabStore).tabs.find((t) => t.path === f.path);
             if (existing) {

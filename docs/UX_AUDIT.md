@@ -169,13 +169,12 @@ Clicking an item in `OutlineSidebar.svelte` dispatches `markz:scroll-to-heading`
 **Status:** Shipped in v0.8.6.  
 Clicking a checkbox in the preview dispatches `markz:toggle-checkbox`; `EditorPane.svelte` finds the corresponding `- [ ]` / `- [x]` and toggles it in the source.
 
-### 4.10 Command Palette Missing Frecency
+### 4.10 Command Palette Missing Frecency — ✅ Done
 
-**Current:** `CommandPalette.svelte` / `commandPalette.ts` returns a flat, alphabetically-ish fuzzy-sorted list. Commands are not grouped by category and usage is not tracked.
+**Status:** Fixed in current development.  
+Commands now carry a `category` field (File, View, Export, Tools). When the query is empty, results are grouped by category and sorted by usage frequency within each group. `localStorage` persists the frecency map under `markz:command-frecency`, and a small frecency boost is applied to fuzzy search scores so frequently used commands surface faster.
 
-**Problem:** "Copy as JIRA" may be used 10× per day but always requires typing "jira".
-
-**Fix:** Track command usage frequency in session/local storage and sort by frecency when the query is empty. Add lightweight category headers (File, View, Export, etc.).
+**Note:** File mode (Quick Open) also gets Recent / Workspace category headers.
 
 ---
 
@@ -277,7 +276,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 |---|-------|--------|-------|--------|
 | 1 | Preview inline search (wire existing helpers to UI/keyboard) | 1 day | `PreviewPane.svelte` | Not done |
 | 2 | File tree context menu (New File, Rename, Delete) | 1 day | `OutlineSidebar.svelte`, `workspaceStore.ts`, backend | Not done |
-| 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Not done |
+| 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Done |
 | 4 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` | Not done |
 | 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Done |
 | 6 | Focus trap in all modals | ½ day | All modal components | Done |

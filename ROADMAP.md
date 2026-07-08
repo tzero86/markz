@@ -117,7 +117,7 @@ Features that make MarkZ feel like a serious IDE for markdown.
 ### P1 — Command Palette (`Ctrl+Shift+P`)
 - **Status:** `[x]` Done
 - **Files:** New `src/components/ui/CommandPalette.svelte`, `src/lib/commandPalette.ts`
-- **Scope:** Fuzzy search across all app commands (new file, open file, open folder, save, export formats, toggle sidebar, switch view mode, git diff, apply template, etc.).
+- **Scope:** Fuzzy search across all app commands (new file, open file, open folder, save, export formats, toggle sidebar, switch view mode, git diff, apply template, etc.). Commands are grouped under File / View / Export / Tools category headers and sorted by usage frecency when the query is empty; frequently used commands receive a small score boost while searching.
 - **Effort:** Small (1 day)
 
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
