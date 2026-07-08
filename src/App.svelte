@@ -56,6 +56,55 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   let sidebarWidth = $derived(sidebarWidths[activeActivity]);
   let viewMode = $state<"split" | "editor" | "preview">("split");
   let splitDirection = $state<"horizontal" | "vertical" | "vertical-reversed">("horizontal");
+  let zenMode = $state(false);
+  let preZenSidebarVisible = $state(false);
+  let preZenViewMode = $state<"split" | "editor" | "preview">("split");
+  let escapePressCount = 0;
+  let escapeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function enterZenMode() {
+    if (zenMode) return;
+    preZenSidebarVisible = sidebarPanelVisible;
+    preZenViewMode = viewMode;
+    sidebarPanelVisible = false;
+    viewMode = "split";
+    zenMode = true;
+  }
+
+  function exitZenMode() {
+    if (!zenMode) return;
+    sidebarPanelVisible = preZenSidebarVisible;
+    viewMode = preZenViewMode;
+    zenMode = false;
+    escapePressCount = 0;
+    if (escapeTimeout) {
+      clearTimeout(escapeTimeout);
+      escapeTimeout = null;
+    }
+  }
+
+  function toggleZenMode() {
+    if (zenMode) {
+      exitZenMode();
+    } else {
+      enterZenMode();
+    }
+  }
+
+  function handleZenEscape(e: KeyboardEvent) {
+    if (!zenMode || e.key !== "Escape") return;
+    escapePressCount++;
+    if (escapePressCount >= 2) {
+      e.preventDefault();
+      exitZenMode();
+      return;
+    }
+    if (escapeTimeout) clearTimeout(escapeTimeout);
+    escapeTimeout = setTimeout(() => {
+      escapePressCount = 0;
+    }, 500);
+  }
+
   async function loadSettings() {
     try {
       const s: any = await invoke("get_settings");
@@ -457,6 +506,11 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       debugLogStore.toggleCollapsed();
     };
     window.addEventListener("markz:toggle-debug-panel", handleToggleDebugPanel);
+    const handleToggleZenMode = () => {
+      toggleZenMode();
+    };
+    window.addEventListener("markz:toggle-zen-mode", handleToggleZenMode);
+    window.addEventListener("keydown", handleZenEscape);
     const handleWindowFocus = () => {
       const active = tabStore.getActiveTab();
       if (active?.path) checkExternalChanges(active.path);
@@ -483,6 +537,8 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       window.removeEventListener("markz:open-help", handleOpenHelp);
       window.removeEventListener("markz:export-docx", handleExportDocx);
       window.removeEventListener("markz:toggle-debug-panel", handleToggleDebugPanel);
+      window.removeEventListener("markz:toggle-zen-mode", handleToggleZenMode);
+      window.removeEventListener("keydown", handleZenEscape);
       window.removeEventListener("focus", handleWindowFocus);
       window.removeEventListener("markz:open-template-browser", handleOpenTemplateBrowser);
       window.removeEventListener("markz:open-save-template", handleOpenSaveTemplate);
@@ -491,7 +547,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   });
 </script>
 
-<div class="app">
+<div class="app" class:zen-mode={zenMode}>
   <a
     href="#editor"
     class="skip-link"
@@ -587,6 +643,16 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     <PresentationMode deck={slideDeck} onClose={() => { presentationOpen = false; slideDeck = null; }} />
   {/if}
   <SearchPanel bind:open={searchPanelOpen} />
+  {#if zenMode}
+    <button
+      class="zen-exit-btn"
+      onclick={exitZenMode}
+      aria-label="Exit zen mode"
+      title="Exit zen mode (Esc Esc)"
+    >
+      Exit Zen Mode
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -645,6 +711,47 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   .skip-link:focus {
     top: var(--space-3);
     outline: 2px solid var(--text-inverse);
+    outline-offset: 2px;
+  }
+
+  /* Zen / focus mode — hide all chrome except the editor/workspace */
+  .app.zen-mode :global(.titlebar),
+  .app.zen-mode :global(.tab-bar),
+  .app.zen-mode :global(.activity-bar),
+  .app.zen-mode .sidebar-wrapper,
+  .app.zen-mode :global(.statusbar),
+  .app.zen-mode :global(.debug-panel) {
+    display: none !important;
+  }
+  .app.zen-mode .workspace {
+    flex: 1;
+    height: 100vh;
+  }
+  .zen-exit-btn {
+    position: fixed;
+    top: var(--space-4);
+    right: var(--space-4);
+    z-index: 2000;
+    padding: var(--space-2) var(--space-4);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 200ms ease, color 150ms ease;
+    pointer-events: none;
+  }
+  .app.zen-mode .zen-exit-btn {
+    opacity: 0.6;
+    pointer-events: auto;
+  }
+  .app.zen-mode .zen-exit-btn:hover,
+  .app.zen-mode .zen-exit-btn:focus {
+    opacity: 1;
+    color: var(--text-primary);
+    outline: 2px solid var(--accent-default);
     outline-offset: 2px;
   }
 </style>

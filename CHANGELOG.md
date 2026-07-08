@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **Zen / focus mode** — `Ctrl+K Z` hides the title bar, tab bar, activity bar, sidebar, status bar, and debug panel, leaving only the editor and preview. Exit via `Esc` twice, the floating "Exit Zen Mode" button, or `Ctrl+K Z` again.
 - **Image paste preview + alt-text prompt** — Pasting or dropping an image into the editor now opens an "Insert Image" modal with a thumbnail preview, an alt-text input, and Cancel/Insert buttons. The image is only saved to `assets/` after confirmation, and the inserted markdown uses the provided alt text.
 - **Custom CSS editor modal** — Settings → Advanced now opens a dedicated "Custom CSS Editor" modal with a 20-row resizable textarea, Tab-to-indent (two spaces), Ctrl+Enter to apply, Escape/click-backdrop to cancel, and a focus trap.
 - **Skip-to-editor link** — A visually hidden "Skip to editor" link is now the first focusable element in the app. Keyboard users can press Tab on page load to reveal it and jump directly to the CodeMirror editor.

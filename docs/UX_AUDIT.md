@@ -18,10 +18,9 @@
 | Performance Perception | 8/10 | Fast startup, chunked preview post-processing, session restore no longer flashes |
 | Content & Copy | 8/10 | Clear labels, good empty states, About credits now mention key libraries |
 
-**Top issue still to fix:**
-1. **Zen / focus mode** — no way to hide all chrome and write distraction-free.
+**All current P1 UX sweep items are done.**
 
-> **Progress note:** The remaining P1 item from the latest UX sweep is Zen / focus mode. Most of the original P0/P1 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore, per-activity sidebar widths, clickable breadcrumb, navigation history, focus traps, custom CSS editor, image paste preview) has shipped between v0.8.6 and the current development build.
+> **Progress note:** The latest UX sweep is complete. All original P0/P1 items (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore, per-activity sidebar widths, clickable breadcrumb, navigation history, focus traps, custom CSS editor, image paste preview, and zen/focus mode) have shipped between v0.8.6 and the current development build.
 
 > **Progress note:** Most of the original P0 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore) has shipped between v0.8.6 and v0.8.66. The remaining gaps are smaller but still matter for competitive parity.
 
@@ -86,13 +85,10 @@ The right-side stat badges in `StatusBar.svelte` are now collapsed into a single
 **Status:** Fixed in current development.  
 `AdvancedSettings.svelte` now shows a compact CSS preview summary and an **Open CSS Editor** button. The new `CssEditorModal.svelte` provides a 20-row resizable textarea, Tab-to-indent (two spaces), Ctrl+Enter to apply, Escape/click-backdrop to cancel, and a focus trap. The modal is wired into Settings → Advanced and covered by an E2E test.
 
-### 3.5 No Focus Mode / Zen Mode
+### 3.5 No Focus Mode / Zen Mode — ✅ Done
 
-**Current:** Users can toggle view modes (split/editor/preview) but there is no "hide everything" mode.
-
-**Problem:** Writers want minimal chrome. VS Code has Zen Mode; iA Writer is *all* Zen Mode.
-
-**Recommendation:** `Ctrl+K Z` → hide title bar, status bar, sidebar, tab bar. Show only editor + optional preview. Exit via `Esc` twice or `Ctrl+K Z`.
+**Status:** Fixed in current development.  
+`App.svelte` now supports a zen mode toggled by `Ctrl+K Z`. It hides the title bar, tab bar, activity bar, sidebar, status bar, and debug panel, leaving only the editor and preview. A floating "Exit Zen Mode" button appears in the top-right corner; users can also exit with `Esc` twice or by pressing `Ctrl+K Z` again. The previous sidebar visibility and view mode are restored on exit. Covered by E2E tests.
 
 ### 3.6 Activity Bar Visual Weight — ✅ Done
 

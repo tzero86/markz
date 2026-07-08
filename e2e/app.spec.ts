@@ -742,3 +742,47 @@ test.describe("Command palette", () => {
     expect(firstFileLabel).toBe("New File");
   });
 });
+
+test.describe("Zen mode", () => {
+  test("Ctrl+K Z hides chrome and shows exit button", async ({ page }) => {
+    await expect(page.locator(".titlebar")).toBeVisible();
+    await expect(page.locator(".tab-bar")).toBeVisible();
+    await expect(page.locator(".statusbar")).toBeVisible();
+
+    await page.keyboard.press("Control+k");
+    await page.keyboard.press("z");
+
+    await expect(page.locator(".app")).toHaveClass(/zen-mode/);
+    await expect(page.locator(".titlebar")).not.toBeVisible();
+    await expect(page.locator(".tab-bar")).not.toBeVisible();
+    await expect(page.locator(".statusbar")).not.toBeVisible();
+    await expect(page.locator(".zen-exit-btn")).toBeVisible();
+  });
+
+  test("Esc Esc exits zen mode", async ({ page }) => {
+    await page.keyboard.press("Control+k");
+    await page.keyboard.press("z");
+    await expect(page.locator(".app")).toHaveClass(/zen-mode/);
+
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+
+    await expect(page.locator(".app")).not.toHaveClass(/zen-mode/);
+    await expect(page.locator(".titlebar")).toBeVisible();
+    await expect(page.locator(".tab-bar")).toBeVisible();
+    await expect(page.locator(".statusbar")).toBeVisible();
+  });
+
+  test("exit button restores chrome", async ({ page }) => {
+    await page.keyboard.press("Control+k");
+    await page.keyboard.press("z");
+    await expect(page.locator(".app")).toHaveClass(/zen-mode/);
+
+    await page.locator(".zen-exit-btn").click();
+
+    await expect(page.locator(".app")).not.toHaveClass(/zen-mode/);
+    await expect(page.locator(".titlebar")).toBeVisible();
+    await expect(page.locator(".tab-bar")).toBeVisible();
+    await expect(page.locator(".statusbar")).toBeVisible();
+  });
+});

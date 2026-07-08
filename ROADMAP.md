@@ -181,9 +181,9 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Effort:** Medium (1–2 days)
 
 ### P1 — Zen / Focus Mode
-- **Status:** `[ ]` Not Started
-- **Files:** TBD (`src/App.svelte`, `src/lib/keyboard.ts`)
-- **Scope:** `Ctrl+K Z` hides title bar, status bar, sidebar, tab bar, and activity bar, leaving only the editor + optional preview. Exit via `Esc` twice or `Ctrl+K Z`. Persist preference in session.
+- **Status:** `[x]` Done
+- **Files:** `src/App.svelte`, `src/lib/keyboard.ts`, `e2e/app.spec.ts`
+- **Scope:** `Ctrl+K Z` hides the title bar, tab bar, activity bar, sidebar, status bar, and debug panel, leaving only the editor and preview. Exit via `Esc` twice, the floating "Exit Zen Mode" button, or `Ctrl+K Z` again. Previous sidebar visibility and view mode are restored on exit.
 - **Effort:** Small (1 day)
 
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)

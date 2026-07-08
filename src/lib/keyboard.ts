@@ -170,6 +170,9 @@ export function toggleSidebar() {
 }
 
 export function initKeyboardShortcuts() {
+  let chordKey: string | null = null;
+  let chordTimeout: ReturnType<typeof setTimeout> | null = null;
+
   const handler = (e: KeyboardEvent) => {
     // Ignore when typing in inputs, textareas, or the CodeMirror editor
     const target = e.target as HTMLElement | null;
@@ -178,6 +181,34 @@ export function initKeyboardShortcuts() {
     }
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
+
+    // Chord: Ctrl+K -> Z toggles zen mode
+    if (mod && key === "k" && !chordKey) {
+      e.preventDefault();
+      chordKey = "k";
+      if (chordTimeout) clearTimeout(chordTimeout);
+      chordTimeout = setTimeout(() => {
+        chordKey = null;
+      }, 1000);
+      return;
+    }
+    if (chordKey === "k" && !mod && key === "z") {
+      e.preventDefault();
+      chordKey = null;
+      if (chordTimeout) {
+        clearTimeout(chordTimeout);
+        chordTimeout = null;
+      }
+      window.dispatchEvent(new CustomEvent("markz:toggle-zen-mode"));
+      return;
+    }
+    if (chordKey === "k" && !e.repeat) {
+      chordKey = null;
+      if (chordTimeout) {
+        clearTimeout(chordTimeout);
+        chordTimeout = null;
+      }
+    }
     if (mod && e.shiftKey && key === "p") {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent("markz:open-palette", { detail: "commands" }));
