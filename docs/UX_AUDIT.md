@@ -1,8 +1,9 @@
 # UX/UI Audit: MarkZ
 
-> **Date:** 2026-05-31  
-> **Scope:** Comprehensive review of current UI/UX against design spec, usability heuristics, and competitive parity.  
-> **Method:** Code review of all layout, editor, preview, settings, and modal components.
+> **Original audit date:** 2026-05-31  
+> **Last refreshed:** 2026-07-08  
+> **Scope:** Comprehensive review of current UI/UX against the design spec, usability heuristics, and competitive parity.  
+> **Method:** Code review of layout, editor, preview, settings, modal, and workspace components against `CHANGELOG.md` and the current source tree.
 
 ---
 
@@ -10,68 +11,59 @@
 
 | Area | Score | Verdict |
 |------|-------|---------|
-| Visual Design | 8/10 | Strong token system, good dark/light themes, minor inconsistencies |
-| Information Architecture | 6/10 | Sidebar overloaded, missing navigation patterns, no breadcrumbs |
-| Interaction Design | 7/10 | Good keyboard coverage, weak feedback on long operations, no progress states |
-| Accessibility | 5/10 | ARIA labels present but incomplete, focus management gaps, no skip links |
-| Performance Perception | 7/10 | Fast startup, no loading skeletons, preview flash on theme switch |
-| Content & Copy | 8/10 | Clear labels, good empty states, Settings help tab is well-organized |
+| Visual Design | 8/10 | Strong token system, good dark/light themes and 17 color presets, minor inconsistencies remain |
+| Information Architecture | 7/10 | Sidebar is now resizable, tabs overflow handled, file tree still lacks file-management actions |
+| Interaction Design | 7/10 | Editor table-stakes are in (smart lists, auto-pair, checkbox toggle), preview search and history still missing |
+| Accessibility | 6/10 | ARIA labels improved, focus trap only in some modals, no skip link, high-contrast preset added |
+| Performance Perception | 8/10 | Fast startup, chunked preview post-processing, session restore no longer flashes |
+| Content & Copy | 8/10 | Clear labels, good empty states, About credits now mention key libraries |
 
-**Top 5 issues to fix:**
-1. Settings modal has no search — 7 sections, 30+ fields, users get lost.
-2. Tab bar lacks overflow handling — >6 tabs clip with no scroll or dropdown.
-3. No inline search in preview pane — users expect `Ctrl+F` to work in rendered HTML.
-4. File tree context menu missing — no New File, Rename, Delete in sidebar.
-5. Command palette lacks categories/recent — flat alphabetical list, no frecency.
+**Top 5 issues still to fix:**
+1. **Preview inline search** — search helper code exists but there is no user-facing search bar or `Ctrl+F` wiring.
+2. **File tree context menu** — no New File, Rename, or Delete in the workspace explorer.
+3. **Command palette frecency/categories** — flat list, no learning from usage or grouping.
+4. **Document navigation history** — no Back/Forward stack for WikiLink jumps.
+5. **Zen / focus mode** — no way to hide all chrome and write distraction-free.
+
+> **Progress note:** Most of the original P0 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore) has shipped between v0.8.6 and v0.8.66. The remaining gaps are smaller but still matter for competitive parity.
 
 ---
 
 ## 2. Information Architecture
 
-### 2.1 Sidebar Overload
+### 2.1 Sidebar Width
 
-**Current:** One sidebar serves three purposes via activity bar tabs: Files, Outline, Links.
+**Current:** The sidebar is now resizable via a drag handle (`App.svelte`) with a global width persisted in settings (min 180px / max 320px). It still uses one width for all three activities (Files, Outline, Links).
 
-**Problem:** The sidebar width is fixed (240px default). The file tree needs width for long paths; the outline needs narrow width for headings; the backlinks panel needs medium width. One size doesn't fit all.
+**Problem:** Files needs width for long paths; outline needs narrow width; links needs medium width. One size still doesn't fit all.
 
-**Recommendation:**
-- Make sidebar width **persist per activity**. Files = 280px, Outline = 220px, Links = 260px.
-- Add a **resizable sidebar** (drag edge), with min 180px / max 400px.
+**Recommendation:** Persist sidebar width per activity. Files = 280px, Outline = 220px, Links = 260px.
 
 ### 2.2 Missing Breadcrumbs
 
-**Current:** The title bar shows the app name + file name, but no path hierarchy.
+**Current:** `TitleBar.svelte` now shows the last 3 segments of the active document path as plain text (e.g. `docs › api › auth.md`).
 
-**Problem:** Opening `~/projects/backend/docs/api/auth.md` shows only "auth.md". Users lose context about which project/subfolder they're in.
+**Problem:** The path is informative but not clickable, and it only shows the trailing segments. Users can't jump to a parent folder.
 
-**Recommendation:** Replace static title with breadcrumb: `backend › docs › api › auth.md`. Click segment to open that folder in the file tree.
+**Recommendation:** Make the path segments clickable and show the full hierarchy (or at least one more level). Click a segment to re-root the file tree to that folder.
 
 ### 2.3 No Document Navigation History
 
-**Current:** `Ctrl+Click` on a WikiLink jumps, but there's no Back button.
+**Current:** `Ctrl+Click` on a WikiLink jumps to the target file, but there is no Back button.
 
 **Problem:** Engineers navigate between linked docs constantly. Losing the back stack is frustrating.
 
-**Recommendation:** Add `Alt+Left` / `Alt+Right` (or mouse back/forward buttons) for document navigation history. Show in Command Palette as "Go Back" / "Go Forward."
+**Recommendation:** Add `Alt+Left` / `Alt+Right` (or mouse back/forward buttons) for document navigation history. Expose as "Go Back" / "Go Forward" in the Command Palette.
 
-### 2.4 Tab Overflow
+### 2.4 Tab Overflow — ✅ Done
 
-**Current:** `TabBar.svelte` renders all tabs in a flex row. Beyond ~6 tabs, titles truncate aggressively and close buttons disappear.
+**Status:** Shipped in v0.8.6 and refined in v0.8.39/v0.8.66.  
+`TabBar.svelte` now supports horizontal scroll, mouse-wheel scrolling, left/right arrow buttons, drag-to-reorder, and pinned/unpinned groups.
 
-**Problem:** Users who keep many docs open (common for RFC cross-referencing) can't see tab titles.
+### 2.5 No Pinned Tabs — ✅ Done
 
-**Recommendation:**
-- Add horizontal scroll with arrow buttons when tabs exceed container width.
-- Or: Tab dropdown (`v`) showing all open tabs when space is tight.
-- Minimum tab width: 80px (showing ~8 chars + close button).
-
-### 2.5 No Pinned Tabs
-
-**Current:** All tabs are equal. Closing "all others" is the only tab management.
-
-**Problem:** Users want reference docs (style guide, API spec) always open but not in the way.
-
-**Recommendation:** Right-click → "Pin Tab". Pinned tabs: small width (icon only), fixed left, excluded from "Close Others", no close button (unpin via right-click).
+**Status:** Shipped in v0.8.8 and extended in v0.8.39.  
+Right-click any tab → Pin/Unpin. Pinned tabs stay fixed on the left, show a pin icon, have no close button, survive "Close All", and persist in session restore.
 
 ---
 
@@ -79,141 +71,112 @@
 
 ### 3.1 Inconsistent Border Radius
 
-**Current:** `--radius-sm: 4px`, `--radius-md: 6px`, `--radius-lg: 8px`. But `TabBar` tabs use no radius, `ActivityBar` buttons use `--radius-sm`, and `Toast` uses `--radius-md`.
+**Current:** `--radius-sm: 4px`, `--radius-md: 6px`, `--radius-lg: 8px`. `TabBar` tabs now use `--radius-md`, `ActivityBar` buttons use `--radius-sm`, and menus/modals use the expected tokens.
 
-**Problem:** Subtle but perceptible inconsistency.
+**Problem:** Small inconsistencies still appear in custom overlays and context menus.
 
-**Fix:** Audit all components. Use `--radius-sm` for buttons/tabs, `--radius-md` for cards/menus, `--radius-lg` for modals. Document in component spec.
+**Fix:** Audit every component once more and document the token mapping in the component spec.
 
 ### 3.2 Status Bar Information Density
 
-**Current:** Left = word count, char count, reading time. Center = view mode buttons. Right = git status, zoom.
+**Current:** Left = save indicator + cursor position. Center = zoom badge + view mode buttons + split-direction toggle. Right = git status, words, chars, read time, format badges.
 
-**Problem:** Left section uses ~200px for 3 metrics that could be more compact. Reading time is useful but rarely glanced at.
+**Problem:** The right side still shows three separate stat badges (words / chars / read time) that could be more compact.
 
-**Recommendation:**
-- Collapse metrics: `Words: 1,234 · Chars: 5,678 · ~6 min read` → `1,234 words · ~6 min`
-- Click to expand full stats in a tooltip.
-- Move reading time to a tooltip on the word count.
+**Recommendation:** Collapse to `1,234 words · ~6 min` with a tooltip showing chars. Keep the git badge as-is.
 
 ### 3.3 Preview Pane Max Width
 
-**Current:** `preview_max_width` setting exists but no visual indication when content is narrower than the pane.
+**Current:** `preview_max_width` is not exposed as a user setting; the preview content is capped at 820px and centered.
 
-**Problem:** Users set 800px max width but see blank space on both sides with no visual boundary. Looks broken.
+**Problem:** With a wide window the blank space on both sides has no visual boundary and can look broken.
 
-**Fix:** Add a subtle vertical guide line at the max-width boundary (1px `--border-default`, 50% opacity). Or center content with a faint background shade within the max-width area.
+**Fix:** Add a subtle vertical guide line at the max-width boundary (1px `--border-default`, 50% opacity) or a faint background shade within the content area.
 
 ### 3.4 Custom CSS Textarea Too Small
 
-**Current:** 6 rows for potentially 100+ lines of custom CSS.
+**Current:** The custom CSS field in `AdvancedSettings.svelte` is still 6 rows.
 
 **Problem:** Writing CSS in a tiny box is painful.
 
-**Fix:** Make it resizable (`resize: vertical`), minimum 12 rows, or open in a dedicated "Custom CSS Editor" modal with line numbers and basic syntax highlighting.
+**Fix:** Make it resizable (`resize: vertical`), minimum 12 rows, or open it in a dedicated "Custom CSS Editor" modal with line numbers and basic syntax highlighting.
 
 ### 3.5 No Focus Mode / Zen Mode
 
-**Current:** Users can toggle view modes (split/editor/preview) but there's no "hide everything" mode.
+**Current:** Users can toggle view modes (split/editor/preview) but there is no "hide everything" mode.
 
 **Problem:** Writers want minimal chrome. VS Code has Zen Mode; iA Writer is *all* Zen Mode.
 
-**Recommendation:** `Ctrl+K Z` (like VS Code) → hide title bar, status bar, sidebar, tab bar. Show only editor + optional preview. Exit via `Esc` twice or `Ctrl+K Z`.
+**Recommendation:** `Ctrl+K Z` → hide title bar, status bar, sidebar, tab bar. Show only editor + optional preview. Exit via `Esc` twice or `Ctrl+K Z`.
 
-### 3.6 Activity Bar Visual Weight
+### 3.6 Activity Bar Visual Weight — ✅ Done
 
-**Current:** 44px wide, solid background, large icons (20px).
-
-**Problem:** Slightly heavy for an app with only 3 activities. VS Code's is 48px with 12 activities; ours feels disproportionate.
-
-**Fix:** Reduce to 40px, icon size to 18px. Or add more activities (Search, Git, LLM) to justify the width.
+**Status:** Improved. `ActivityBar.svelte` is now 36px wide with 15px icons, which feels balanced for three activities.
 
 ---
 
 ## 4. Interaction Design
 
-### 4.1 No Progress Indicators for Long Operations
+### 4.1 No Progress Indicators for Long Operations — ✅ Done
 
-**Current:** DOCX export, Pandoc conversion, and file open show no loading state.
+**Status:** Shipped in v0.8.6 and v0.8.43.  
+DOCX/Pandoc/Print operations show a "Exporting…" toast, and the in-app Debug Panel logs start/end/failure for exports, file open/save, workspace search, and copy-to-clipboard operations.
 
-**Problem:** Large documents (10,000+ words) take 1–3 seconds to export. Users click "Copy as DOCX" and wonder if it worked.
+### 4.2 Preview Flash on Theme Switch — ✅ Done
 
-**Fix:**
-- Toast notification: "Exporting DOCX…" → "DOCX copied to clipboard ✓"
-- Or: Status bar spinner during operation.
-- Or: Disable button + show spinner on the button itself.
-
-### 4.2 Preview Flash on Theme Switch
-
-**Current:** Switching light ↔ dark re-renders the preview HTML, causing a visible flash.
-
-**Problem:** Jarring, especially when the system theme changes at sunset.
-
-**Fix:** Use CSS variables in preview styles. Toggle a `data-theme` attribute instead of re-rendering HTML. The markdown content doesn't change — only the CSS does.
+**Status:** Fixed. `PreviewPane.svelte` updates CSS variables and re-themes highlight.js / Mermaid without re-rendering the full HTML. The markdown content does not change — only the CSS does.
 
 ### 4.3 No Inline Search in Preview
 
-**Current:** `Ctrl+F` opens CodeMirror's find panel in the editor. The preview pane has no search.
+**Current:** `PreviewPane.svelte` contains search helper functions (`openPreviewSearch`, `highlightSearchMatches`, etc.) but no visible search UI and no `Ctrl+F` binding when the preview pane is focused.
 
-**Problem:** Users read in preview and want to find text there. Switching to editor breaks flow.
+**Problem:** Users read in preview and want to find text there. Switching to the editor breaks flow.
 
-**Fix:** Implement `Ctrl+F` context-aware: if preview pane is focused, search within preview HTML. Use `window.find()` or a custom highlight overlay.
+**Fix:** Wire `Ctrl+F` context-aware: if the preview pane is focused, open the existing search overlay with previous/next navigation and match highlighting.
 
-### 4.4 Find & Replace Missing
+### 4.4 Find & Replace Missing — ✅ Done
 
-**Current:** `Ctrl+F` and `Ctrl+H` are in keyboard.ts but no find/replace UI was visible in EditorPane.
+**Status:** Shipped in v0.8.6.  
+CodeMirror's `@codemirror/search` panel is enabled. `Ctrl+F` opens find, `Ctrl+H` opens replace, and the panel is themed to match the app.
 
-**Problem:** Critical editor feature. CodeMirror 6 has `@codemirror/search` built-in.
+### 4.5 No Click-to-Jump in Outline — ✅ Done
 
-**Fix:** Enable CodeMirror's search panel. Ensure `Ctrl+F` focuses it, `Ctrl+H` opens replace. Style to match app theme.
-
-### 4.5 No Click-to-Jump in Outline
-
-**Current:** `OutlineSidebar.svelte` renders headings but need to verify click-to-jump works.
-
-**Problem:** If headings are not clickable, the outline is decorative, not functional.
-
-**Fix:** Ensure each heading in outline is clickable and scrolls editor + preview to that section. Add hover underline.
+**Status:** Shipped in v0.8.65.  
+Clicking an item in `OutlineSidebar.svelte` dispatches `markz:scroll-to-heading`, which scrolls both the editor and the preview to the corresponding heading.
 
 ### 4.6 Image Paste Flow
 
-**Current:** Paste image → copied to assets folder → path inserted.
+**Current:** Paste/drop image → copied to the assets folder → relative path inserted (`EditorPane.svelte`). No preview of the image and no alt-text prompt.
 
-**Problem:** No preview of the image before confirming. No alt text prompt.
+**Problem:** Users don't get a chance to confirm the save location or add alt text before the image is committed.
 
-**Fix:** Show a small modal on paste: image thumbnail + alt text input + confirm/cancel. Pre-fill alt text if LLM alt-text feature exists (see LLM assessment).
+**Fix:** Show a small modal on paste: image thumbnail + alt text input + confirm/cancel. Pre-fill alt text if an LLM alt-text feature is ever added.
 
-### 4.7 No Smart List Continuation
+### 4.7 No Smart List Continuation — ✅ Done
 
-**Current:** Pressing Enter on a list item (`- item`) creates a new line but doesn't continue the list.
+**Status:** Shipped in v0.8.6.  
+`codemirror.ts` implements `smartListEnter`: pressing Enter on a list item continues `-`, `*`, `+`, or `1.`, and pressing Enter on an empty list line removes the marker and exits the list.
 
-**Problem:** Every markdown editor does this. It's table stakes.
+### 4.8 No Auto-Pair for Markdown — Partially Done
 
-**Fix:** CodeMirror extension: on Enter in list context, insert `- ` or `1. ` on the new line. On Enter on empty list item, remove the marker and exit list.
+**Current:** `closeBrackets()` from `@codemirror/autocomplete` is enabled, so `()`, `[]`, `{}`, `""`, `''` auto-close.
 
-### 4.8 No Auto-Pair for Markdown
+**Problem:** Markdown-specific delimiters (`*`, `_`, `` ` ``) are not configured, so inline emphasis and code still require typing the closing delimiter manually.
 
-**Current:** Typing `*` or `` ` `` doesn't auto-close the delimiter.
+**Fix:** Extend the `closeBrackets` configuration with markdown pairs: `*`, `_`, `` ` ``, and `<`.
 
-**Problem:** Typing `` ` `` for inline code requires typing it twice.
+### 4.9 No Task List Toggle in Preview — ✅ Done
 
-**Fix:** CodeMirror close-brackets extension configured for markdown: `*`, `_`, `` ` ``, `[`, `(`, `{`, `"`, `'`, `<`.
-
-### 4.9 No Task List Toggle in Preview
-
-**Current:** Checkboxes in preview are static HTML.
-
-**Problem:** Users expect to click a checkbox in preview to toggle it in the source.
-
-**Fix:** Add click handler on preview checkboxes that finds the corresponding `- [ ]` / `- [x]` in the editor and toggles it.
+**Status:** Shipped in v0.8.6.  
+Clicking a checkbox in the preview dispatches `markz:toggle-checkbox`; `EditorPane.svelte` finds the corresponding `- [ ]` / `- [x]` and toggles it in the source.
 
 ### 4.10 Command Palette Missing Frecency
 
-**Current:** Commands are always in the same order. No learning from usage.
+**Current:** `CommandPalette.svelte` / `commandPalette.ts` returns a flat, alphabetically-ish fuzzy-sorted list. Commands are not grouped by category and usage is not tracked.
 
-**Problem:** "Copy as JIRA" is used 10× per day but always requires typing "jira" instead of being first.
+**Problem:** "Copy as JIRA" may be used 10× per day but always requires typing "jira".
 
-**Fix:** Track command usage frequency in localStorage. Sort by frecency (frequency × recency) when query is empty. Reset on app restart is fine — learned within a session.
+**Fix:** Track command usage frequency in session/local storage and sort by frecency when the query is empty. Add lightweight category headers (File, View, Export, etc.).
 
 ---
 
@@ -221,51 +184,44 @@
 
 ### 5.1 Incomplete ARIA Labeling
 
-**Current:** Some buttons have `aria-label`, many don't. The `TitleBar` has drag region but no `role="banner"`.
+**Current:** Most title-bar, tab-bar, and preview toolbar buttons now have `aria-label`. `SettingsModal.svelte` uses `aria-label="Settings"` but not `aria-labelledby`, and not every modal follows the same pattern.
 
-**Problem:** Screen reader users can't identify many interactive elements.
+**Problem:** Screen reader users may still miss context for some interactive elements.
 
-**Fix:** Audit all interactive elements. Every `<button>` without visible text needs `aria-label`. Every modal needs `aria-labelledby` pointing to its title.
+**Fix:** Audit all interactive elements. Every modal should point `aria-labelledby` to its title. Every icon-only button needs a persistent `aria-label`.
 
-### 5.2 Focus Trap in Modals
+### 5.2 Focus Trap in Modals — Partially Done
 
-**Current:** Modals (Settings, Templates, Command Palette) may not trap focus.
+**Current:** `focusTrap.ts` exists and is used by `SearchPanel.svelte`. `CommandPalette.svelte` and `TableEditorModal.svelte` import it but do not apply it; `SettingsModal.svelte`, `SaveTemplateDialog.svelte`, `GitDiffModal.svelte`, and `TemplateBrowser.svelte` do not trap focus at all.
 
-**Problem:** Tab key can escape modal and focus elements behind it.
+**Problem:** Tab key can escape a modal and focus elements behind it.
 
-**Fix:** Implement focus trap: `Tab` on last element → first element, `Shift+Tab` on first → last. Close on `Escape` (already works for some).
+**Fix:** Apply `use:trapFocus` consistently to all modal containers. Auto-focus the first focusable element on open and close on `Escape`.
 
 ### 5.3 No Skip Link
 
-**Current:** No way to skip title bar + sidebar and jump directly to editor.
+**Current:** No way to skip the title bar + sidebar and jump directly to the editor.
 
-**Problem:** Keyboard users must tab through 10+ elements to reach the editor.
+**Problem:** Keyboard users must tab through many elements to reach the editor.
 
 **Fix:** Add a visually hidden "Skip to editor" link as the first focusable element. Visible on focus.
 
-### 5.4 No High Contrast Theme
+### 5.4 No High Contrast Theme — ✅ Done
 
-**Current:** Light, Dark, System themes. No high contrast.
+**Status:** Shipped in v0.8.45 and preserved through the WGSN palette additions in v0.8.49.  
+A "High Contrast" preset is available in Settings → General → Color Preset.
 
-**Problem:** Users with visual impairments need stronger contrast.
+### 5.5 Preview Heading Hierarchy — ✅ Done
 
-**Fix:** Add a "High Contrast" theme option with pure black/white and thick borders. Or respect `prefers-contrast: more`.
+**Status:** Confirmed. `PreviewPane.svelte` renders actual `<h1>`–`<h6>` elements, and `addHeadingAnchors` assigns stable IDs for navigation.
 
-### 5.5 Preview Heading Hierarchy
+### 5.6 Color-Only Status Indicators — Partially Done
 
-**Current:** Preview renders headings with visual size but no semantic `aria-level` on the container.
+**Current:** The status bar save indicator now uses text ("Saved"/"Unsaved") plus a dot. The git badge shows the branch name plus a modified dot. Unsaved tabs still rely on a colored dot only.
 
-**Problem:** Screen readers may not announce heading levels correctly if rendered in a generic div.
+**Problem:** Colorblind users may struggle with the tab unsaved indicator.
 
-**Fix:** Ensure preview HTML uses actual `<h1>`–`<h6>` tags, not styled `<div>`s.
-
-### 5.6 Color-Only Status Indicators
-
-**Current:** Git status uses a colored dot (green/yellow/red). Unsaved changes use a dot on the tab.
-
-**Problem:** Colorblind users can't distinguish states.
-
-**Fix:** Add shape or text: unsaved tab = `●` + italic title. Git clean = checkmark icon, modified = dot icon.
+**Fix:** Add a non-color cue to unsaved tabs, e.g. an italic title or a visible `●` glyph.
 
 ---
 
@@ -273,30 +229,24 @@
 
 ### 6.1 No Loading Skeletons
 
-**Current:** Settings modal shows "Loading…" text. File tree shows nothing while loading.
+**Current:** Settings modal shows "Loading settings…". File tree shows blank or "Searching…" text while loading.
 
-**Problem:** Blank states feel slower than skeletons.
+**Problem:** Blank/text states feel slower than skeletons.
 
-**Fix:** Replace "Loading…" with a pulsing skeleton block (3–5 gray bars). Use the same for file tree initial load.
+**Fix:** Replace "Loading…" with a pulsing skeleton block (3–5 gray bars). Use the same for the file tree initial load.
 
 ### 6.2 Preview Render Delay
 
-**Current:** Preview updates on every keystroke (debounced).
+**Current:** Preview updates are debounced to 50ms. Heavy post-processing (KaTeX, Mermaid, syntax highlighting) now runs in `requestAnimationFrame` chunks.
 
-**Problem:** On large documents (50,000+ chars), re-rendering causes frame drops.
+**Problem:** On very large documents (50,000+ chars), re-rendering can still cause frame drops.
 
-**Fix:**
-- Increase debounce from ~100ms to ~300ms for docs >10,000 words.
-- Or: Use a Web Worker for markdown → HTML conversion (already in Rust, but the DOM insertion is sync).
-- Or: Virtualize the preview for very long docs (render visible portion only).
+**Fix:** Increase the debounce dynamically for long documents (e.g. 300ms when >10,000 words). Consider virtualizing the preview for very long docs.
 
-### 6.3 Session Restore Flash
+### 6.3 Session Restore Flash — ✅ Done
 
-**Current:** App opens with empty editor, then tabs appear after session restore completes.
-
-**Problem:** Visible flash of empty state → populated state.
-
-**Fix:** Block render until session restore completes (fast, <50ms) or show a splash/loading state during restore.
+**Status:** Fixed in v0.8.57 and v0.8.60.  
+`App.svelte` waits for `startupComplete` before rendering the workspace, and `PreviewPane.svelte` skips preview renders until startup finishes. The "empty → populated" flash is gone.
 
 ---
 
@@ -304,27 +254,21 @@
 
 ### 7.1 Settings Section Labels
 
-**Current:** "Appearance", "Editor", "Layout", "Accessibility", "Custom CSS", "Text to Speech", "Auto Save", "Export".
+**Current:** `SettingsModal.svelte` was refactored into General, Editor, Preview, Shortcuts, Advanced, and About. General still groups sparse Appearance, Layout, and Accessibility subsections.
 
-**Problem:** "Layout" has only one setting (default view mode). "Accessibility" has font size + reduced motion. Feels sparse.
+**Problem:** Layout and Accessibility still feel light.
 
-**Fix:** Merge "Layout" into "Appearance". Rename "Accessibility" to "Accessibility & Reading". Or add more settings to justify the sections.
+**Fix:** Either merge Layout fully into Appearance, rename Accessibility to "Accessibility & Reading", or add enough settings to justify each subsection.
 
-### 7.2 Empty Workspace State
+### 7.2 Empty Workspace State — ✅ Done
 
-**Current:** "Open Folder" prompt in sidebar.
+**Status:** Shipped. `OutlineSidebar.svelte` shows an `EmptyState` with an icon, "No folder open", explanatory subtitle, and an "Open folder" action button.
 
-**Problem:** Cold and minimal. Doesn't explain what workspace mode does.
+### 7.3 About Dialog Tech Stack — Mostly Done
 
-**Fix:** Rich empty state: icon + "Open a folder to browse files, search across your project, and keep your docs organized." + "Open Folder" button + "Learn more" link.
+**Status:** Updated in v0.8.39/v0.8.40. `AboutSettings.svelte` credits now mention KaTeX, Mermaid, and docx-rs. The tech-grid badges still list only the core stack.
 
-### 7.3 About Dialog Tech Stack
-
-**Current:** Lists Tauri, Svelte, CodeMirror, Rust, TypeScript, Vite.
-
-**Problem:** Missing pulldown-cmark, KaTeX, Mermaid, and other libraries users care about.
-
-**Fix:** Add all significant dependencies. Or link to a full credits page.
+**Fix:** Add badges for `pulldown-cmark`, KaTeX, Mermaid, highlight.js, and docx-rs, or link to a full credits page.
 
 ---
 
@@ -332,48 +276,60 @@
 
 ### P0 — Fix Before Next Release
 
-| # | Issue | Effort | Files |
-|---|-------|--------|-------|
-| 1 | Settings modal search/filter | ½ day | `SettingsModal.svelte` |
-| 2 | Tab bar overflow (scroll/dropdown) | ½ day | `TabBar.svelte` |
-| 3 | Find & Replace UI | ½ day | `EditorPane.svelte`, `codemirror.ts` |
-| 4 | Preview inline search | 1 day | `PreviewPane.svelte` |
-| 5 | Smart list continuation | ¼ day | `codemirror.ts` |
-| 6 | Auto-pair markdown delimiters | ¼ day | `codemirror.ts` |
-| 7 | Click checkbox in preview → toggle source | ½ day | `PreviewPane.svelte` |
-| 8 | Focus trap in all modals | ½ day | All modal components |
-| 9 | Progress indicators for export/save | ½ day | `StatusBar.svelte`, `Toast.svelte` |
-| 10 | Breadcrumb in title bar | 1 day | `TitleBar.svelte` |
+| # | Issue | Effort | Files | Status |
+|---|-------|--------|-------|--------|
+| 1 | Preview inline search (wire existing helpers to UI/keyboard) | 1 day | `PreviewPane.svelte` | Not done |
+| 2 | File tree context menu (New File, Rename, Delete) | 1 day | `OutlineSidebar.svelte`, `workspaceStore.ts`, backend | Not done |
+| 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Not done |
+| 4 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` | Not done |
+| 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Partial |
+| 6 | Focus trap in all modals | ½ day | All modal components | Partial |
+| 7 | Skip to editor link | ¼ day | `App.svelte` | Not done |
 
 ### P1 — Next Sprint
 
-| # | Issue | Effort | Files |
-|---|-------|--------|-------|
-| 11 | Resizable sidebar | 1 day | `App.svelte`, `SplitPane.svelte` |
-| 12 | Pinned tabs | ½ day | `TabBar.svelte`, `tabStore.ts` |
-| 13 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` |
-| 14 | Zen mode | 1 day | `App.svelte` |
-| 15 | Command palette frecency | ½ day | `commandPalette.ts` |
-| 16 | File tree context menu (New/Rename/Delete) | 1 day | `OutlineSidebar.svelte` |
-| 17 | Image paste preview + alt text | 1 day | `keyboard.ts`, new modal |
-| 18 | Custom CSS editor (resizable/CodeMirror) | 1 day | `SettingsModal.svelte` |
-| 19 | Loading skeletons | ½ day | New component |
-| 20 | Skip to editor link | ¼ day | `App.svelte` |
+| # | Issue | Effort | Files | Status |
+|---|-------|--------|-------|--------|
+| 8 | Per-activity sidebar widths | ½ day | `App.svelte`, settings | Not done |
+| 9 | Clickable title-bar breadcrumb | 1 day | `TitleBar.svelte` | Partial |
+| 10 | Zen / focus mode | 1 day | `App.svelte` | Not done |
+| 11 | Image paste preview + alt text | 1 day | `EditorPane.svelte`, new modal | Not done |
+| 12 | Custom CSS editor (resizable / CodeMirror) | 1 day | `AdvancedSettings.svelte` | Not done |
+| 13 | Loading skeletons | ½ day | New component | Not done |
+| 14 | Tab dropdown when overflow | ½ day | `TabBar.svelte` | Not done |
+| 15 | Status bar metric collapse | ¼ day | `StatusBar.svelte` | Not done |
+| 16 | Preview max-width visual guide | ¼ day | `PreviewPane.svelte` | Not done |
 
 ### P2 — Backlog
 
-| # | Issue | Effort |
-|---|-------|--------|
-| 21 | High contrast theme | 1 day |
-| 22 | Tab dropdown when overflow | ½ day |
-| 23 | Preview theme-switch without re-render | 1 day |
-| 24 | Status bar metric collapse | ¼ day |
-| 25 | Preview max-width visual guide | ¼ day |
-| 26 | Rich empty workspace state | ½ day |
-| 27 | ARIA audit (full pass) | 1 day |
-| 28 | Heading hierarchy validation (lint) | ½ day |
-| 29 | Colorblind-safe status indicators | ¼ day |
-| 30 | Session restore blocking render | ½ day |
+| # | Issue | Effort | Status |
+|---|-------|--------|--------|
+| 17 | Full ARIA audit | 1 day | Not done |
+| 18 | Colorblind-safe tab unsaved indicator | ¼ day | Partial |
+| 19 | `prefers-contrast: more` support | ½ day | Not done |
+| 20 | Dynamic preview debounce by document size | ½ day | Not done |
+
+### Resolved in this cycle
+
+| # | Issue | Shipped |
+|---|-------|---------|
+| — | Settings modal search/filter | v0.8.6 / v0.8.40 |
+| — | Tab bar overflow + scroll arrows | v0.8.6 |
+| — | Find & Replace UI | v0.8.6 |
+| — | Smart list continuation | v0.8.6 |
+| — | Click checkbox in preview → toggle source | v0.8.6 |
+| — | Export / save progress indicators | v0.8.6 / v0.8.43 |
+| — | Pin tabs | v0.8.8 |
+| — | Global workspace search | v0.8.8 |
+| — | Vim keybindings | v0.8.8 |
+| — | Draggable tabs | v0.8.39 |
+| — | Slide break editor / presentation mode | v0.8.39 / v0.8.41 |
+| — | Vertical / horizontal split layout | v0.8.7 |
+| — | High contrast theme preset | v0.8.45 |
+| — | Outline click-to-jump | v0.8.65 |
+| — | Session restore flash | v0.8.57 / v0.8.60 |
+| — | Preview theme switch without re-render | v0.8.6+ |
+| — | Rich empty workspace state | v0.8.0+ |
 
 ---
 
@@ -383,19 +339,26 @@
 |---------|-------|-----------|--------|----------|---------|
 | Live preview | ✓ | ✓ | ✓ | ✓ | plugin |
 | Dual-pane | ✓ | — | — | ✓ | ✓ |
+| Vertical/horizontal split | ✓ | — | — | ✓ | ✓ |
+| Draggable tabs | ✓ | N/A | N/A | ✓ | ✓ |
+| Pin tabs | ✓ | N/A | N/A | ✓ | ✓ |
+| Tab overflow handling | ✓ | N/A | N/A | ✓ | ✓ |
+| Vim mode | ✓ | — | — | plugin | ✓ |
+| Presentation mode | ✓ | — | — | plugin | plugin |
+| Global workspace search | ✓ | — | — | ✓ | ✓ |
 | Zen mode | — | ✓ | — | plugin | ✓ |
-| Tab overflow | — | N/A | N/A | ✓ | ✓ |
-| Pin tabs | — | N/A | N/A | ✓ | ✓ |
-| Preview search | — | — | — | — | ✓ |
-| Smart lists | — | ✓ | ✓ | ✓ | ✓ |
-| Auto-pair | — | ✓ | ✓ | ✓ | ✓ |
-| Checkbox toggle (preview) | — | — | ✓ | plugin | plugin |
-| Breadcrumbs | — | — | — | ✓ | ✓ |
-| Settings search | — | — | — | ✓ | ✓ |
+| Preview inline search | — | — | — | — | ✓ |
+| Smart lists | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Auto-pair delimiters | partial | ✓ | ✓ | ✓ | ✓ |
+| Checkbox toggle (preview) | ✓ | — | ✓ | plugin | plugin |
+| Breadcrumbs | partial | — | — | ✓ | ✓ |
+| Settings search | ✓ | — | — | ✓ | ✓ |
 | Focus trap | partial | ✓ | ✓ | ✓ | ✓ |
-| High contrast | — | — | — | ✓ | ✓ |
+| High contrast | ✓ | — | — | ✓ | ✓ |
+| File tree context menu | — | N/A | N/A | ✓ | ✓ |
+| Skip link | — | — | — | — | ✓ |
 
-**Gaps that matter most:** Zen mode, preview search, smart lists, auto-pair, checkbox toggle, breadcrumbs, settings search. These are table stakes in 2026.
+**Gaps that matter most now:** preview inline search, file tree context menu, command palette frecency, document navigation history, zen/focus mode, and completing focus-trap coverage. These are table stakes for a polished 2026 editor.
 
 ---
 

@@ -387,10 +387,10 @@
 - **Settings modal search** � Filter settings sections with a real-time search input at the top of the Settings modal.
 - **Tab bar overflow handling** � Horizontal scroll arrows and mouse wheel support for when many tabs are open.
 - **Smart list continuation** � Press Enter on a list item to continue the list (`-`, `*`, `1.`). Press Enter on an empty list line to exit the list.
-- **Auto-pair markdown delimiters** � Typing `*`, `` ` ``, `[`, `(`, `{`, `"`, `'` auto-inserts the closing pair via CodeMirror `closeBrackets`.
-- **Preview inline search** � `Ctrl+F` in the preview pane opens a search bar with previous/next navigation and match highlighting.
+- **Auto-pair standard delimiters** — CodeMirror `closeBrackets` is enabled, so `[`, `(`, `{`, `"`, `'` auto-insert their closing pair. Markdown-specific delimiters (`*`, `_`, `` ` ``) are not yet configured.
+- **Preview inline search (partial)** — Search helper functions and match-highlighting logic added to `PreviewPane.svelte`, but the search UI is not yet rendered and `Ctrl+F` in the preview pane is not yet wired to open it.
 - **Click-to-toggle checkboxes** � Click a task list checkbox in the preview to toggle the corresponding `- [ ]` / `- [x]` in the editor source.
-- **Focus traps in all modals** � Tab cycling is now constrained within Settings, Templates, Command Palette, and Table Editor modals. Escape closes; first focusable element is auto-focused on open.
+- **Focus traps (partial)** — `focusTrap.ts` helper added and applied to the global search panel (`SearchPanel.svelte`). `CommandPalette`, `TemplateBrowser`, `TableEditorModal`, `SettingsModal`, `SaveTemplateDialog`, and `GitDiffModal` import or handle Escape/click-outside but do not yet apply `use:trapFocus`.
 - **Export progress indicators** � Title bar shows a breadcrumb path derived from the active document. Export operations show a consistent "Exporting�" toast.
 - **CodeMirror search panel theming** � Find/Replace panel styled to match the app's design system tokens.
 

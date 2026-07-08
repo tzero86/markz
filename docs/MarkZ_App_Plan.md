@@ -1,224 +1,243 @@
-You are the lead architect and implementer for an open-source desktop application named **MarkZ**. You will work inside an existing private repository provided to you. Your job is to design, plan, and implement the entire system end-to-end with production-grade quality, clarity, and maintainability.
+# MarkZ — Application Plan & Implementation Audit
+
+> **Version:** 0.8.66  
+> **Status:** Active planning document, audited against the current codebase.  
+> **Note:** This document originally read as a build mandate. It has been updated to reflect what is implemented, what diverged from the original plan, and what remains future work.
+
+---
 
 # PRODUCT VISION
-MarkZ is a **dual-pane Markdown editor** intended to fully replace the user's current workflow (VSCode + Sublime + Markdown Preview). It must support:
+
+`[x]` MarkZ is a **dual-pane Markdown editor** intended to fully replace the user's current workflow (VS Code + Sublime + Markdown Preview). It supports:
+
 - Full Markdown authoring
 - Live preview
 - Image handling
 - Engineering documentation workflows
 - Reliable conversion to JIRA/Confluence/Slack/GitHub formats
 
-The goal is to become the preferred tool for engineers writing documentation, RFCs, ADRs, design docs, and technical specs.
+The goal is to remain the preferred tool for engineers writing documentation, RFCs, ADRs, design docs, and technical specs. This vision is implemented and shipping.
+
+---
 
 # CORE ARCHITECTURE REQUIREMENT
-MarkZ must be built using a **Rust-first architecture** with a **Tauri frontend shell**.
 
-## Rust Core (mandatory)
-All heavy logic must be implemented in Rust:
-- Markdown parsing and rendering (GitHub-Flavored Markdown)
-- AST transformations
-- JIRA markup conversion
-- Confluence storage format conversion
-- Slack formatting
-- GitHub Issues formatting
-- HTML rendering
-- Image ingestion pipeline (clipboard, drag-drop, base64, asset folder)
-- Syntax highlighting (tree-sitter via Rust)
-- File I/O, autosave, file watching
-- Settings/config (serde)
-- Scroll sync calculations
-- Performance-critical tasks (diffing, caching)
-- Template engine for engineering docs (RFC, ADR, design docs)
+`[x]` MarkZ is built using a **Rust-first architecture** with a **Tauri v2 frontend shell** and a **Svelte 5** frontend.
 
-Expose Rust functions to the frontend via Tauri commands.
+## Rust Core
+
+All heavy logic lives in Rust and is exposed to the frontend via Tauri commands:
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Markdown parsing & rendering (GitHub-Flavored Markdown) | `[x]` | `crates/markz-core`, `pulldown-cmark` |
+| AST transformations | `[x]` | `crates/markz-core::ast` |
+| JIRA markup conversion | `[x]` | `crates/markz-convert::jira` |
+| Confluence storage format conversion | `[x]` | `crates/markz-convert::confluence` |
+| Slack formatting | `[x]` | `crates/markz-convert::slack` |
+| GitHub formatting | `[x]` | `crates/markz-convert::github` |
+| HTML rendering | `[x]` | `crates/markz-core::html` |
+| Image ingestion pipeline (clipboard, drag-drop, base64, asset folder) | `[x]` | `crates/markz-images` |
+| Syntax highlighting | `[-]` | Original plan specified *tree-sitter via Rust*. Current implementation uses `highlight.js` in the preview frontend (`src/components/preview/syntaxHighlighter.ts`). No Rust tree-sitter integration exists. |
+| File I/O, autosave, file watching | `[x]` | Tauri commands + `notify = "7"` crate |
+| Settings/config (`serde`) | `[x]` | `crates/markz-config` |
+| Scroll sync calculations | `[x]` | Heading anchors produced in Rust; bidirectional sync handled by `src/lib/scrollSync.ts` |
+| Performance-critical tasks (diffing, caching) | `[x]` | LRU preview cache, async file reads, debounced renders |
+| Template engine for engineering docs | `[x]` | `crates/markz-templates` (RFC, ADR, design docs, etc.) |
+| Expose Rust functions via Tauri commands | `[x]` | 30+ commands in `src-tauri/src/commands/` |
 
 ## Frontend (Tauri)
-Use Tauri for:
-- UI shell
-- Dual-pane layout
-- Editor component (CodeMirror 6 or Monaco)
-- HTML preview rendering
-- Keyboard shortcuts
-- Theme system (light/dark)
-- IPC with Rust core
-- Drag-and-drop events
-- Image paste events
-- Context menus (“Copy as JIRA”, “Copy as Confluence”, etc.)
 
-The frontend must remain thin and delegate all heavy work to Rust.
+| Responsibility | Status | Notes |
+|----------------|--------|-------|
+| UI shell | `[x]` | Custom title bar, activity bar, sidebar |
+| Dual-pane layout | `[x]` | Horizontal + vertical split, resizable, CSS-shown/hidden panes |
+| Editor component | `[x]` | CodeMirror 6 (not Monaco) |
+| HTML preview rendering | `[x]` | `src/components/preview/PreviewPane.svelte` |
+| Keyboard shortcuts | `[x]` | `src/lib/keyboard.ts` |
+| Theme system (light/dark + presets) | `[x]` | CSS custom properties, 17 presets including WGSN palettes |
+| IPC with Rust core | `[x]` | `@tauri-apps/api` |
+| Drag-and-drop events | `[x]` | Image drop into editor + file tree |
+| Image paste events | `[x]` | Clipboard paste handled via Tauri + frontend |
+| Context menus (“Copy as JIRA”, etc.) | `[x]` | Preview toolbar + command palette |
+
+The frontend remains thin and delegates heavy work to Rust, with the exception of syntax highlighting, Mermaid diagram rendering, and KaTeX math rendering, which run in the WebView.
+
+---
 
 # FULL FEATURE REQUIREMENTS
 
 ## 1. Dual-Pane UI
-- Left: Markdown editor with syntax highlighting
-- Right: Live preview with instant rendering
-- Smooth scroll sync
-- Split-view resizing
-- Drag-and-drop images into editor
-- File tree sidebar (optional)
-- Outline view (headings)
 
-## 2. Markdown Engine (VSCode-level support)
-Must support:
-- GitHub-Flavored Markdown
-- Tables (including complex tables)
-- Checkboxes
-- Nested lists
-- Code fences with syntax highlighting for 30+ languages
-- Mermaid diagrams
-- PlantUML (optional)
-- MathJax/KaTeX
-- Footnotes
-- Task lists
-- Internal links
-- Auto-TOC generation
-- Frontmatter (YAML/TOML)
+- `[x]` Left: Markdown editor with syntax highlighting
+- `[x]` Right: Live preview with instant rendering
+- `[x]` Smooth scroll sync (heading-anchor aware + ratio fallback)
+- `[x]` Split-view resizing (horizontal and vertical)
+- `[x]` Drag-and-drop images into editor
+- `[x]` File tree sidebar (Files activity)
+- `[x]` Outline view (headings, clickable)
+
+## 2. Markdown Engine (VS Code-level support)
+
+- `[x]` GitHub-Flavored Markdown
+- `[x]` Tables (including alignment)
+- `[x]` Checkboxes / task lists
+- `[x]` Nested lists
+- `[x]` Code fences with syntax highlighting for 30+ languages (via `highlight.js`)
+- `[x]` Mermaid diagrams
+- `[ ]` PlantUML — **not implemented**; no dependency or renderer exists
+- `[x]` KaTeX math (inline `$...$` and block `$$...$$`)
+- `[x]` Footnotes
+- `[x]` Task lists
+- `[x]` Internal links (WikiLinks `[[Target]]` / `[[Target|Display]]`)
+- `[x]` Auto-TOC generation
+- `[x]` Frontmatter (YAML/TOML)
 
 ## 3. Image Handling Pipeline
-Must support:
-- Paste images from clipboard
-- Drag-and-drop images into editor
-- Local file paths
-- Relative paths
-- Base64 embedding
-- Remote URLs
-- Auto-copy images into a project `/assets` folder (configurable)
-- Auto-rename images to safe filenames
-- Auto-update Markdown paths
-- Optional: compress images on import
+
+- `[x]` Paste images from clipboard
+- `[x]` Drag-and-drop images into editor
+- `[x]` Local file paths
+- `[x]` Relative paths
+- `[x]` Base64 embedding (local image embed in preview + exports when enabled)
+- `[x]` Remote URLs
+- `[x]` Auto-copy images into a project `/assets` folder (configurable fallback to `Documents/MarkZ/assets`)
+- `[x]` Auto-rename images to safe filenames
+- `[x]` Auto-update Markdown paths
+- `[ ]` Optional: compress images on import — **not implemented**
 
 ## 4. Export / Copy Formatting Tools
-Convert selected Markdown to:
-- JIRA markup
-- Confluence storage format
-- Slack formatting
-- GitHub Issues formatting
-- HTML
 
-Provide:
-- “Copy as…” contextual menu
-- Preserve tables, lists, code blocks, headings, images
+Convert selected/document Markdown to:
+
+- `[x]` JIRA markup
+- `[x]` Confluence storage format (XHTML)
+- `[x]` Slack formatting
+- `[x]` GitHub Issues formatting
+- `[x]` HTML
+- `[x]` DOCX (native converter)
+- `[x]` DOCX / Word / PDF / HTML / EPUB via Pandoc (when installed)
+- `[x]` Print to PDF
+
+`[x]` “Copy as…” contextual menu and command palette entries are implemented.
+`[x]` Tables, lists, code blocks, headings, and images are preserved across converters.
 
 ## 5. JIRA & Confluence Conversion Requirements
-You must:
-- Research JIRA markup syntax
-- Research Confluence storage format (XML-like)
-- Identify differences between Cloud vs Server formatting
-- Implement robust conversion rules
-- Handle tables, code blocks, headings, lists, images, links
-- Provide automated tests for all conversions
-- Ensure formatting is not broken when pasted into JIRA/Confluence
+
+`[x]` Research and implementation complete. The converters operate on the shared Rust AST (`markz_core::ast::Document`) and handle tables, code blocks, headings, lists, images, links, blockquotes, task lists, footnotes, and WikiLinks. Automated conversion tests exist at both the Rust unit/integration level and the end-to-end level (54 integration tests added in v0.8.50).
 
 ## 6. Engineering-Focused Enhancements
-- Templates for RFCs, ADRs, design docs
-- Snippets library
-- Outline view
-- Quick search across files
-- Workspace/project mode
+
+- `[x]` Templates for RFCs, ADRs, design docs, bug reports, test plans, PR descriptions, meeting notes, weekly status, and a getting-started formatting reference
+- `[x]` Snippets library (tab-triggered expansion)
+- `[x]` Outline view
+- `[x]` Quick search across files (Quick Open `Ctrl+P` + global workspace search `Ctrl+Shift+F`)
+- `[x]` Workspace/project mode
 
 ## 7. Cross-Platform
-- Windows, macOS, Linux
-- Tauri for packaging
-- GPU-accelerated rendering if beneficial
+
+- `[-]` Windows, macOS, and Linux are targeted via Tauri. `tauri.conf.json` declares file associations and icons for all three platforms. CI currently builds and tests on **Ubuntu** and **Windows** only; macOS builds rely on local/release tooling.
+- `[x]` Tauri for packaging
+- `[x]` GPU-accelerated rendering via the OS WebView
 
 ## 8. Open Source Requirements
-- MIT or Apache-2.0 license
-- Clean modular architecture
-- Clear contribution guidelines
-- Automated build + release pipeline
+
+- `[-]` **License:** `MIT` is declared in `Cargo.toml`, `README.md`, and `tauri.conf.json`. A top-level `LICENSE` file is **not present**.
+- `[ ]` **Contribution guidelines:** `CONTRIBUTING.md` is **not present**.
+- `[x]` Clean modular architecture with workspace crates
+- `[x]` Automated build + release pipeline (`.github/workflows/ci.yml`, `release.yml`, `pages.yml`)
+
+---
 
 # NON-FUNCTIONAL REQUIREMENTS
-- Fast startup (<300ms target)
-- Low memory footprint
-- Zero telemetry
-- Offline-first
-- Stable rendering engine
-- Clean separation of UI, rendering, and conversion logic
 
-# WHAT YOU MUST PRODUCE
+- `[-]` **Fast startup (<300ms target)** — Implemented and continuously optimized (see CHANGELOG v0.8.56–v0.8.63). The exact sub-300ms figure remains an aspiration and is actively benchmarked via the Debug Panel.
+- `[x]` Low memory footprint
+- `[x]` Zero telemetry
+- `[x]` Offline-first
+- `[x]` Stable rendering engine
+- `[x]` Clean separation of UI, rendering, and conversion logic
+
+---
+
+# WHAT HAS BEEN PRODUCED
+
+This section replaces the original “What You Must Produce” build checklist with the actual deliverables that now exist in the repository.
 
 ## 1. Full Architecture Plan
-- High-level architecture diagram (textual)
-- Rust module breakdown
-- Tauri integration plan
-- Rendering pipeline
-- Conversion engine design
-- Image pipeline design
-- Plugin system (optional)
+
+`[x]` `docs/MarkZ_Architectural_Plan.md` — high-level architecture, Rust module breakdown, Tauri integration plan, rendering pipeline, conversion engine, image pipeline, and risk analysis. *(Note: this plan may itself need an audit to reflect current syntax-highlighting and PlantUML divergences.)*
 
 ## 2. Tech Stack Decision
-Compare and choose between:
-- Tauri (expected winner)
-- Electron
-- Rust GUI frameworks (egui, iced, slint)
 
-Provide reasoning, tradeoffs, and final recommendation.
+`[x]` Tauri selected over Electron and native Rust GUI frameworks; reasoning documented in `docs/MarkZ_Architectural_Plan.md`.
 
 ## 3. File/Folder Structure
-A complete repository layout including:
-- src/
-- rust-core/
-- tauri/
-- components/
-- renderer/
-- converters/
-- templates/
-- assets/
-- tests/
-- build scripts
-- CI/CD config
+
+`[x]` Implemented as a Rust workspace + Tauri frontend. See `README.md` → Project Structure for the current layout.
 
 ## 4. Implementation Plan
-- Milestones
-- Sprints
-- Task breakdown
-- Dependencies
-- Risk analysis
-- Performance considerations
+
+`[x]` `ROADMAP.md` tracks shipped phases and remaining work (e.g., split editor, internal plugin architecture).
 
 ## 5. Core Code Implementations
-Provide production-ready code for:
-- Rust core bootstrap
-- Tauri bootstrap
-- Dual-pane UI
-- Markdown renderer
-- Image handling pipeline
-- JIRA/Confluence converters
-- Table and code block handling
-- Scroll sync logic
-- Settings persistence
+
+`[x]` Production code exists for:
+- Rust core bootstrap (`crates/markz-core`)
+- Tauri bootstrap (`src-tauri/src/main.rs`, `src-tauri/src/lib.rs`)
+- Dual-pane UI (`src/App.svelte`, `SplitPane.svelte`, `EditorPane.svelte`, `PreviewPane.svelte`)
+- Markdown renderer (`crates/markz-core::html`)
+- Image handling pipeline (`crates/markz-images`, `save_image` Tauri command)
+- JIRA/Confluence converters (`crates/markz-convert`)
+- Table and code block handling (AST + converters)
+- Scroll sync logic (`src/lib/scrollSync.ts`)
+- Settings persistence (`crates/markz-config`, `src-tauri/src/commands/settings.rs`)
 
 ## 6. UX/UI Specification
-- Layout wireframes (ASCII acceptable)
-- Interaction model
-- Keyboard shortcuts
-- Theme system (light/dark)
-- Accessibility considerations
+
+`[x]` `docs/MarkZ_UI_UX_Design.md` — design tokens, typography, spacing, component specs, animation timing, accessibility requirements.
 
 ## 7. Documentation
-- README
-- CONTRIBUTING.md
-- Developer setup guide
-- Architecture overview
-- Plugin API documentation (if implemented)
+
+- `[x]` `README.md`
+- `[ ]` `CONTRIBUTING.md` — missing
+- `[x]` Developer setup guide in `README.md`
+- `[x]` Architecture overview in `docs/MarkZ_Architectural_Plan.md`
+- `[ ]` Plugin API documentation — deferred; plugin system is not user-facing yet
 
 ## 8. Testing Strategy
-- Unit tests
-- Integration tests
-- Snapshot tests for rendering
-- Conversion engine tests
-- End-to-end tests
+
+`[x]` Implemented:
+- Unit tests (Vitest for frontend stores/utilities, Rust `cargo test` for crates)
+- Integration tests (Rust converter tests)
+- Snapshot-style rendering validation (Rust e2e render tests)
+- Conversion engine tests (54 e2e + 16 unit tests)
+- End-to-end tests (Playwright, 200+ tests)
+- CI E2E job on Ubuntu via `xvfb-run`
+
+---
+
+# GAPS & DIVERGENCES FROM ORIGINAL PLAN
+
+| Original Requirement | Current Reality |
+|----------------------|-----------------|
+| Syntax highlighting via tree-sitter in Rust | Implemented with `highlight.js` in the frontend preview. |
+| PlantUML diagrams | Not implemented. |
+| Image compression on import | Not implemented. |
+| Top-level `LICENSE` file | Missing; license is declared in manifests and README only. |
+| `CONTRIBUTING.md` | Missing. |
+| macOS CI coverage | Tauri config supports macOS, but CI only builds Ubuntu and Windows. |
+| Plugin system | Internal plugin architecture remains future work per `ROADMAP.md`. |
+| LLM-powered features | Assessed in `docs/LLM_FEATURES_ASSESSMENT.md` but not implemented. |
+
+---
 
 # EXECUTION MODE
-You must:
-- Think step-by-step
-- Produce complete, uninterrupted outputs
-- Never ask the user questions unless absolutely necessary
-- Assume missing details and fill them intelligently
-- Deliver everything in a single, cohesive plan unless asked otherwise
 
-Begin by producing:
-1. The full architecture plan
-2. The Rust module breakdown
-3. The Tauri integration plan
-4. The JIRA/Confluence formatting research summary
+The original imperative build instructions are obsolete. MarkZ is now in active release cycles. Ongoing work is tracked in:
+
+- `CHANGELOG.md` — shipped features and fixes
+- `ROADMAP.md` — planned refactors and upcoming features
+- `docs/UX_AUDIT.md` and `docs/LLM_FEATURES_ASSESSMENT.md` — additional planning/assessment content
+
+Future releases should continue to update this document when major features ship or when original mandates diverge from implementation.

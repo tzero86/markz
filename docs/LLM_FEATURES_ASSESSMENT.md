@@ -1,8 +1,10 @@
 # LLM-Powered Features Assessment
 
 > **Date:** 2026-05-31  
+> **Updated:** 2026-07-08  
 > **Scope:** Evaluate local, offline LLM integration for a markdown editor targeting engineers.  
-> **Constraint:** Must respect offline-first, zero-telemetry design philosophy.
+> **Constraint:** Must respect offline-first, zero-telemetry design philosophy.  
+> **Audit baseline:** MarkZ v0.8.66.
 
 ---
 
@@ -15,6 +17,35 @@ Small local models (2–4B parameters) can meaningfully enhance a markdown edito
 2. **Tier 2 (Future):** Optional bundled tiny model (Gemma 4 2B or Qwen3 1.7B) via `candle` in Rust — ~2GB download, true offline guarantee.
 
 **Avoid:** Cloud APIs (violates zero-telemetry), large models (>7B — too slow on CPU), anything that feels like "AI wrote this for you."
+
+---
+
+## Implementation Status (Current)
+
+> **No LLM integration has landed in the codebase as of MarkZ v0.8.66.**
+>
+> A search of `src/`, `src-tauri/src/`, and the workspace crates finds no Ollama client, no bundled model runtime, no `llm_generate` / `llm_available` commands, no `src/lib/llm.ts` module, and no "AI Assistant" settings section. The app has no `candle-*` dependencies and no local HTTP probing logic. Every candidate described below remains **proposed / not implemented**.
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Ollama auto-detection (Tier 1) | Not implemented | No `localhost:11434` probe, no HTTP client code for Ollama. |
+| Bundled model via `candle` (Tier 2) | Not implemented | No `candle-core`, `candle-nn`, or `candle-transformers` in workspace; no model-download flow. |
+| LLM settings / provider abstraction | Not implemented | Settings schema (`src/lib/settingsTypes.ts`) has no LLM keys; no provider interface in Rust. |
+| Inline rewrite / rephrase | Not implemented | No ghost-text/diff UI for LLM rewrites. |
+| Continue writing | Not implemented | No LLM-based continuation suggestions. |
+| Expand outline | Not implemented | Snippets exist, but not LLM outline expansion. |
+| Summarize selection / document | Not implemented | Document stats exist, but no summarization feature. |
+| Smart title generation | Not implemented | Titles come from H1/frontmatter; no LLM suggestions. |
+| Generate code block | Not implemented | Code blocks are manually authored. |
+| Grammar / style check | Not implemented | Markdown lint + spellcheck exist, but not LLM grammar/style review. |
+| Auto-generate alt text | Not implemented | Image paste copies to assets but does not suggest alt text. |
+| Link suggestion | Not implemented | WikiLinks + backlinks panel exist, but not LLM link suggestions. |
+| Table generation | Not implemented | Inline table editor exists, but not LLM-generated tables. |
+| Document review / checklist | Not implemented | No LLM document-review panel. |
+| Translation | Not implemented | No translation feature. |
+| Smart snippet expansion | Not implemented | Snippets exist, but not LLM-enhanced. |
+| Meeting notes → action items | Not implemented | No meeting-notes parser. |
+| Vision models (alt text) | Not implemented / deferred | No VLM dependency or image-to-text code. |
 
 ---
 
@@ -36,6 +67,8 @@ Small local models (2–4B parameters) can meaningfully enhance a markdown edito
 ---
 
 ## 3. Integration Architecture
+
+> **Status as of v0.8.66:** None of the architectures below have been implemented. The codebase has no LLM runtime, no HTTP client code for Ollama, and no provider abstraction. This section remains the proposed integration design.
 
 ### Option A: Ollama Auto-Detection (Recommended First)
 
@@ -59,6 +92,8 @@ Small local models (2–4B parameters) can meaningfully enhance a markdown edito
 - Use `POST /api/generate` with streaming for real-time suggestions.
 - Cache last-used model name in settings.
 
+**Status:** Not implemented.
+
 ### Option B: Bundled Model via `candle` (Rust)
 
 ```
@@ -79,6 +114,8 @@ Small local models (2–4B parameters) can meaningfully enhance a markdown edito
 - Add `candle-core`, `candle-nn`, `candle-transformers` to workspace.
 - Download model weights on first run (or bundle them).
 - Expose Tauri command: `generate_text(prompt, max_tokens, temperature)`.
+
+**Status:** Not implemented.
 
 ### Option C: WebGPU in Frontend (Not Recommended)
 
@@ -102,9 +139,30 @@ Phase 3: Model-agnostic abstraction (2 days)
   └─ Ollama | candle | future providers
 ```
 
+**Status:** Proposed roadmap only — no code work has started.
+
 ---
 
 ## 4. Feature Candidates (Prioritized)
+
+### Implementation Status at a Glance
+
+| # | Feature | Priority | Status | Notes |
+|---|---------|----------|--------|-------|
+| 4.1 | Inline Rewrite / Rephrase | P0 | Not implemented | No LLM rewrite or inline diff UI. |
+| 4.2 | Continue Writing | P0 | Not implemented | No ghost-text continuation. |
+| 4.3 | Expand Outline | P0 | Not implemented | Outline expansion is not LLM-driven. |
+| 4.4 | Summarize Selection / Document | P0 | Not implemented | Document stats exist; no summarization. |
+| 4.5 | Smart Title Generation | P1 | Not implemented | Titles derive from H1/frontmatter. |
+| 4.6 | Generate Code Block | P1 | Not implemented | Code blocks are manually authored. |
+| 4.7 | Fix Grammar / Style | P1 | Not implemented | Non-LLM markdown lint + spellcheck exist. |
+| 4.8 | Auto-Generate Alt Text | P1 | Not implemented | No VLM / image-to-text integration. |
+| 4.9 | Link Suggestion | P1 | Not implemented | WikiLinks + backlinks exist; not LLM-suggested. |
+| 4.10 | Table Generation | P1 | Not implemented | Inline table editor exists; not LLM-generated. |
+| 4.11 | Document Review / Checklist | P2 | Not implemented | No LLM review panel. |
+| 4.12 | Translation | P2 | Not implemented | No translation feature. |
+| 4.13 | Smart Snippet Expansion | P2 | Not implemented | Snippets exist, but not LLM-enhanced. |
+| 4.14 | Meeting Notes → Action Items | P2 | Not implemented | No action-item extraction. |
 
 ### P0 — High Impact, Low Complexity
 
@@ -202,20 +260,20 @@ Phase 3: Model-agnostic abstraction (2 days)
 
 ## 5. UI Integration Points
 
-| Feature | Trigger | UI Location | Visual Treatment |
-|---------|---------|-------------|-----------------|
-| Continue Writing | `Ctrl+Shift+Space` | Inline ghost text | Gray italic, Tab to accept |
-| Rewrite | Right-click selection | Context menu → submenu | Inline diff (green/red) |
-| Summarize | `Ctrl+Shift+S` or status bar | Modal or inline below | Collapsible blockquote |
-| Expand Outline | `Ctrl+Shift+E` | Replace selection | Flash animation on insert |
-| Title Suggest | `Ctrl+Shift+T` | Dropdown under title bar | 3 options, arrow keys |
-| Code Gen | Inside ` ```lang // desc` | Auto-trigger on Enter | Gray ghost code |
-| Grammar Fix | Real-time or `F8` | Inline diagnostic | Yellow squiggle + lightbulb |
-| Alt Text | On image paste | Pre-filled input field | Suggested text highlighted |
-| Link Suggest | Real-time | Underline + tooltip | Dashed blue underline |
-| Table Gen | Command palette | Insert at cursor | Flash + auto-focus first cell |
-| Doc Review | Command palette | Side panel (like outline) | Checklist with line links |
-| Translation | Copy dropdown | Modal with language select | Side-by-side preview |
+| Feature | Trigger | UI Location | Visual Treatment | Implementation Status |
+|---------|---------|-------------|-----------------|---------------------|
+| Continue Writing | `Ctrl+Shift+Space` | Inline ghost text | Gray italic, Tab to accept | Not implemented |
+| Rewrite | Right-click selection | Context menu → submenu | Inline diff (green/red) | Not implemented |
+| Summarize | `Ctrl+Shift+S` or status bar | Modal or inline below | Collapsible blockquote | Not implemented |
+| Expand Outline | `Ctrl+Shift+E` | Replace selection | Flash animation on insert | Not implemented |
+| Title Suggest | `Ctrl+Shift+T` | Dropdown under title bar | 3 options, arrow keys | Not implemented |
+| Code Gen | Inside ` ```lang // desc` | Auto-trigger on Enter | Gray ghost code | Not implemented |
+| Grammar Fix | Real-time or `F8` | Inline diagnostic | Yellow squiggle + lightbulb | Not implemented |
+| Alt Text | On image paste | Pre-filled input field | Suggested text highlighted | Not implemented |
+| Link Suggest | Real-time | Underline + tooltip | Dashed blue underline | Not implemented |
+| Table Gen | Command palette | Insert at cursor | Flash + auto-focus first cell | Not implemented |
+| Doc Review | Command palette | Side panel (like outline) | Checklist with line links | Not implemented |
+| Translation | Copy dropdown | Modal with language select | Side-by-side preview | Not implemented |
 
 **Key UX principle:** LLM suggestions should feel like **smart autocomplete**, not a chatbot. No sidebar chat panel. No modal dialogs for simple actions. Inline, contextual, dismissible.
 
@@ -237,7 +295,11 @@ Alt text generation requires a **vision-language model** (VLM). Options:
 
 ## 7. Technical Implementation Plan
 
+> **Status as of v0.8.66:** The files referenced below (`src-tauri/src/commands/llm.rs`, `src/lib/llm.ts`) do not exist, and none of the phases have been started. The plan below is preserved as the intended implementation roadmap.
+
 ### Phase 1: Ollama Integration (2–3 days)
+
+**Status:** Not started.
 
 ```rust
 // src-tauri/src/commands/llm.rs
@@ -271,12 +333,16 @@ export async function isLlmAvailable(): Promise<boolean>;
 
 ### Phase 2: Core Features (3–5 days)
 
+**Status:** Not started.
+
 - Continue Writing (ghost text)
 - Rewrite / Rephrase (context menu + inline diff)
 - Summarize (command palette + status bar)
 - Expand Outline (command palette)
 
 ### Phase 3: Polish (2–3 days)
+
+**Status:** Not started.
 
 - Title suggestion
 - Code block generation
@@ -285,6 +351,8 @@ export async function isLlmAvailable(): Promise<boolean>;
 - All with proper E2E tests
 
 ### Phase 4: Bundled Model (1 week, deferred)
+
+**Status:** Deferred / not started.
 
 - Integrate `candle` for standalone runtime.
 - Download model weights on first use.
@@ -314,7 +382,7 @@ export async function isLlmAvailable(): Promise<boolean>;
 | **Notion** | Built-in AI | No | Cloud-only, subscription |
 | **Cursor** | Built-in (Claude/GPT) | No | Code editor, not markdown |
 | **VS Code + extensions** | Copilot, Continue | No (Copilot) | Heavy IDE, not doc-focused |
-| **MarkZ (proposed)** | Local LLM via Ollama | **Yes** | First offline-first doc editor with native LLM |
+| **MarkZ (proposed — not implemented)** | Local LLM via Ollama | **Yes** | First offline-first doc editor with native LLM |
 
 **Differentiator:** MarkZ would be the **only offline-first markdown editor with built-in LLM assistance**. This is a genuine competitive moat — no other tool in this category offers local AI without plugins or cloud.
 
@@ -322,7 +390,9 @@ export async function isLlmAvailable(): Promise<boolean>;
 
 ## 10. Go/No-Go Recommendation
 
-**GO — with Phase 1 (Ollama) only.**
+**GO — with Phase 1 (Ollama) only, once prioritized.**
+
+> **Current reality:** As of v0.8.66, this recommendation has not been acted on. No LLM code exists in the app, so the features are still proposed rather than shipped.
 
 Rationale:
 - Low risk: Ollama is mature, no build complexity.

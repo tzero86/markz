@@ -2,8 +2,8 @@
 
 > This document tracks planned refactors, features, and bugfixes. Update as work progresses.
 >
-> **Current version:** v0.8.43
-> **Last updated:** 2026-06-04
+> **Current version:** v0.8.66
+> **Last updated:** 2026-07-08
 ---
 
 ## Legend
@@ -38,7 +38,7 @@
 - [x] KaTeX math rendering
 - [x] Mermaid diagram support
 - [x] DOCX export (native converter)
-- [x] Image paste/drop with base64 embedding
+- [x] Image paste/drop with automatic save to `assets/`
 - [x] Settings persistence
 - [x] Auto-save (setting + timer)
 - [x] Content zoom (50–300%)
@@ -91,10 +91,10 @@
 - [x] Settings modal search input
 - [x] Tab bar overflow (scroll arrows + mouse wheel)
 - [x] Smart list continuation (Enter continues lists, exits on empty)
-- [x] Auto-pair markdown delimiters (`closeBrackets`)
-- [x] Preview inline search (`Ctrl+F` in preview)
+- [ ] Auto-pair markdown delimiters (`closeBrackets`) — standard brackets/quotes auto-close; markdown emphasis/code delimiters (`*`, `_`, `` ` ``) are not yet configured.
+- [ ] Preview inline search (`Ctrl+F` in preview) — helper code exists in `PreviewPane.svelte`, but the search UI is not rendered and `Ctrl+F` is not yet wired to open it.
 - [x] Click-to-toggle task list checkboxes
-- [x] Focus traps in all modals (Settings, Templates, Palette, TableEditor)
+- [ ] Focus traps in all modals (Settings, Templates, Palette, TableEditor) — `focusTrap.ts` exists and is used by `SearchPanel.svelte` only; other modals do not yet apply it.
 - [x] Export progress toasts + breadcrumb in title bar
 - [x] CodeMirror search panel themed to match app
 
@@ -106,6 +106,7 @@
 - [x] Touch swipe support
 - [x] Preview toolbar button to start presentation
 - [x] Fix: strip thematic breaks from slide content (no empty slides)
+- [x] Slide Break Editor — gutter markers to define custom presentation slide boundaries
 
 ---
 
@@ -159,6 +160,24 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** Collapsible bottom panel (VS Code terminal-style) showing operational logs. Resizable, level-filtered, ring-buffered (500 entries). Instruments exports, file I/O, workspace ops. Keyboard shortcut `Ctrl+Shift+Y`. Persisted state. Foundation for future plugin extensibility.
 - **Effort:** Small (½ day)
 
+### P2 — Theme Presets
+- **Status:** `[x]` Done
+- **Files:** `src/lib/themeStore.ts`, `src/components/settings/ThemePresetCard.svelte`, `src/styles/presets.css`
+- **Scope:** 17 curated color palettes (8 classic + 8 WGSN 2026 dark + default) selectable from Settings → General → Color Preset. Live 4-color preview strip, immediate apply, persisted selection.
+- **Effort:** Small (1 day)
+
+### P2 — Custom Spellcheck Dictionary
+- **Status:** `[x]` Done
+- **Files:** `src/components/settings/categories/EditorSettings.svelte`, `src/components/editor/codemirror.ts`
+- **Scope:** Per-user word list in Settings → Editor. Right-click any word in the editor to add it to the dictionary and suppress browser red underlines.
+- **Effort:** Small (½ day)
+
+### P2 — Markdown File Associations
+- **Status:** `[x]` Done
+- **Files:** `src-tauri/tauri.conf.json`
+- **Scope:** Register MarkZ as an OS editor for `.md`, `.markdown`, `.mdx`, and `.mdown`. Double-clicking a Markdown file launches MarkZ; if already running, the existing window opens the file in a new tab.
+- **Effort:** Small (½ day)
+
 ### P2 — Split editor (two editor panes)
 - **Status:** `[ ]`
 - **Files:** `src/App.svelte`, `src/components/editor/EditorPane.svelte`
@@ -201,6 +220,13 @@ Features that make MarkZ feel like a serious IDE for markdown.
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | v0.8.66 release — workspace replace-all fix, panes stay mounted across view modes, merged image paste/drop into single `save_image` command. |
+| 2026-07-06 | Markdown file associations — MarkZ registers as an OS editor for `.md`/`.markdown`/`.mdx`/`.mdown` with single-instance reuse. |
+| 2026-07-06 | Copy as Word (Pandoc) — copy formatted HTML to clipboard for pasting into Word. |
+| 2026-06-16 | Stable workspace file tree — tree no longer auto-follows the active tab; breadcrumb navigation; non-markdown files visible. |
+| 2026-06-15 | Converter test coverage — 54 integration + 16 unit tests for JIRA, Confluence, Slack, and GitHub converters. |
+| 2026-06-11 | WGSN 2026 Dark themes — 8 additional curated dark color palettes. |
+| 2026-06-10 | Theme Presets — 8 curated color palettes selectable from Settings → General. |
 | 2026-06-04 | Debug Log Panel — collapsible bottom panel with resizable height, level filtering, error badge, and instrumented operation logging. |
 | 2026-05-30 | Settings/Help/About modal redesign — CSS grid field layout, consistent input widths, categorized shortcuts, removed unused HelpModal.svelte. |
 | 2026-05-30 | Command Palette (`Ctrl+Shift+P`) and Quick Open (`Ctrl+P`) shipped. |
