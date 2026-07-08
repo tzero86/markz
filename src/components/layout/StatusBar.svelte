@@ -110,17 +110,9 @@
         {/if}
       </button>
     {/if}
-    <span class="stat-badge" title="{wordCount} words, {charCount} chars, ~{readingTimeMinutes} min read">
+    <span class="stat-badge stats-combined" title="{wordCount.toLocaleString()} words, {charCount.toLocaleString()} chars, ~{readingTimeMinutes} min read">
       <Text size={11} strokeWidth={2} />
-      {wordCount} words
-    </span>
-    <span class="stat-badge" title="{charCount} characters">
-      <Text size={11} strokeWidth={2} />
-      {charCount} chars
-    </span>
-    <span class="stat-badge" title="~{readingTimeMinutes} min read">
-      <Text size={11} strokeWidth={2} />
-      ~{readingTimeMinutes}m
+      {wordCount.toLocaleString()} words · ~{readingTimeMinutes} min
     </span>
     <div class="status-divider"></div>
     <span class="status-item format-badge">Markdown</span>

@@ -402,6 +402,33 @@ test("sidebar panel can be toggled with Ctrl+B", async ({ page }) => {
   await expect(page.locator(".sidebar")).toHaveCount(0);
 });
 
+test("sidebar width changes per activity", async ({ page }) => {
+  await page.click('.app');
+  await page.keyboard.press("Control+b");
+  await expect(page.locator(".sidebar")).toBeVisible();
+
+  const getSidebarWidth = () =>
+    page.evaluate(() => {
+      const wrapper = document.querySelector(".sidebar-wrapper") as HTMLElement | null;
+      return wrapper ? parseInt(getComputedStyle(wrapper).width, 10) : 0;
+    });
+
+  // Switch to each activity and capture widths; they should differ.
+  await page.click('.activity-btn[aria-label="Outline"]');
+  await page.waitForTimeout(200);
+  const outlineWidth = await getSidebarWidth();
+
+  await page.click('.activity-btn[aria-label="Files"]');
+  await page.waitForTimeout(200);
+  const filesWidth = await getSidebarWidth();
+
+  await page.click('.activity-btn[aria-label="Links"]');
+  await page.waitForTimeout(200);
+  const linksWidth = await getSidebarWidth();
+
+  expect(new Set([outlineWidth, filesWidth, linksWidth]).size).toBe(3);
+});
+
 test("view mode buttons switch between split, editor, and preview", async ({ page }) => {
   const editorPane = page.locator(".editor-pane");
   const previewPane = page.locator(".preview-scroller");

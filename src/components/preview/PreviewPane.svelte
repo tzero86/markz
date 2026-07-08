@@ -1229,6 +1229,9 @@
     color: var(--text-primary);
     font-variant-emoji: emoji;
     animation: fadeIn 200ms var(--ease-out);
+    /* Subtle visual boundary at the max-width column */
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-default) 25%, transparent);
+    border-radius: var(--radius-sm);
   }
   .preview-content.editing {
     outline: 2px dashed var(--accent-default);

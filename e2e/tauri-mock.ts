@@ -27,6 +27,9 @@ export const MOCK_SETTINGS = {
   custom_dictionary: [],
   split_direction: "horizontal",
   theme_preset: "default",
+  sidebar_width_files: 280,
+  sidebar_width_outline: 220,
+  sidebar_width_links: 260,
 };
 
 export const MOCK_HTML = `<h1>Welcome to MarkZ</h1>

@@ -132,6 +132,24 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** Right-click any file or folder to create, rename, or delete. Files get New File, Rename, Delete; directories also get New Folder. Inline rename input and modal name prompt. Backend commands create/rename/delete on disk; open tabs are renamed or closed to match.
 - **Effort:** Small (1 day)
 
+### P1 — Per-Activity Sidebar Widths
+- **Status:** `[x]` Done
+- **Files:** `src/App.svelte`, `crates/markz-config/src/lib.rs`
+- **Scope:** Persist a separate sidebar width for Files (280px), Outline (220px), and Links (260px). Resize handle updates the active activity's width; settings store three `sidebar_width_*` fields.
+- **Effort:** Small (½ day)
+
+### P1 — Status Bar Metric Collapse
+- **Status:** `[x]` Done
+- **Files:** `src/components/layout/StatusBar.svelte`
+- **Scope:** Collapse words / chars / read-time badges into a single `{words} words · ~{minutes} min` badge with a tooltip showing the full breakdown.
+- **Effort:** Tiny (¼ day)
+
+### P1 — Preview Max-Width Visual Guide
+- **Status:** `[x]` Done
+- **Files:** `src/components/preview/PreviewPane.svelte`
+- **Scope:** Add a subtle theme-aware `box-shadow` boundary to `.preview-content` at the 820px max-width column.
+- **Effort:** Tiny (¼ day)
+
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
 - **Status:** `[x]` Done
 - **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`

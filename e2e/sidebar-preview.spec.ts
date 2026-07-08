@@ -219,4 +219,11 @@ test.describe("Preview pane Copy dropdown", () => {
     await expect(page.locator(".float-btn.success")).toBeVisible({ timeout: 3000 });
     await expect(page.locator('.float-btn .action-label:has-text("Copied")')).toBeVisible();
   });
+
+  test("preview content has a max-width visual guide", async ({ page }) => {
+    const content = page.locator(".preview-content");
+    await expect(content).toBeVisible();
+    const boxShadow = await content.evaluate((el) => getComputedStyle(el).boxShadow);
+    expect(boxShadow).not.toBe("none");
+  });
 });

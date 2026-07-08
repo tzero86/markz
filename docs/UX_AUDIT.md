@@ -31,13 +31,10 @@
 
 ## 2. Information Architecture
 
-### 2.1 Sidebar Width
+### 2.1 Sidebar Width — ✅ Done
 
-**Current:** The sidebar is now resizable via a drag handle (`App.svelte`) with a global width persisted in settings (min 180px / max 320px). It still uses one width for all three activities (Files, Outline, Links).
-
-**Problem:** Files needs width for long paths; outline needs narrow width; links needs medium width. One size still doesn't fit all.
-
-**Recommendation:** Persist sidebar width per activity. Files = 280px, Outline = 220px, Links = 260px.
+**Status:** Fixed in current development.  
+`App.svelte` now stores a separate width for each activity: Files = 280px, Outline = 220px, Links = 260px. The values are persisted in settings as `sidebar_width_files`, `sidebar_width_outline`, and `sidebar_width_links` (added to `markz_config::Settings`), and the resize handle updates the active activity's width.
 
 ### 2.2 Missing Breadcrumbs
 
@@ -79,21 +76,17 @@ Right-click any tab → Pin/Unpin. Pinned tabs stay fixed on the left, show a pi
 
 **Fix:** Audit every component once more and document the token mapping in the component spec.
 
-### 3.2 Status Bar Information Density
+### 3.2 Status Bar Information Density — ✅ Done
 
-**Current:** Left = save indicator + cursor position. Center = zoom badge + view mode buttons + split-direction toggle. Right = git status, words, chars, read time, format badges.
+**Status:** Fixed in current development.  
+The right-side stat badges in `StatusBar.svelte` are now collapsed into a single badge: `{wordCount} words · ~{readingTimeMinutes} min`. The full word/char/read-time breakdown is available in the badge tooltip. The git badge remains separate.
 
-**Problem:** The right side still shows three separate stat badges (words / chars / read time) that could be more compact.
+### 3.3 Preview Pane Max Width — ✅ Done
 
-**Recommendation:** Collapse to `1,234 words · ~6 min` with a tooltip showing chars. Keep the git badge as-is.
+**Status:** Fixed in current development.  
+`PreviewPane.svelte` applies a subtle `box-shadow` to `.preview-content` using `color-mix(in srgb, var(--border-default) 25%, transparent)`, creating a faint boundary at the 820px max-width column without adding a heavy border.
 
-### 3.3 Preview Pane Max Width
-
-**Current:** `preview_max_width` is not exposed as a user setting; the preview content is capped at 820px and centered.
-
-**Problem:** With a wide window the blank space on both sides has no visual boundary and can look broken.
-
-**Fix:** Add a subtle vertical guide line at the max-width boundary (1px `--border-default`, 50% opacity) or a faint background shade within the content area.
+### 3.4 Custom CSS Textarea Too Small
 
 ### 3.4 Custom CSS Textarea Too Small
 
@@ -285,15 +278,15 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 
 | # | Issue | Effort | Files | Status |
 |---|-------|--------|-------|--------|
-| 8 | Per-activity sidebar widths | ½ day | `App.svelte`, settings | Not done |
+| 8 | Per-activity sidebar widths | ½ day | `App.svelte`, `markz_config::Settings` | Done |
 | 9 | Clickable title-bar breadcrumb | 1 day | `TitleBar.svelte` | Partial |
 | 10 | Zen / focus mode | 1 day | `App.svelte` | Not done |
 | 11 | Image paste preview + alt text | 1 day | `EditorPane.svelte`, new modal | Not done |
 | 12 | Custom CSS editor (resizable / CodeMirror) | 1 day | `AdvancedSettings.svelte` | Not done |
 | 13 | Loading skeletons | ½ day | New component | Not done |
 | 14 | Tab dropdown when overflow | ½ day | `TabBar.svelte` | Not done |
-| 15 | Status bar metric collapse | ¼ day | `StatusBar.svelte` | Not done |
-| 16 | Preview max-width visual guide | ¼ day | `PreviewPane.svelte` | Not done |
+| 15 | Status bar metric collapse | ¼ day | `StatusBar.svelte` | Done |
+| 16 | Preview max-width visual guide | ¼ day | `PreviewPane.svelte` | Done |
 
 ### P2 — Backlog
 
@@ -353,7 +346,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | File tree context menu | ✓ | N/A | N/A | ✓ | ✓ |
 | Skip link | ✓ | — | — | — | ✓ |
 
-**Gaps that matter most now:** zen/focus mode, per-activity sidebar widths, completing title-bar breadcrumb navigation, image paste preview + alt text, and a better custom CSS editor. These are table stakes for a polished 2026 editor.
+**Gaps that matter most now:** zen/focus mode, completing title-bar breadcrumb navigation, image paste preview + alt text, a better custom CSS editor, loading skeletons, and tab overflow dropdown. These are table stakes for a polished 2026 editor.
 
 ---
 

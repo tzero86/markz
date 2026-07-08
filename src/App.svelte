@@ -48,14 +48,23 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   let searchPanelOpen = $state(false);
   let activeActivity = $state<"files" | "outline" | "links">("outline");
   let sidebarPanelVisible = $state(false);
-  let sidebarWidth = $state(220);
+  let sidebarWidths = $state<{ files: number; outline: number; links: number }>({
+    files: 280,
+    outline: 220,
+    links: 260,
+  });
+  let sidebarWidth = $derived(sidebarWidths[activeActivity]);
   let viewMode = $state<"split" | "editor" | "preview">("split");
   let splitDirection = $state<"horizontal" | "vertical" | "vertical-reversed">("horizontal");
   async function loadSettings() {
     try {
       const s: any = await invoke("get_settings");
       applySettings(s);
-      sidebarWidth = s.sidebar_width ?? s.sidebarWidth ?? 220;
+      sidebarWidths = {
+        files: s.sidebar_width_files ?? s.sidebarWidthFiles ?? s.sidebar_width ?? s.sidebarWidth ?? 280,
+        outline: s.sidebar_width_outline ?? s.sidebarWidthOutline ?? s.sidebar_width ?? s.sidebarWidth ?? 220,
+        links: s.sidebar_width_links ?? s.sidebarWidthLinks ?? s.sidebar_width ?? s.sidebarWidth ?? 260,
+      };
       // Initialize TTS from saved preferences
       const engine = (s.tts_engine ?? "online") as TtsEngine;
       const voiceId = s.tts_voice_id ?? "";
@@ -527,11 +536,14 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
               function onUp() {
                 window.removeEventListener("mousemove", onMove);
                 window.removeEventListener("mouseup", onUp);
-                // Persist width
+                // Persist per-activity width
+                sidebarWidths = { ...sidebarWidths, [activeActivity]: sidebarWidth };
                 invoke("get_settings")
                   .then((s: any) => {
                     if (s) {
-                      s.sidebar_width = sidebarWidth;
+                      s.sidebar_width_files = sidebarWidths.files;
+                      s.sidebar_width_outline = sidebarWidths.outline;
+                      s.sidebar_width_links = sidebarWidths.links;
                       invoke("update_settings", { settings: s }).catch(() => {});
                     }
                   })

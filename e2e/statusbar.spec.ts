@@ -16,20 +16,17 @@ test.describe("Status bar", () => {
     await expect(cursorInfo).toContainText("Ln 1, Col 1");
   });
 
-  test("displays word count", async ({ page }) => {
-    const wordCount = page.locator(".status-right .stat-badge").first();
-    await expect(wordCount).toBeVisible();
+  test("displays combined word and read time stats", async ({ page }) => {
+    const stats = page.locator(".status-right .stats-combined");
+    await expect(stats).toBeVisible();
 
-    // Default welcome content has some words
-    const text = await wordCount.textContent();
-    expect(text).toMatch(/\d+ words/);
+    const text = await stats.textContent();
+    expect(text).toMatch(/\d+ words · ~\d+ min/);
   });
 
-  test("displays char count", async ({ page }) => {
-    const charBadge = page.locator(".status-right .stat-badge").nth(1);
-    await expect(charBadge).toBeVisible();
-    const text = await charBadge.textContent();
-    expect(text).toMatch(/\d+ chars/);
+  test("combined stats tooltip shows char count", async ({ page }) => {
+    const stats = page.locator(".status-right .stats-combined");
+    await expect(stats).toHaveAttribute("title", /\d+ chars/);
   });
 
   test("save indicator shows Saved initially", async ({ page }) => {

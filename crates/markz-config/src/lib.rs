@@ -32,7 +32,10 @@ pub struct Settings {
     pub debug_panel_collapsed: bool,
     pub debug_panel_height: u16,
     pub debug_log_filter: String,
-  pub theme_preset: String,
+    pub theme_preset: String,
+    pub sidebar_width_files: u16,
+    pub sidebar_width_outline: u16,
+    pub sidebar_width_links: u16,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -90,6 +93,9 @@ impl Default for Settings {
             debug_panel_height: 180,
             debug_log_filter: "info".to_string(),
             theme_preset: String::new(),
+            sidebar_width_files: 280,
+            sidebar_width_outline: 220,
+            sidebar_width_links: 260,
         }
     }
 }
