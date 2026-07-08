@@ -90,6 +90,31 @@ test.describe("Workspace file tree", () => {
     await expect(page.locator('.tab.active')).toContainText("notes.md");
   });
 
+  test("opening a folder replaces unrelated existing tabs", async ({ page }) => {
+    // Open an unrelated file so we have a stale tab.
+    await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/some/other.md"));
+    await page.keyboard.press("Control+o");
+    await page.waitForSelector('.tab:has-text("other.md")', { timeout: 5000 });
+    await expect(page.locator('.tab:has-text("other.md")')).toBeVisible();
+
+    // Now open a folder.
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.waitForSelector('.file-tree-header, .file-tree-scroller', { timeout: 5000 });
+    // The Open Folder button may be in the empty state or the tree header,
+    // depending on whether opening the previous file synced a workspace.
+    const openFolderBtn = page.locator('button[aria-label="Open folder"]').first();
+    await expect(openFolderBtn).toBeVisible();
+    await openFolderBtn.click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    // The unrelated tab should be gone; only a fresh untitled tab remains.
+    await expect(page.locator('.tab:has-text("other.md")')).not.toBeVisible();
+    await expect(page.locator('.tab:has-text("Untitled")')).toBeVisible();
+  });
+
   test("search finds matches", async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");

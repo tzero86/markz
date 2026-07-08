@@ -23,6 +23,7 @@
 ## [0.8.66] - 2026-07-08
 
 ### Fixed
+- **Opening a folder no longer leaves stale tabs** — `openFolder` now closes existing tabs before loading the new workspace, so unrelated previously-opened files no longer appear next to the new folder's file tree.
 - **Workspace replace-all in SearchPanel** — `replaceAll` now reads each file's current contents and persists the replaced text via `save_document`, then refreshes search results.
 - **Panes stay mounted across view modes** — `SplitPane` now keeps both editor and preview panes mounted and toggles visibility with CSS, eliminating remount delays when switching between Split, Editor-only, and Preview-only.
 

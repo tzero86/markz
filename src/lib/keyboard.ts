@@ -141,6 +141,9 @@ export async function readDocument(path: string): Promise<{ content: string; pat
 }
 
 export async function openFolder() {
+  // Close existing tabs so the old workspace context doesn't linger
+  // next to the newly opened folder's file tree.
+  await tabStore.closeAll();
   await workspaceStore.openWorkspace();
 }
 
