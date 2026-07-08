@@ -454,6 +454,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       {#if sidebarPanelVisible}
         <div class="sidebar-wrapper" style="width: {sidebarWidth}px; min-width: {sidebarWidth}px;">
           <OutlineSidebar activity={activeActivity} />
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
           <div
             class="sidebar-resize-handle"
             role="separator"

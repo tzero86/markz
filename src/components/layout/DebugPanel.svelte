@@ -90,6 +90,7 @@
     aria-live="polite"
   >
     <!-- Resize handle -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="resize-handle"
       role="separator"
@@ -148,6 +149,7 @@
       {:else}
         <div class="log-list">
           {#each filteredEntries as entry (entry.id)}
+            {@const Icon = levelIcons[entry.level]}
             <div
               class="log-row"
               style="background: {levelBg[entry.level]};"
@@ -155,7 +157,7 @@
             >
               <span class="log-time">{formatTime(entry.timestamp)}</span>
               <span class="log-level" style="color: {levelColors[entry.level]};">
-                <svelte:component this={levelIcons[entry.level]} size={12} />
+                <Icon size={12} />
               </span>
               <span class="log-source">{entry.source}</span>
               <span class="log-message">{entry.message}</span>

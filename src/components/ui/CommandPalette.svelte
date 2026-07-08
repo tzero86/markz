@@ -153,7 +153,11 @@
 </script>
 
 {#if open}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="palette-overlay" onclick={() => onClose()} role="dialog" aria-modal="true" tabindex="-1" aria-label={mode === "commands" ? "Command Palette" : "Quick Open"}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="palette-container" onclick={(e) => e.stopPropagation()} role="document">
       <div class="palette-header">
         <span class="palette-mode-icon">

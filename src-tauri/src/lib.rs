@@ -173,13 +173,6 @@ pub async fn session_path_async() -> Option<std::path::PathBuf> {
     Some(dir)
 }
 
-pub fn session_path() -> Option<std::path::PathBuf> {
-    let mut dir = dirs::config_dir()?;
-    dir.push("markz");
-    dir.push("session.json");
-    Some(dir)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -222,13 +215,13 @@ pub fn run() {
             commands::documents::render_preview,
             commands::documents::open_document,
             commands::documents::save_document,
+            commands::documents::read_file_text,
             commands::documents::open_file_dialog,
             commands::documents::save_file_dialog,
             commands::settings::get_settings,
             commands::settings::update_settings,
             commands::documents::generate_toc,
-            commands::documents::process_pasted_image,
-            commands::documents::process_dropped_image,
+            commands::documents::save_image,
             commands::convert::convert_to_jira,
             commands::convert::convert_to_confluence,
             commands::convert::convert_to_slack,

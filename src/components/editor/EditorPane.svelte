@@ -178,7 +178,7 @@
           relative_path: string;
           absolute_path: string;
           filename: string;
-        }>("process_pasted_image", { imageData, filename });
+        }>("save_image", { imageData, filename });
         insertMarkdownImage(editorView, result.filename, result.relative_path);
         triggerPasteFlash();
       } catch (err) {
@@ -233,7 +233,7 @@
           relative_path: string;
           absolute_path: string;
           filename: string;
-        }>("process_dropped_image", { imageData, filename: file.name });
+        }>("save_image", { imageData, filename: file.name });
         insertMarkdownImage(editorView, result.filename, result.relative_path);
         triggerPasteFlash();
       } catch (err) {
@@ -519,6 +519,9 @@
         class="editor-ctx-menu"
         style="left: {contextMenuX}px; top: {contextMenuY}px;"
         onclick={(e) => e.stopPropagation()}
+        role="menu"
+        tabindex="-1"
+        aria-label="Editor context menu"
       >
         <button
           class="editor-ctx-item"

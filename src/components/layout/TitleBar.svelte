@@ -452,7 +452,6 @@
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-subtle);
     -webkit-app-region: drag;
-    app-region: drag;
     user-select: none;
     flex-shrink: 0;
     transition: background-color 300ms var(--ease-in-out),
@@ -530,7 +529,6 @@
     cursor: pointer;
     animation: pulse 2s ease infinite;
     -webkit-app-region: no-drag;
-    app-region: no-drag;
     transition: background 150ms ease, transform 150ms var(--ease-out);
   }
   .update-badge:hover {
@@ -551,7 +549,6 @@
     align-items: center;
     gap: 2px;
     -webkit-app-region: no-drag;
-    app-region: no-drag;
   }
 
   /* Button group */
@@ -705,11 +702,6 @@
   .dropdown-item.active {
     background: var(--bg-hover);
     color: var(--text-primary);
-  }
-  .dropdown-item.disabled {
-    opacity: 0.4;
-    cursor: default;
-    pointer-events: none;
   }
   .dropdown-item-danger {
     color: var(--error);

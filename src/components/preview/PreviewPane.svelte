@@ -1101,22 +1101,6 @@
     font-variant-emoji: emoji;
     animation: fadeIn 200ms var(--ease-out);
   }
-  .preview-content.text-format {
-    max-width: 900px;
-  }
-  .preview-content.text-format pre {
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    overflow-x: auto;
-  }
-  .preview-content.text-format code {
-    background: transparent;
-    padding: 0;
-    font-size: 0.8125em;
-    line-height: 1.6;
-    white-space: pre;
-  }
   .preview-content.editing {
     outline: 2px dashed var(--accent-default);
     outline-offset: 4px;
@@ -1291,45 +1275,6 @@
     outline-offset: 2px;
   }
 
-  .preview-search-bar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: 0 var(--space-2);
-  }
-  .preview-search-input {
-    width: 140px;
-    padding: var(--space-1) var(--space-2);
-    background: var(--bg-base);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-size: var(--text-xs);
-    outline: none;
-  }
-  .preview-search-input:focus {
-    border-color: var(--accent-default);
-  }
-  .preview-search-count {
-    font-size: var(--text-xs);
-    color: var(--text-muted);
-    min-width: 36px;
-    text-align: center;
-  }
-  .preview-search-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 150ms ease;
-  }
   :global(.slide-break-marker) {
     display: flex;
     align-items: center;

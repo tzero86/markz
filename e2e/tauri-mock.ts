@@ -653,6 +653,11 @@ export function injectTauriMock() {
       return null;
     },
     save_document: () => null,
+    read_file_text: (args) => {
+      const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");
+      const path = (args as { path?: string })?.path || "/test.md";
+      return fileOverrides[path] || "# Test\n\nHello world.";
+    },
     open_document: (args) => {
       const rejectPaths = JSON.parse(localStorage.getItem("__e2e_reject_paths") || "[]");
       if (rejectPaths.includes((args as { path?: string })?.path)) {
@@ -663,12 +668,7 @@ export function injectTauriMock() {
       const content = fileOverrides[path] || "# Test\n\nHello world.";
       return { path, content };
     },
-    process_pasted_image: () => ({
-      relative_path: "images/test.png",
-      absolute_path: "/tmp/images/test.png",
-      filename: "test.png",
-    }),
-    process_dropped_image: () => ({
+    save_image: () => ({
       relative_path: "images/test.png",
       absolute_path: "/tmp/images/test.png",
       filename: "test.png",
@@ -972,6 +972,11 @@ export const tauriMockInitFunc = new Function(
   '    return null;\n' +
   '  },\n' +
   '  save_document: () => null,\n' +
+  '  read_file_text: (args) => {\n' +
+  '    const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");\n' +
+  '    const path = args?.path || "/test.md";\n' +
+  '    return fileOverrides[path] || "# Test\\n\\nHello world.";\n' +
+  '  },\n' +
   '  open_document: (args) => {\n' +
   '    const rejectPaths = JSON.parse(localStorage.getItem("__e2e_reject_paths") || "[]");\n' +
   '    if (rejectPaths.includes(args?.path)) {\n' +
@@ -982,8 +987,7 @@ export const tauriMockInitFunc = new Function(
   '    const content = fileOverrides[path] || "# Test\\n\\nHello world.";\n' +
   '    return { path, content };\n' +
   '  },\n' +
-  '  process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),\n' +
-  '  process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),\n' +
+  '  save_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),\n' +
   '  git_status: (args) => {\n' +
   '    const path = args?.docPath || "";\n' +
   '    if (!path || path.includes("no-git")) {\n' +
@@ -1285,8 +1289,7 @@ export const tauriMockScriptString = `
       const content = fileOverrides[path] || "# Test\n\nHello world.";
       return { path, content };
     },
-    process_pasted_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
-    process_dropped_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
+    save_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     git_status: (args) => {
       const path = args?.docPath || "";
       if (!path || path.includes("no-git")) {

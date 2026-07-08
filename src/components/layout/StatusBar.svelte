@@ -323,10 +323,4 @@
     display: inline-block;
     margin-left: 2px;
   }
-  .rotated {
-    transform: rotate(90deg);
-  }
-  .flip {
-    transform: rotate(180deg);
-  }
 </style>

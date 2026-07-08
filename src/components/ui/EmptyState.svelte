@@ -15,8 +15,9 @@
 
 <div class="empty-state" role="status" aria-label={title}>
   {#if icon}
+    {@const Icon = icon}
     <div class="empty-icon" aria-hidden="true">
-      <svelte:component this={icon} size={iconSize} strokeWidth={1.5} />
+      <Icon size={iconSize} strokeWidth={1.5} />
     </div>
   {/if}
   <h3 class="empty-title">{title}</h3>

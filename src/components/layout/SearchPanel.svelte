@@ -55,12 +55,7 @@
     }
 
     for (const [path, content] of filesToModify) {
-      const newContent = content.split('\n').map((line) => {
-        if (line.includes(query)) {
-          return line.split(query).join(replaceText);
-        }
-        return line;
-      }).join('\n');
+      const newContent = content.replaceAll(query, replaceText);
 
       if (newContent !== content) {
         tabStore.addRecentlySaved(path);
@@ -104,8 +99,10 @@
 }} />
 
 {#if open}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="search-overlay" onclick={() => (open = false)} role="presentation">
-    <div class="search-panel" use:trapFocus onclick={(e) => e.stopPropagation()}>
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div class="search-panel" use:trapFocus onclick={(e) => e.stopPropagation()} role="presentation">
       <div class="search-header">
         <div class="search-input-row">
           <Search size={14} strokeWidth={2} class="search-icon" />
@@ -220,10 +217,6 @@
   .search-input:focus,
   .replace-input:focus {
     border-color: var(--accent-default);
-  }
-  .search-icon {
-    color: var(--text-muted);
-    flex-shrink: 0;
   }
   .search-btn,
   .replace-btn {

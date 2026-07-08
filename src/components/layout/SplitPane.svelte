@@ -21,6 +21,12 @@
     if (!isSplit) {
       return isHorizontal ? "width: 100%;" : "height: 100%;";
     }
+    if (forLeft && !showRight) {
+      return isHorizontal ? "width: 100%;" : "height: 100%;";
+    }
+    if (!forLeft && !showLeft) {
+      return isHorizontal ? "width: 100%;" : "height: 100%;";
+    }
     const pct = forLeft ? splitRatio : 100 - splitRatio;
     return isHorizontal ? `width: ${pct}%;` : `height: ${pct}%;`;
   }
@@ -35,27 +41,6 @@
     document.body.style.userSelect = "none";
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
-  }
-
-  function onKeyDown(e: KeyboardEvent) {
-    if (!isSplit) return;
-    if (isHorizontal) {
-      if (e.key === "ArrowLeft") {
-        splitRatio = Math.max(20, splitRatio - 5);
-        e.preventDefault();
-      } else if (e.key === "ArrowRight") {
-        splitRatio = Math.min(80, splitRatio + 5);
-        e.preventDefault();
-      }
-    } else {
-      if (e.key === "ArrowUp") {
-        splitRatio = Math.max(20, splitRatio - 5);
-        e.preventDefault();
-      } else if (e.key === "ArrowDown") {
-        splitRatio = Math.min(80, splitRatio + 5);
-        e.preventDefault();
-      }
-    }
   }
 
   function onMouseMove(e: MouseEvent) {
@@ -81,33 +66,27 @@
 
 <div class="split-pane" class:vertical={!isHorizontal} class:reversed={direction === "vertical-reversed"} bind:this={containerRef}>
   {#if direction === "vertical-reversed"}
-    {#if showRight}
-      <div class="pane top-left" style={sizeStyle(false)}>
-        {@render right()}
-      </div>
-    {/if}
+    <div class="pane top-left" class:hidden={!showRight} style={sizeStyle(false)}>
+      {@render right()}
+    </div>
     {#if isSplit}
-      <div class="divider" class:dragging={isDragging} class:vertical={true} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div class="divider" class:dragging={isDragging} class:vertical={true} role="separator" aria-label="Resize panes" onmousedown={onMouseDown}></div>
     {/if}
-    {#if showLeft}
-      <div class="pane bottom-right" style={sizeStyle(true)}>
-        {@render left()}
-      </div>
-    {/if}
+    <div class="pane bottom-right" class:hidden={!showLeft} style={sizeStyle(true)}>
+      {@render left()}
+    </div>
   {:else}
-    {#if showLeft}
-      <div class="pane top-left" style={sizeStyle(true)}>
-        {@render left()}
-      </div>
-    {/if}
+    <div class="pane top-left" class:hidden={!showLeft} style={sizeStyle(true)}>
+      {@render left()}
+    </div>
     {#if isSplit}
-      <div class="divider" class:dragging={isDragging} class:vertical={!isHorizontal} onmousedown={onMouseDown} onkeydown={onKeyDown} role="separator" aria-label="Resize panes" tabindex="0"></div>
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div class="divider" class:dragging={isDragging} class:vertical={!isHorizontal} role="separator" aria-label="Resize panes" onmousedown={onMouseDown}></div>
     {/if}
-    {#if showRight}
-      <div class="pane bottom-right" style={sizeStyle(false)}>
-        {@render right()}
-      </div>
-    {/if}
+    <div class="pane bottom-right" class:hidden={!showRight} style={sizeStyle(false)}>
+      {@render right()}
+    </div>
   {/if}
 </div>
 
@@ -127,6 +106,9 @@
     min-width: 0;
     min-height: 0;
   }
+  .pane.hidden {
+    display: none;
+  }
   .divider {
     cursor: col-resize;
     z-index: 100;
@@ -135,6 +117,10 @@
     transition: background 150ms ease;
     flex-shrink: 0;
     width: 1px;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
   }
   .divider.vertical {
     cursor: row-resize;
@@ -181,7 +167,5 @@
   .top-left {
     border-right: none;
     border-bottom: none;
-  }
-  .bottom-right {
   }
 </style>

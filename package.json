@@ -1,7 +1,7 @@
 {
   "name": "markz",
   "private": true,
-  "version": "0.8.65",
+  "version": "0.8.66",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -31,10 +31,8 @@
     "@tauri-apps/plugin-fs": "^2.0.0",
     "@tauri-apps/plugin-process": "^2.0.0",
     "@tauri-apps/plugin-updater": "^2.10.1",
-    "canvg": "^4.0.3",
     "codemirror": "^6.0.1",
     "dompurify": "^3.4.4",
-    "headroom-ai": "^0.22.4",
     "highlight.js": "^11.11.0",
     "html-to-image": "^1.11.13",
     "katex": "^0.16.21",

@@ -65,6 +65,13 @@ pub async fn save_document(path: String, content: String) -> Result<(), String> 
 }
 
 #[tauri::command]
+pub async fn read_file_text(path: String) -> Result<String, String> {
+    tokio::fs::read_to_string(&path)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn open_file_dialog(app: AppHandle) -> Result<Option<DocumentInfo>, String> {
     use tauri_plugin_dialog::DialogExt;
 
@@ -132,17 +139,7 @@ pub async fn generate_toc(markdown: String) -> Result<Vec<markz_core::toc::TocEn
 }
 
 #[tauri::command]
-pub async fn process_pasted_image(
-    image_data: Vec<u8>,
-    filename: String,
-    doc_path: Option<String>,
-) -> Result<markz_images::ImageResult, String> {
-    markz_images::save_image(&image_data, &filename, doc_path.as_deref())
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub async fn process_dropped_image(
+pub async fn save_image(
     image_data: Vec<u8>,
     filename: String,
     doc_path: Option<String>,

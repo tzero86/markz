@@ -1,3 +1,15 @@
+## [0.8.66] - 2026-07-08
+
+### Fixed
+- **Workspace replace-all in SearchPanel** — `replaceAll` now reads each file's current contents and persists the replaced text via `save_document`, then refreshes search results.
+- **Panes stay mounted across view modes** — `SplitPane` now keeps both editor and preview panes mounted and toggles visibility with CSS, eliminating remount delays when switching between Split, Editor-only, and Preview-only.
+
+### Changed
+- Removed unused dependencies (`canvg`, `headroom-ai`) and dead backend code (`edge_tts.rs`, duplicate `session_path`).
+- Merged `process_pasted_image` and `process_dropped_image` into a single `save_image` command.
+- Cleaned all Svelte build warnings: unused CSS selectors, deprecated `<svelte:component>` usage, and a11y warnings for overlays, resize handles, and context menus.
+
+
 ## [0.8.65] - 2026-07-07
 
 ### Fixed
