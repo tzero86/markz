@@ -13,7 +13,7 @@
 |------|-------|---------|
 | Visual Design | 8/10 | Strong token system, good dark/light themes and 17 color presets, minor inconsistencies remain |
 | Information Architecture | 7/10 | Sidebar is now resizable, tabs overflow handled, file tree still lacks file-management actions |
-| Interaction Design | 7/10 | Editor table-stakes are in (smart lists, auto-pair, checkbox toggle), preview search and history still missing |
+| Interaction Design | 7/10 | Editor table-stakes are in (smart lists, auto-pair, checkbox toggle), preview search done, history now supported |
 | Accessibility | 6/10 | ARIA labels improved, focus trap only in some modals, no skip link, high-contrast preset added |
 | Performance Perception | 8/10 | Fast startup, chunked preview post-processing, session restore no longer flashes |
 | Content & Copy | 8/10 | Clear labels, good empty states, About credits now mention key libraries |
@@ -22,7 +22,6 @@
 1. **Preview inline search** — search helper code exists but there is no user-facing search bar or `Ctrl+F` wiring.
 2. **File tree context menu** — no New File, Rename, or Delete in the workspace explorer.
 3. **Command palette frecency/categories** — flat list, no learning from usage or grouping.
-4. **Document navigation history** — no Back/Forward stack for WikiLink jumps.
 5. **Zen / focus mode** — no way to hide all chrome and write distraction-free.
 
 > **Progress note:** Most of the original P0 list (settings search, tab overflow, find/replace, smart lists, checkbox toggle, export progress, pinned tabs, split layout, high-contrast preset, session restore) has shipped between v0.8.6 and v0.8.66. The remaining gaps are smaller but still matter for competitive parity.
@@ -47,13 +46,10 @@
 
 **Recommendation:** Make the path segments clickable and show the full hierarchy (or at least one more level). Click a segment to re-root the file tree to that folder.
 
-### 2.3 No Document Navigation History
+### 2.3 Document Navigation History — ✅ Done
 
-**Current:** `Ctrl+Click` on a WikiLink jumps to the target file, but there is no Back button.
-
-**Problem:** Engineers navigate between linked docs constantly. Losing the back stack is frustrating.
-
-**Recommendation:** Add `Alt+Left` / `Alt+Right` (or mouse back/forward buttons) for document navigation history. Expose as "Go Back" / "Go Forward" in the Command Palette.
+**Status:** Fixed in current development.  
+`src/lib/navHistoryStore.ts` maintains a bounded 50-entry stack of opened document paths. `openDocumentByPath` pushes new paths by default, and `Alt+Left` / `Alt+Right` (handled in `keyboard.ts`) call `goBack()` / `goForward()`. The Command Palette exposes "Go Back" and "Go Forward" commands with matching shortcuts. Duplicate consecutive paths are coalesced.
 
 ### 2.4 Tab Overflow — ✅ Done
 
@@ -274,7 +270,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | 1 | Preview inline search (wire existing helpers to UI/keyboard) | 1 day | `PreviewPane.svelte` | Done |
 | 2 | File tree context menu (New File, Rename, Delete) | 1 day | `OutlineSidebar.svelte`, `workspaceStore.ts`, backend | Not done |
 | 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Done |
-| 4 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` | Not done |
+| 4 | Document navigation history (Back/Forward) | 1 day | `navHistoryStore.ts` + `keyboard.ts` | Done |
 | 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Done |
 | 6 | Focus trap in all modals | ½ day | All modal components | Done |
 | 7 | Skip to editor link | ¼ day | `App.svelte` | Done |
@@ -351,7 +347,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | File tree context menu | — | N/A | N/A | ✓ | ✓ |
 | Skip link | ✓ | — | — | — | ✓ |
 
-**Gaps that matter most now:** preview inline search, file tree context menu, command palette frecency, document navigation history, zen/focus mode, and completing focus-trap coverage. These are table stakes for a polished 2026 editor.
+**Gaps that matter most now:** file tree context menu, zen/focus mode, per-activity sidebar widths, and completing title-bar breadcrumb navigation. These are table stakes for a polished 2026 editor.
 
 ---
 

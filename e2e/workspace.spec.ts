@@ -285,6 +285,40 @@ test.describe("File tree navigation", () => {
 });
 
 
+test.describe("Document navigation history", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForSelector(".app", { timeout: 10000 });
+  });
+
+  test("Alt+Left and Alt+Right navigate file open history", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    // Open notes.md
+    await page.locator(".tree-file", { hasText: "notes.md" }).click();
+    await expect(page.locator('.tab.active')).toContainText("notes.md");
+
+    // Expand docs directory and open readme.md
+    await page.locator(".tree-dir", { hasText: "docs" }).click();
+    await page.locator(".tree-file", { hasText: "readme.md" }).click();
+    await expect(page.locator('.tab.active')).toContainText("readme.md");
+
+    // Alt+Left should go back to notes.md
+    await page.keyboard.press("Alt+ArrowLeft");
+    await expect(page.locator('.tab.active')).toContainText("notes.md");
+
+    // Alt+Right should go forward to readme.md
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(page.locator('.tab.active')).toContainText("readme.md");
+  });
+});
+
 test.describe("Open folder keyboard shortcut", () => {
   test("Ctrl+Shift+O triggers open folder dialog", async ({ page }) => {
     await page.evaluate(() => {

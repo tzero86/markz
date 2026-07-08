@@ -8,6 +8,7 @@
 - **Focus traps in all modals** — `use:trapFocus` is now applied to Settings, Command Palette, Template Browser, Table Editor, Save Template Dialog, and Git Diff modals. Tab cycles within the modal and the first focusable element is auto-focused on open.
 - **Command palette frecency + categories** — Commands are now grouped under File, View, Export, and Tools headers. When the query is empty, items are sorted by usage frequency within each category; when searching, frequently used commands get a small score boost. Usage counts persist in localStorage.
 - **Preview inline search** — `Ctrl+F` inside the preview pane now opens a search bar with previous/next navigation, match highlighting, and a result counter. `Escape` closes the search bar.
+- **Document navigation history** — WikiLink jumps and file opens now maintain a back/forward stack. `Alt+Left` navigates back, `Alt+Right` navigates forward, and "Go Back" / "Go Forward" commands are available in the Command Palette. History is bounded to 50 entries and skips duplicate consecutive paths.
 
 ## [0.8.66] - 2026-07-08
 

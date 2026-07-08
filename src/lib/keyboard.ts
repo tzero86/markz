@@ -6,6 +6,7 @@ import { contentZoomStore } from "./contentZoomStore";
 import { workspaceStore } from "./workspaceStore";
 import { logOperationStart, logOperationEnd, logError, logWarn } from "./debugLogStore";
 import { isMarkdownPath } from "./fileTypes";
+import { navHistoryStore } from "./navHistoryStore";
 
 export async function saveDocument() {
   const doc = tabStore.getActiveTab();
@@ -77,7 +78,7 @@ export async function openDocument() {
   }
 }
 
-export async function openDocumentByPath(path: string) {
+export async function openDocumentByPath(path: string, opts: { pushHistory?: boolean } = {}) {
   if (!isMarkdownPath(path)) {
     logWarn("file", `Refused to open non-Markdown file: ${path}`);
     tabStore.setLoading(false);
@@ -103,6 +104,9 @@ export async function openDocumentByPath(path: string) {
     } else {
       tabStore.newTab(info.content, undefined, info.path);
     }
+    if (opts.pushHistory !== false) {
+      navHistoryStore.push(path);
+    }
     addRecentFile(path);
     await workspaceStore.syncToFile(path);
     logOperationEnd("file", `Open: ${path}`);
@@ -111,6 +115,20 @@ export async function openDocumentByPath(path: string) {
     alert("Open failed: " + String(e));
   } finally {
     tabStore.setLoading(false);
+  }
+}
+
+export function goBack() {
+  const path = navHistoryStore.goBack();
+  if (path) {
+    openDocumentByPath(path, { pushHistory: false });
+  }
+}
+
+export function goForward() {
+  const path = navHistoryStore.goForward();
+  if (path) {
+    openDocumentByPath(path, { pushHistory: false });
   }
 }
 
@@ -194,6 +212,17 @@ export function initKeyboardShortcuts() {
     if (mod && e.shiftKey && key === "y") {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent("markz:toggle-debug-panel"));
+      return;
+    }
+    // Alt+Left / Alt+Right — document navigation history
+    if (e.altKey && e.key === "ArrowLeft") {
+      e.preventDefault();
+      goBack();
+      return;
+    }
+    if (e.altKey && e.key === "ArrowRight") {
+      e.preventDefault();
+      goForward();
       return;
     }
     if (!mod) return;

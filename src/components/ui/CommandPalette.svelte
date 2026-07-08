@@ -1,10 +1,10 @@
 <script lang="ts">
   import { trapFocus } from "../../lib/focusTrap";
-  import { File, FolderOpen, FilePlus, Save, Search, Command, ListTree, Link2, GitBranch, Settings, HelpCircle, Type, Image, Table, Printer, Download, PanelLeft, Eye, EyeOff, Moon, Sun, ZoomIn, ZoomOut, RotateCcw, ChevronRight, Presentation, X, BookOpen, ClipboardCopy } from "@lucide/svelte";
+  import { File, FolderOpen, FilePlus, Save, Search, Command, ListTree, Link2, GitBranch, Settings, HelpCircle, Type, Image, Table, Printer, Download, PanelLeft, Eye, EyeOff, Moon, Sun, ZoomIn, ZoomOut, RotateCcw, ChevronRight, Presentation, X, BookOpen, ClipboardCopy, ArrowLeft, ArrowRight } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
   import { searchPalette, type PaletteItem, type PaletteMode, registerCommandPalette, recordCommandUse } from "../../lib/commandPalette";
   import { contentZoomStore } from "../../lib/contentZoomStore";
-  import { saveDocument, openDocument, openFolder, newDocument, closeActiveTab, toggleSidebar } from "../../lib/keyboard";
+  import { saveDocument, openDocument, openFolder, newDocument, closeActiveTab, toggleSidebar, goBack, goForward } from "../../lib/keyboard";
 
   interface Props {
     open: boolean;
@@ -47,6 +47,8 @@
     x: X,
     template: BookOpen,
     "clipboard-copy": ClipboardCopy,
+    "arrow-left": ArrowLeft,
+    "arrow-right": ArrowRight,
   };
 
   function buildCommands(): PaletteItem[] {
@@ -56,6 +58,8 @@
       { id: "open-folder", label: "Open Folder...", detail: "Open a workspace folder", icon: "folder", category: "File", action: () => { openFolder(); onClose(); } },
       { id: "search-workspace", label: "Search Workspace", detail: "Search across all files in the workspace", icon: "search", category: "File", action: () => { window.dispatchEvent(new CustomEvent("markz:open-search")); onClose(); } },
       { id: "save", label: "Save", detail: "Save the current document", icon: "save", category: "File", action: () => { saveDocument(); onClose(); } },
+      { id: "go-back", label: "Go Back", detail: "Navigate to the previous document (Alt+Left)", icon: "arrow-left", category: "File", action: () => { goBack(); onClose(); } },
+      { id: "go-forward", label: "Go Forward", detail: "Navigate to the next document (Alt+Right)", icon: "arrow-right", category: "File", action: () => { goForward(); onClose(); } },
       { id: "close-tab", label: "Close Tab", detail: "Close the active tab", icon: "x", category: "File", action: () => { closeActiveTab(); onClose(); } },
       { id: "toggle-sidebar", label: "Toggle Sidebar", detail: "Show or hide the sidebar panel", icon: "sidebar", category: "View", action: () => { toggleSidebar(); onClose(); } },
       { id: "toggle-outline", label: "Show Outline", detail: "Switch sidebar to Outline view", icon: "outline", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-activity", { detail: "outline" })); onClose(); } },

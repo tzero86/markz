@@ -120,6 +120,12 @@ Features that make MarkZ feel like a serious IDE for markdown.
 - **Scope:** Fuzzy search across all app commands (new file, open file, open folder, save, export formats, toggle sidebar, switch view mode, git diff, apply template, etc.). Commands are grouped under File / View / Export / Tools category headers and sorted by usage frecency when the query is empty; frequently used commands receive a small score boost while searching.
 - **Effort:** Small (1 day)
 
+### P1 — Document Navigation History (`Alt+Left` / `Alt+Right`)
+- **Status:** `[x]` Done
+- **Files:** `src/lib/navHistoryStore.ts`, `src/lib/keyboard.ts`, `src/components/ui/CommandPalette.svelte`
+- **Scope:** Bounded 50-entry stack of opened document paths. `openDocumentByPath` pushes by default; WikiLink jumps and file-tree opens feed the stack. `Alt+Left` / `Alt+Right` navigate back/forward without re-pushing, and "Go Back" / "Go Forward" commands are exposed in the Command Palette.
+- **Effort:** Small (½ day)
+
 ### P1 — Quick Open / Recent Files (`Ctrl+P`)
 - **Status:** `[x]` Done
 - **Files:** Same palette component, `src/lib/workspaceStore.ts`, `src/lib/sessionStore.ts`
