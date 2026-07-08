@@ -7,6 +7,16 @@ test.beforeEach(async ({ page }) => {
   await page.waitForSelector(".app", { timeout: 10000 });
 });
 
+/** Helper to set editor content directly via CodeMirror. */
+async function setEditorText(page: any, text: string) {
+  await page.evaluate((t: string) => {
+    const view = (window as any).EditorView?.findFromDOM(document.querySelector(".cm-content"));
+    if (view) {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: t } });
+    }
+  }, text);
+}
+
 test("app loads with editor and preview panes", async ({ page }) => {
   await expect(page.locator(".editor-pane")).toBeVisible();
   await expect(page.locator(".preview-scroller")).toBeVisible();
@@ -604,6 +614,47 @@ test("preview shows correct content when switching tabs rapidly", async ({
   await tabs.nth(1).click();
   await page.waitForTimeout(500);
   expect(await getEditorText()).toContain("Second Doc");
+});
+
+test.describe("Preview inline search", () => {
+  test("Ctrl+F in preview opens search bar and highlights matches", async ({ page }) => {
+    // Set preview HTML via mocked render_preview
+    await page.evaluate(() => {
+      const origInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!origInvoke) return;
+      (window as any).__TAURI_INTERNALS__.invoke = async function(cmd: string, args?: any) {
+        if (cmd === "render_preview") {
+          return "<p>Hello world, this is a test paragraph for searching.</p>";
+        }
+        return origInvoke(cmd, args);
+      };
+    });
+
+    await setEditorText(page, "# Preview Search Test\n\nHello world, this is a test paragraph for searching.");
+    await page.waitForTimeout(400);
+
+    // Focus the preview scroller so Ctrl+F is routed to preview search.
+    await page.evaluate(() => {
+      const scroller = document.querySelector(".preview-scroller") as HTMLElement | null;
+      scroller?.focus();
+    });
+
+    await page.keyboard.press("Control+f");
+
+    const searchBar = page.locator(".preview-search-bar");
+    await expect(searchBar).toBeVisible();
+
+    const input = searchBar.locator(".preview-search-input");
+    await input.fill("test");
+    await page.waitForTimeout(200);
+
+    // Counter should show one match for "test" ("searching" does not contain "test")
+    await expect(searchBar.locator(".preview-search-count")).toContainText("1 / 1");
+
+    // Close with Escape
+    await page.keyboard.press("Escape");
+    await expect(searchBar).not.toBeVisible();
+  });
 });
 
 test.describe("Command palette", () => {

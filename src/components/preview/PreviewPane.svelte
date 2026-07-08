@@ -1,6 +1,6 @@
 <script lang="ts">
   import EmptyState from "../ui/EmptyState.svelte";
-  import { Eye, Copy, Check, Volume2, Volume, Square, ChevronDown, Presentation } from "@lucide/svelte";
+  import { Eye, Copy, Check, Volume2, Volume, Square, ChevronDown, ChevronUp, Search, X, Presentation } from "@lucide/svelte";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { startupComplete } from "../../lib/startupStore";
   import { invoke } from "@tauri-apps/api/core";
@@ -751,11 +751,42 @@
       slideBreaks = d.breaks;
     }
     window.addEventListener("markz:slide-breaks-changed", onSlideBreaksChanged);
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && previewSearchOpen) {
+        e.preventDefault();
+        closePreviewSearch();
+        return;
+      }
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "f") {
+        // Only hijack Ctrl+F when focus is inside the preview pane and not
+        // inside the CodeMirror editor (which has its own find panel).
+        const active = document.activeElement;
+        const inPreview = active && (previewDiv?.contains(active) || previewDiv === active);
+        const inEditor = active?.closest(".cm-editor") !== null;
+        if (inPreview && !inEditor) {
+          e.preventDefault();
+          openPreviewSearch();
+        }
+      }
+      if (e.key === "Enter" && previewSearchOpen) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          findPrev();
+        } else {
+          findNext();
+        }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+
     return () => {
       window.removeEventListener("markz:print", onPrint);
       window.removeEventListener("markz:slide-breaks-changed", onSlideBreaksChanged);
       window.removeEventListener("markz:settings-changed", onSettingsChanged);
       window.removeEventListener("markz:scroll-to-heading", handleScrollToHeading as EventListener);
+      window.removeEventListener("keydown", onKeyDown);
     };
   });
 
@@ -764,7 +795,46 @@
   {#if isRendering}
     <div class="render-progress-bar"></div>
   {/if}
-  <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy}>
+  <div class="preview-scroller" bind:this={previewDiv} onscroll={onScroll} oncopy={onCopy} tabindex="-1">
+    {#if previewSearchOpen}
+      <div class="preview-search-bar" bind:this={searchBarRef}>
+        <Search size={14} strokeWidth={1.5} />
+        <input
+          type="text"
+          class="preview-search-input"
+          placeholder="Find in preview..."
+          bind:value={previewSearchQuery}
+          oninput={() => highlightSearchMatches()}
+          aria-label="Find in preview"
+        />
+        <span class="preview-search-count" aria-live="polite">
+          {previewSearchTotal > 0 ? `${previewSearchIndex + 1} / ${previewSearchTotal}` : "No results"}
+        </span>
+        <button
+          class="preview-search-btn"
+          onclick={() => findPrev()}
+          aria-label="Previous match"
+          disabled={previewSearchTotal === 0}
+        >
+          <ChevronUp size={14} strokeWidth={1.5} />
+        </button>
+        <button
+          class="preview-search-btn"
+          onclick={() => findNext()}
+          aria-label="Next match"
+          disabled={previewSearchTotal === 0}
+        >
+          <ChevronDown size={14} strokeWidth={1.5} />
+        </button>
+        <button
+          class="preview-search-btn"
+          onclick={() => closePreviewSearch()}
+          aria-label="Close search"
+        >
+          <X size={14} strokeWidth={1.5} />
+        </button>
+      </div>
+    {/if}
     <div class="preview-float-bar">
       <div class="float-actions">
         <div class="copy-dropdown">
@@ -954,6 +1024,65 @@
   @keyframes progressShimmer {
     0% { transform: translateX(-250%); }
     100% { transform: translateX(350%); }
+  }
+
+  /* Inline search bar inside preview */
+  .preview-search-bar {
+    position: sticky;
+    top: var(--space-2);
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    max-width: 420px;
+    margin: 0 auto var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    color: var(--text-secondary);
+  }
+  .preview-search-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    outline: none;
+  }
+  .preview-search-input::placeholder {
+    color: var(--text-tertiary);
+  }
+  .preview-search-count {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    min-width: 56px;
+    text-align: center;
+  }
+  .preview-search-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .preview-search-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .preview-search-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 
   /* Floating action bar inside preview */

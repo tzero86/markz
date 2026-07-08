@@ -126,13 +126,10 @@ DOCX/Pandoc/Print operations show a "Exporting…" toast, and the in-app Debug P
 
 **Status:** Fixed. `PreviewPane.svelte` updates CSS variables and re-themes highlight.js / Mermaid without re-rendering the full HTML. The markdown content does not change — only the CSS does.
 
-### 4.3 No Inline Search in Preview
+### 4.3 No Inline Search in Preview — ✅ Done
 
-**Current:** `PreviewPane.svelte` contains search helper functions (`openPreviewSearch`, `highlightSearchMatches`, etc.) but no visible search UI and no `Ctrl+F` binding when the preview pane is focused.
-
-**Problem:** Users read in preview and want to find text there. Switching to the editor breaks flow.
-
-**Fix:** Wire `Ctrl+F` context-aware: if the preview pane is focused, open the existing search overlay with previous/next navigation and match highlighting.
+**Status:** Fixed in current development.  
+`PreviewPane.svelte` now renders a `.preview-search-bar` with an input, previous/next buttons, a match counter (`1 / N`), and a close button. `Ctrl+F` opens the bar when focus is inside the preview pane (and not inside the CodeMirror editor), `Enter` / `Shift+Enter` navigate matches, and `Escape` closes it. The existing `highlightSearchMatches` helper wraps matches in `<mark class="preview-search-match">` and scrolls the active match into view.
 
 ### 4.4 Find & Replace Missing — ✅ Done
 
@@ -274,7 +271,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 
 | # | Issue | Effort | Files | Status |
 |---|-------|--------|-------|--------|
-| 1 | Preview inline search (wire existing helpers to UI/keyboard) | 1 day | `PreviewPane.svelte` | Not done |
+| 1 | Preview inline search (wire existing helpers to UI/keyboard) | 1 day | `PreviewPane.svelte` | Done |
 | 2 | File tree context menu (New File, Rename, Delete) | 1 day | `OutlineSidebar.svelte`, `workspaceStore.ts`, backend | Not done |
 | 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Done |
 | 4 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` | Not done |
@@ -343,7 +340,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | Presentation mode | ✓ | — | — | plugin | plugin |
 | Global workspace search | ✓ | — | — | ✓ | ✓ |
 | Zen mode | — | ✓ | — | plugin | ✓ |
-| Preview inline search | — | — | — | — | ✓ |
+| Preview inline search | ✓ | — | — | — | ✓ |
 | Smart lists | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Auto-pair delimiters | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Checkbox toggle (preview) | ✓ | — | ✓ | plugin | plugin |

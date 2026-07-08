@@ -92,7 +92,7 @@
 - [x] Tab bar overflow (scroll arrows + mouse wheel)
 - [x] Smart list continuation (Enter continues lists, exits on empty)
 - [x] Auto-pair markdown delimiters (`closeBrackets`) — standard brackets/quotes plus `*`, `_`, `` ` `` auto-close.
-- [ ] Preview inline search (`Ctrl+F` in preview) — helper code exists in `PreviewPane.svelte`, but the search UI is not rendered and `Ctrl+F` is not yet wired to open it.
+- [x] Preview inline search (`Ctrl+F` in preview) — search bar rendered in `PreviewPane.svelte` with prev/next, match highlighting, and counter; `Ctrl+F` wired when preview has focus.
 - [x] Click-to-toggle task list checkboxes
 - [x] Focus traps in all modals (Settings, Templates, Palette, TableEditor, SaveTemplateDialog, GitDiffModal) — `use:trapFocus` applied to all modal containers; first focusable element auto-focused on open.
 - [x] Export progress toasts + breadcrumb in title bar
