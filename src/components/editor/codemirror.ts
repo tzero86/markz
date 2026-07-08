@@ -290,6 +290,18 @@ export function initEditor(
       )
     ),
     closeBrackets(),
+    // Extend bracket auto-pairing with Markdown emphasis/code delimiters.
+    // closeBrackets() reads its config from language data; the default markdown
+    // language only provides comment tokens, so we supply a custom config that
+    // keeps the standard pairs and adds *, _, and `.
+    EditorState.languageData.of(() => [
+      {
+        closeBrackets: {
+          brackets: ["(", "[", "{", "'", '"', "*", "_", "`"],
+          before: ")]}:;>",
+        },
+      },
+    ]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         config.onChange(update.state.doc.toString());

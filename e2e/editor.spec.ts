@@ -299,6 +299,48 @@ test.describe("Live preview markdown typing", () => {
   });
 });
 
+test.describe("Markdown auto-pair", () => {
+  test("typing * inserts a closing pair", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+    await page.locator(".cm-content").click();
+    await page.keyboard.type("*");
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("**");
+    expect(state.cursor).toBe(1);
+  });
+
+  test("typing _ inserts a closing pair", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+    await page.locator(".cm-content").click();
+    await page.keyboard.type("_");
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("__");
+    expect(state.cursor).toBe(1);
+  });
+
+  test("typing backtick inserts a closing pair", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+    await page.locator(".cm-content").click();
+    await page.keyboard.type("`");
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("``");
+    expect(state.cursor).toBe(1);
+  });
+
+  test("typing standard brackets still auto-pairs", async ({ page }) => {
+    await setEditorContent(page, "", 0);
+    await page.locator(".cm-content").click();
+    await page.keyboard.type("[");
+
+    const state = await getEditorState(page);
+    expect(state.text).toBe("[]");
+    expect(state.cursor).toBe(1);
+  });
+});
+
 test.describe("Editor pane interactions", () => {
   test("editor container is present", async ({ page }) => {
     await expect(page.locator('.editor-container[role="application"]')).toBeVisible();

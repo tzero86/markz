@@ -1,3 +1,8 @@
+## Unreleased
+
+### Fixed
+- **Markdown auto-pair for emphasis and code** — Typing `*`, `_`, or `` ` `` now auto-inserts the closing delimiter alongside the existing bracket/quote pairs. Covered by E2E tests for all three characters plus a regression check for `[]`.
+
 ## [0.8.66] - 2026-07-08
 
 ### Fixed

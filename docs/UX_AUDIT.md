@@ -157,13 +157,12 @@ Clicking an item in `OutlineSidebar.svelte` dispatches `markz:scroll-to-heading`
 **Status:** Shipped in v0.8.6.  
 `codemirror.ts` implements `smartListEnter`: pressing Enter on a list item continues `-`, `*`, `+`, or `1.`, and pressing Enter on an empty list line removes the marker and exits the list.
 
-### 4.8 No Auto-Pair for Markdown — Partially Done
+### 4.8 No Auto-Pair for Markdown — ✅ Done
 
-**Current:** `closeBrackets()` from `@codemirror/autocomplete` is enabled, so `()`, `[]`, `{}`, `""`, `''` auto-close.
+**Status:** Fixed in current development.  
+`closeBrackets()` is enabled and `EditorState.languageData` now supplies a custom `closeBrackets` config that includes the standard pairs plus markdown emphasis/code delimiters: `*`, `_`, `` ` ``.
 
-**Problem:** Markdown-specific delimiters (`*`, `_`, `` ` ``) are not configured, so inline emphasis and code still require typing the closing delimiter manually.
-
-**Fix:** Extend the `closeBrackets` configuration with markdown pairs: `*`, `_`, `` ` ``, and `<`.
+**Note:** HTML angle brackets (`<`) were left out because auto-pairing them interferes with plain text typing in Markdown.
 
 ### 4.9 No Task List Toggle in Preview — ✅ Done
 
@@ -282,7 +281,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | 2 | File tree context menu (New File, Rename, Delete) | 1 day | `OutlineSidebar.svelte`, `workspaceStore.ts`, backend | Not done |
 | 3 | Command palette frecency + categories | ½ day | `commandPalette.ts`, `CommandPalette.svelte` | Not done |
 | 4 | Document navigation history (Back/Forward) | 1 day | New store + `keyboard.ts` | Not done |
-| 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Partial |
+| 5 | Markdown auto-pair for `*`, `_`, `` ` `` | ¼ day | `codemirror.ts` | Done |
 | 6 | Focus trap in all modals | ½ day | All modal components | Partial |
 | 7 | Skip to editor link | ¼ day | `App.svelte` | Not done |
 
@@ -349,7 +348,7 @@ A "High Contrast" preset is available in Settings → General → Color Preset.
 | Zen mode | — | ✓ | — | plugin | ✓ |
 | Preview inline search | — | — | — | — | ✓ |
 | Smart lists | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Auto-pair delimiters | partial | ✓ | ✓ | ✓ | ✓ |
+| Auto-pair delimiters | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Checkbox toggle (preview) | ✓ | — | ✓ | plugin | plugin |
 | Breadcrumbs | partial | — | — | ✓ | ✓ |
 | Settings search | ✓ | — | — | ✓ | ✓ |
