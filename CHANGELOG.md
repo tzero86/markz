@@ -1,5 +1,18 @@
 ## Unreleased
 
+## [0.8.68] - 2026-07-10
+
+### Fixed
+- **File handling now feels native** — Opening a file via `Ctrl+O`, recent files, OS file association, WikiLinks, or the file tree no longer hijacks the workspace root. If a folder is open, the file is revealed in the existing tree; if not, the file opens as a standalone tab.
+- **Refresh updates open tabs** — The file-tree refresh button now preserves expanded directories and re-reads open files from disk, prompting to reload when an external change is detected.
+- **No more duplicate tabs** — `openDocumentByPath` is now the single chokepoint; it focuses an existing tab for the same file from any entry point.
+- **External changes respect unsaved edits** — When a file changes on disk while you have unsaved changes, MarkZ now asks whether to discard your edits before reloading. Self-saves are ignored by the watcher to avoid false prompts.
+- **Workspace root changes no longer clobber the active tab** — Startup restore and file-open flows keep the active file focused when the workspace root changes.
+
+### Changed
+- Replaced aggressive `syncToFile` workspace re-rooting with `openFile`, which reveals files in the existing workspace instead of switching folders.
+- Refreshed anti-slop and UI/UX review notes in `specs/general/UI-IMPROVEMENTS.md` covering the file-handling modules.
+
 ## [0.8.67] - 2026-07-08
 
 ### Added

@@ -206,11 +206,25 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   async function checkExternalChanges(path: string) {
     if (!externallyModifiedPaths.has(path)) return;
     externallyModifiedPaths.delete(path);
-    const proceed = await confirm(
-      `"${path.split(/[\\/]/).pop()}" has been modified externally. Reload it?`,
-      { title: "File Changed", kind: "warning" }
-    );
-    if (!proceed) return;
+
+    const active = tabStore.getActiveTab();
+    if (active?.path === path && active.isDirty) {
+      const proceed = await confirm(
+        `"${path.split(/[\\/]/).pop()}" has changed on disk. Discard your unsaved changes and reload it?`,
+        { title: "File Changed", kind: "warning" }
+      );
+      if (!proceed) return;
+    } else if (active?.path !== path) {
+      // Defer prompting until the user switches back to the stale tab.
+      return;
+    } else {
+      const proceed = await confirm(
+        `"${path.split(/[\\/]/).pop()}" has been modified externally. Reload it?`,
+        { title: "File Changed", kind: "warning" }
+      );
+      if (!proceed) return;
+    }
+
     try {
       const info = await invoke<{ content: string; path: string }>("open_document", { path });
       tabStore.loadDocument(info.content, info.path);
@@ -234,12 +248,10 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
       if (path !== lastActivePath) {
         lastActivePath = path;
-        // Keep the file tree rooted at the active tab's directory.  We only
-        // sync for actual file paths here; null paths are handled explicitly
-        // by the tab lifecycle so that an opened folder is not accidentally
-        // closed when the active tab becomes an Untitled tab.
+        // Reveal the active file in the existing workspace when possible,
+        // instead of re-rooting to its parent and evicting the open folder.
         if (path) {
-          workspaceStore.syncToFile(path).catch(() => {});
+          workspaceStore.openFile(path).catch(() => {});
           // If we switched to a file that was externally modified, prompt to reload
           checkExternalChanges(path);
         }
@@ -251,10 +263,10 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     forceSinglePane ? "editor" : viewMode
   );
 
-  // When a folder is opened/re-rooted, make sure the active tab belongs to
-  // that workspace. If no open file lives inside the new folder, create a
-  // clean Untitled tab (or reuse an existing empty one) so the editor does not
-  // keep showing an unrelated file next to the new file tree.
+  // When a folder is explicitly opened (or the root changes because no
+  // workspace existed), ensure the active tab belongs to that workspace. We
+  // intentionally do not switch away from a file that was just opened via
+  // Ctrl+O / double-click, because openFile() above only re-roots when needed.
   let lastWorkspaceRoot: string | null = null;
   $effect(() => {
     const ws = $workspaceStore;
@@ -273,7 +285,16 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
     const tabState = get(tabStore);
     const activeTab = tabState.tabs.find((t) => t.id === tabState.activeTabId);
-    if (activeTab && isInWorkspace(activeTab.path)) return;
+
+    // If a file open operation triggered this root change, the active tab is
+    // already inside the new root — keep it focused.
+    if (activeTab && isInWorkspace(activeTab.path)) {
+      // Make sure the file is revealed in the tree, but do not spawn a new tab.
+      if (activeTab.path) {
+        workspaceStore.revealFilePath(activeTab.path).catch(() => {});
+      }
+      return;
+    }
 
     const existing = tabState.tabs.find((t) => isInWorkspace(t.path));
     if (existing) {
@@ -361,14 +382,22 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
           debugLogStore.add("info", "startup", `openDocumentByPath took ${(performance.now() - t2).toFixed(1)}ms`);
         }
 
-        // Keep the file tree in sync with the active tab, but do not block the
-        // splash screen on a potentially expensive recursive scan. The sync runs
-        // in the background; the tree populates once the data is ready.
+        // Restore the workspace context. Prefer the saved workspace path if it
+        // contains the active tab; otherwise fall back to the active tab's
+        // directory so the file tree appears after reload.
         const active = tabStore.getActiveTab();
         if (active?.path) {
+          const savedWs = session?.workspacePath;
+          const useSavedWs = savedWs && active.path.replace(/\\/g, "/").startsWith(savedWs.replace(/\\/g, "/"));
           const t3 = performance.now();
-          workspaceStore.syncToFile(active.path).then(() => {
-            debugLogStore.add("info", "startup", `workspaceStore.syncToFile took ${(performance.now() - t3).toFixed(1)}ms`);
+          const target = useSavedWs ? savedWs : active.path.replace(/\\/g, "/").split("/").slice(0, -1).join("/") || "/";
+          workspaceStore.loadWorkspace(target).then(() => {
+            debugLogStore.add("info", "startup", `workspaceStore.loadWorkspace took ${(performance.now() - t3).toFixed(1)}ms`);
+          }).catch(() => {});
+        } else if (session?.workspacePath) {
+          const t3 = performance.now();
+          workspaceStore.loadWorkspace(session.workspacePath).then(() => {
+            debugLogStore.add("info", "startup", `workspaceStore.loadWorkspace took ${(performance.now() - t3).toFixed(1)}ms`);
           }).catch(() => {});
         }
         const state = get(tabStore);
@@ -431,6 +460,28 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       }
     };
     window.addEventListener("markz:file-externally-changed", handleFileExternallyChanged);
+
+    const handleCheckOpenFiles = async () => {
+      const openPaths = get(tabStore).tabs.map((t) => t.path).filter((p): p is string => !!p);
+      const results = await Promise.allSettled(
+        openPaths.map(async (path) => {
+          const info = await invoke<{ content: string; path: string }>("open_document", { path });
+          return { path, content: info.content };
+        })
+      );
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result.status !== "fulfilled") continue;
+        const { path, content } = result.value;
+        const tab = get(tabStore).tabs.find((t) => t.path === path);
+        if (!tab || tab.content === content) continue;
+        externallyModifiedPaths.add(path);
+        if (tabStore.getActiveTab()?.path === path) {
+          checkExternalChanges(path);
+        }
+      }
+    };
+    window.addEventListener("markz:check-open-files", handleCheckOpenFiles);
     const handleSetActivity = (e: Event) => {
       activeActivity = (e as CustomEvent).detail;
       userToggledSidebar = true;
@@ -532,6 +583,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       window.removeEventListener("markz:open-git-diff", handleOpenGitDiff);
       window.removeEventListener("markz:workspace-changed", handleWorkspaceChanged);
       window.removeEventListener("markz:file-externally-changed", handleFileExternallyChanged);
+      window.removeEventListener("markz:check-open-files", handleCheckOpenFiles);
       window.removeEventListener("markz:set-view-mode", handleSetViewMode);
       window.removeEventListener("markz:open-settings", handleOpenSettings);
       window.removeEventListener("markz:open-help", handleOpenHelp);

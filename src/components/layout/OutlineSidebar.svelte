@@ -117,12 +117,6 @@
       console.warn("Ignoring non-Markdown file from file tree:", path);
       return;
     }
-    // If the file is already open, focus its tab instead of creating a duplicate.
-    const existing = get(tabStore).tabs.find((t) => t.path === path);
-    if (existing) {
-      tabStore.switchTab(existing.id);
-      return;
-    }
     await openDocumentByPath(path);
   }
 
@@ -405,7 +399,7 @@
             <button class="tree-action-btn" aria-label="Open folder" title="Open folder" onclick={() => workspaceStore.openWorkspace()}>
               <FolderOpen size={13} strokeWidth={2} />
             </button>
-            <button class="tree-action-btn" onclick={() => workspaceStore.loadWorkspace($workspaceStore.rootPath!)} title="Refresh">
+            <button class="tree-action-btn" onclick={() => workspaceStore.refresh()} title="Refresh">
               <span style="font-size: 11px;">↻</span>
             </button>
           </div>

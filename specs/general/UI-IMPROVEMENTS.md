@@ -349,15 +349,147 @@ Reviewed the MarkZ frontend (`src/`) against `docs/MarkZ_UI_UX_Design.md` and th
 
 **Recommendation**: Keep controls visible while any presentation control has focus, or add a focus-based visibility rule.
 
+---
+
+## Code Quality / Anti-Slop Findings — File Handling
+
+Audited the file-handling and tab/workspace modules (`src/lib/workspaceStore.ts`, `src/lib/keyboard.ts`, `src/lib/tabStore.ts`, `src/App.svelte`, `src/components/layout/OutlineSidebar.svelte`, `src/components/layout/TabBar.svelte`) after the recent file-handling refactor. The refactor removed the most egregious duplication (open-file logic was duplicated in three places); remaining issues are minor polish and debug noise.
+
+| Line | Severity | Category | Pattern | Issue |
+|------|----------|----------|---------|-------|
+| `src/App.svelte:319,327` | low | Unnecessary logging | Debug `console.log` | Two `[App] handleSelectActivity` logs left in production code. Delete them. |
+| `src/App.svelte:211-224` | low | Verbose patterns | Boolean verbosity / duplicated confirm | Two near-identical `confirm()` calls for external file reload. Unify into one dialog with a conditional message. |
+| `src/App.svelte:533` | low | Type workaround | `invoke<any>` | `render_slides` response is typed as `any`. Add a `SlideDeck` interface or use `unknown`. |
+| `src/lib/keyboard.ts:41-42,103-104` | medium | Defensive over-coding / poor UX | `alert()` for I/O errors | Native `alert()` blocks the window and looks unprofessional. Use the existing `Toast` component or `debugLogStore` + status-bar message. |
+| `src/lib/tabStore.ts:564-618` | low | Verbose patterns | Triplicated dirty-tab confirm | Three almost identical dirty-tab confirmation blocks in `closeTab`, `closeAllExcept`, `closeAll`. Extract a `confirmClose(tab)` helper. |
+| `src/lib/tabStore.ts:797` | low | Type workaround | `window as any` | Expose the store via a typed global or remove the E2E-only assignment. |
+| `src/components/layout/OutlineSidebar.svelte:62,66,110` | low | Unnecessary logging | `console.error` in catch | Backlink/wikilink failures silently degrade to empty arrays; log via `debugLogStore` instead of `console.error`. |
+| `src/components/layout/OutlineSidebar.svelte:117` | low | Unnecessary logging | `console.warn` for ignored non-Markdown files | Fine for debugging, but should use `debugLogStore` for consistency with the rest of the app. |
+| `src/components/layout/TabBar.svelte` | — | Positive | — | Clean tab lifecycle; drag-and-drop, pinning, dropdown, and dirty indicators are well factored. |
+
+### Cross-File Observations
+
+- **Good**: `openDocumentByPath` is now the single chokepoint for opening a file by path; `OutlineSidebar` no longer duplicates the "focus existing tab" check.
+- **Good**: `workspaceStore.openFile` is the single place that decides whether to reveal a file in the existing workspace, replacing the previous `syncToFile` behavior that aggressively re-rooted on every file open.
+- **Watch**: `parentDirectory` is now exported from `workspaceStore.ts` and reused by `keyboard.ts`, removing a duplicated inline path-slicing expression.
+
+---
+
+## UI/UX Review Findings — File, Tab, and Workspace Handling
+
+Reviewed the open/save/refresh/tab/file-tree flows against Sublime Text and Windows 11 Notepad conventions after the file-handling refactor.
+
+### Critical Issues
+
+#### Issue: External file changes are only surfaced when a tab becomes active
+**Current State**: The watcher and manual refresh both record externally modified paths, but the user is only prompted when switching focus to the affected tab or when the window regains focus with that tab active. There is no visual indicator on an inactive tab that its file has changed on disk.
+
+**Problem**: A user editing many files may not notice that an inactive tab is stale until they click it, leading to surprise overwrites or lost external edits.
+
+**Recommendation**: Add a small dot or badge to inactive tabs whose disk content differs from the in-memory content. When the user switches to such a tab, keep the existing "Reload?" prompt. Optionally, add a "Reload All" command in the command palette.
+
+**Impact**: Users can see at a glance which tabs need attention and avoid accidental overwrites.
+
+**Implementation Notes**: Extend `tabStore` with an `externallyModified: boolean` flag per tab, set it in the `markz:file-externally-changed` handler and the manual `markz:check-open-files` handler, and render a subtle indicator in `TabBar`.
+
+---
+
+### High Priority Improvements
+
+#### Issue: Save dialog can produce a double extension
+**Current State**: `src/lib/keyboard.ts:saveDocument` uses `doc.title` directly as the default filename when it is not "Untitled". If the title already contains an extension (e.g. "notes.md"), the default becomes "notes.md.md".
+
+**Problem**: Users who rename a file in the title bar or via a template may save with an incorrect extension.
+
+**Recommendation**: Strip any existing `.md`/`.markdown`/`.mdx` extension from `doc.title` before appending `.md`.
+
+**Impact**: Saves produce predictable filenames.
+
+---
+
+#### Issue: No "Reveal in Sidebar" / "Open Containing Folder" commands
+**Current State**: There is no command palette action to reveal the active file in the file tree or to open its containing folder in the OS file manager.
+
+**Problem**: When a workspace contains many nested directories, users can lose the active file in the tree. Native editors provide these commands as a quick way to orient themselves.
+
+**Recommendation**: Add two palette commands:
+- "Reveal Active File in Sidebar" — expands the tree and selects the active file.
+- "Open Containing Folder" — invokes a backend command to `std::process::Command` the OS file manager (Explorer/Finder) on the file's parent.
+
+**Impact**: Faster navigation between the editor and the file system.
+
+---
+
+#### Issue: Title-bar breadcrumb re-rooting can close tabs without warning
+**Current State**: Clicking a segment in the title-bar breadcrumbs calls `workspaceStore.loadWorkspace(crumb.path)`, which triggers the workspace-root-change effect that closes unrelated file tabs. `openFolder()` itself asks for confirmation on dirty tabs, but the breadcrumb path does not.
+
+**Problem**: A quick click on a parent folder in the breadcrumb can silently discard the context of open tabs (the close path asks for dirty-tab confirmation, but the overall workspace switch may still feel abrupt).
+
+**Recommendation**: Either add a confirmation when breadcrumb re-rooting would close tabs, or change breadcrumb clicks to reveal the segment in the existing tree without re-rooting. The latter is closer to Sublime's breadcrumb behavior.
+
+**Impact**: Prevents accidental loss of open-file context.
+
+---
+
+### Medium Priority Enhancements
+
+#### Issue: File-tree refresh provides no visual feedback while busy
+**Current State**: The refresh button in `OutlineSidebar` calls `workspaceStore.refresh()`. The tree updates once complete, but there is no spinner on the button and no disabled state during the refresh.
+
+**Problem**: On large workspaces the user may click refresh repeatedly, triggering redundant work, or wonder whether anything happened.
+
+**Recommendation**: Set a transient `refreshing` state on click, disable the refresh button, and restore it when `refresh()` resolves or rejects. Add a small rotating icon or spinner.
+
+**Impact**: Clearer feedback and fewer redundant refreshes.
+
+---
+
+#### Issue: New untitled document closes the workspace entirely
+**Current State**: `newDocument()` in `keyboard.ts` calls `workspaceStore.syncToFile(null)`, which closes the workspace.
+
+**Problem**: In Sublime/Notepad, creating a new document does not evict the open folder. Users who want to jot a quick note lose their file tree.
+
+**Recommendation**: Remove the workspace close from `newDocument`. Keep the existing workspace open; the new Untitled tab simply has no tree selection.
+
+**Impact**: New notes do not destroy the user's workspace context.
+
+---
+
+#### Issue: Manual save does not flash the auto-save indicator
+**Current State**: Only the auto-save timer flashes the status indicator via `autoSaveFlash`. A manual `Ctrl+S` saves silently.
+
+**Problem**: Users get no immediate confirmation that the save succeeded, aside from the dirty dot disappearing.
+
+**Recommendation**: Flash the same save indicator on manual save (or show a brief "Saved" toast).
+
+**Impact**: More confident saving.
+
+---
+
+### Low Priority Suggestions
+
+- **Refresh preserves expansion state**: The recent refactor changed `refresh()` to keep `expandedDirs` and re-load their children. This is a noticeable UX win and should be preserved.
+- **Duplicate-tab prevention is now global**: `openDocumentByPath` now focuses an existing tab for any open-file entry point (tree, recent files, OS association, command palette). Keep this centralized.
+- **File-tree active-file highlight**: The tree already highlights the active file. Ensure this highlight updates immediately on tab switch.
+
+### Positive Observations
+
+- **Centralized open logic**: `openDocumentByPath` is now the single path for opening files, eliminating the previous drift between tree double-click, recent files, and OS file association.
+- **Refresh now surfaces tab changes**: A manual refresh no longer just rebuilds the tree; it also checks open files against disk and prompts for reload when stale.
+- **Workspace root changes respect the active tab**: The `$effect` in `App.svelte` now keeps the active tab focused when a file open operation triggers a root change, instead of spawning a blank Untitled tab.
+- **Self-save ignored by watcher**: Manual save adds the path to `recentlySavedPaths`, reducing false-positive "file changed externally" prompts.
+
+---
+
 ## Positive Observations
 
 - **Token-driven theming**: The app uses a comprehensive CSS custom-property system (`src/styles/tokens.css`) with light/dark modes, system-preference support, and a `data-reduced-motion` attribute that disables animations.
 - **Scrollbar and overscroll behavior**: `src/styles/base.css` styles 8 px scrollbars and applies `overscroll-behavior: contain` to CodeMirror, preview, and outline scrollers, preventing unwanted scroll chaining.
-- **Preview layout**: The preview pane follows the spec closely with a max-width of 820 px, centered content, generous padding, and correctly sized headings, blockquotes, tables, and code blocks.
+- **Preview layout**: The preview pane follows the spec closely with a max-width of 820 px, centered content, generous padding, and correctly sized headings, blockquotes, tables, code blocks, and images.
 - **Editor CodeMirror theme**: The editor uses the design tokens for cursor, selection, active-line gutter, matching brackets, and the GitHub Primer syntax palette, matching the spec.
 - **Keyboard focus ring**: A global `:focus-visible` rule provides a consistent focus indicator across the app.
 - **Performance-aware preview rendering**: `PreviewPane` debounces renders, shows a progress bar, caches results, and skips re-renders when content has not changed.
 - **Command palette UX**: `CommandPalette` provides keyboard navigation, filtering, and clear shortcut hints.
-- **Security**: Preview HTML is sanitized with DOMPurify before injection.
+- **Security**: Preview HTML is sanitized with `DOMPurify` before injection.
 - **Startup resilience**: `App.svelte` loads settings first, restores sessions in the background, and dismisses the splash screen without blocking on directory scans.
 - **Outline navigation**: The outline sidebar is functional and was explicitly fixed prior to this review; it is therefore not listed as an open issue.

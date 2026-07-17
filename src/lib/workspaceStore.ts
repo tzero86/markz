@@ -79,8 +79,28 @@ function createWorkspaceStore() {
     logOperationStart("workspace", "Refresh workspace");
     try {
       const tree = await invoke<FileTreeNode[]>("list_workspace_files_shallow", { root: state.rootPath });
-      update((s) => ({ ...s, fileTree: tree, expandedDirs: new Set() }));
+      const prevExpanded = state.expandedDirs;
+      update((s) => ({ ...s, fileTree: tree, expandedDirs: prevExpanded }));
       logOperationEnd("workspace", "Refresh workspace", `${tree.length} top-level items`);
+
+      // Re-load children for any directories that were expanded before the
+      // refresh so the tree does not collapse under the user.
+      const promises: Promise<void>[] = [];
+      for (const relPath of prevExpanded) {
+        const node = findNode(tree, relPath);
+        if (node && node.is_dir && node.children.length === 0) {
+          promises.push(
+            loadChildren(node).catch((e) => {
+              logError("workspace", `Failed to reload expanded dir ${relPath}`, String(e));
+            })
+          );
+        }
+      }
+      await Promise.all(promises);
+
+      // A manual refresh should also surface changes to open files, just like
+      // the file-system watcher does for external edits.
+      window.dispatchEvent(new CustomEvent("markz:check-open-files"));
     } catch (e) {
       logError("workspace", "Failed to refresh workspace", String(e));
     }
@@ -161,6 +181,22 @@ function createWorkspaceStore() {
     return path.slice(0, lastSep);
   }
 
+  function pathInWorkspace(path: string, rootPath: string): boolean {
+    const root = rootPath.replace(/\\/g, "/").replace(/\/$/, "");
+    const norm = path.replace(/\\/g, "/");
+    return norm === root || norm.startsWith(root + "/");
+  }
+
+  /** Reveal a file in the existing workspace tree if it belongs to the
+   *  current root. Does not re-root the workspace, so opening a single file
+   *  does not feel like opening a folder. */
+  async function openFile(path: string) {
+    const state = get({ subscribe });
+    if (state.rootPath && pathInWorkspace(path, state.rootPath)) {
+      await revealFilePath(path);
+    }
+  }
+
   async function syncToFile(path: string | null) {
     const state = get({ subscribe });
     if (path === null) {
@@ -168,11 +204,7 @@ function createWorkspaceStore() {
       await closeWorkspace();
       return;
     }
-    const parent = parentDirectory(path);
-    if (parent !== state.rootPath) {
-      await loadWorkspace(parent);
-    }
-    await revealFilePath(path);
+    await openFile(path);
   }
 
   async function revealFilePath(path: string) {
@@ -343,7 +375,10 @@ function createWorkspaceStore() {
     toggleDir,
     search,
     closeWorkspace,
+    openFile,
+    revealFilePath,
     syncToFile,
+    parentDirectory,
     createFile,
     createFolder,
     renameEntry,

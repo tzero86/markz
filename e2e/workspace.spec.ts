@@ -187,7 +187,7 @@ test.describe("Workspace tree follows active tab", () => {
     await expect(page.locator(".tree-file").first()).toBeVisible();
   });
 
-  test("opening file updates tree to opened file's parent directory", async ({ page }) => {
+  test("opening file does not force a folder open when none is open", async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_file_result", "/projects/markz/notes.md");
     });
@@ -195,11 +195,20 @@ test.describe("Workspace tree follows active tab", () => {
     await page.waitForSelector('.tab:has-text("notes.md")', { timeout: 5000 });
 
     await page.click('.activity-btn[aria-label="Files"]');
-    await expect(page.locator(".file-tree-breadcrumbs")).toContainText("markz");
-    await expect(page.locator(".tree-file").first()).toBeVisible();
+    // No workspace should be loaded for a standalone file open.
+    await expect(page.locator(".file-tree-scroller .empty-state h3")).toContainText("No folder open");
   });
 
-  test("switching tabs updates tree to active tab's parent directory", async ({ page }) => {
+  test("switching tabs keeps the existing workspace tree", async ({ page }) => {
+    // Open a workspace first so the sidebar is populated.
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    // Open files outside the workspace.
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_file_result", "/folder-a/file-a.md");
     });
@@ -212,18 +221,15 @@ test.describe("Workspace tree follows active tab", () => {
     await page.keyboard.press("Control+o");
     await page.waitForSelector('.tab:has-text("file-b.md")', { timeout: 5000 });
 
-    await page.click('.activity-btn[aria-label="Files"]');
-
     const breadcrumbs = page.locator(".file-tree-breadcrumbs");
-    await expect(breadcrumbs).toContainText("folder-b");
+    await expect(breadcrumbs).toContainText("test-workspace");
 
+    // Switching between file tabs should not re-root the existing workspace.
     await page.locator('.tab:has-text("file-a.md")').click();
-    await expect(breadcrumbs).toContainText("folder-a");
-    await expect(breadcrumbs).not.toContainText("folder-b");
+    await expect(breadcrumbs).toContainText("test-workspace");
 
     await page.locator('.tab:has-text("file-b.md")').click();
-    await expect(breadcrumbs).toContainText("folder-b");
-    await expect(breadcrumbs).not.toContainText("folder-a");
+    await expect(breadcrumbs).toContainText("test-workspace");
   });
 
   test("closing all file tabs clears the tree", async ({ page }) => {
@@ -233,12 +239,13 @@ test.describe("Workspace tree follows active tab", () => {
     await page.keyboard.press("Control+o");
     await page.waitForSelector('.tab:has-text("f.md")', { timeout: 5000 });
 
+    // Opening a single file does not open a workspace; closing the tab keeps
+    // the empty state as there is no folder to clear.
     await page.click('.activity-btn[aria-label="Files"]');
-    await expect(page.locator(".file-tree-breadcrumbs")).toContainText("x");
+    await expect(page.locator(".file-tree-scroller .empty-state h3")).toContainText("No folder open");
 
     await page.locator('.tab:has-text("f.md") .tab-close').click();
 
-    await expect(page.locator(".file-tree-scroller .empty-state")).toBeVisible();
     await expect(page.locator(".file-tree-scroller .empty-state h3")).toContainText("No folder open");
   });
 

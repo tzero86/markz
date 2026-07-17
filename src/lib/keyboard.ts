@@ -27,7 +27,15 @@ export async function saveDocument() {
     tabStore.markClean();
     if (!doc.path) tabStore.setPath(path);
     addRecentFile(path);
-    await workspaceStore.syncToFile(path);
+
+    // If no folder is open, use the saved file's parent as workspace so the
+    // user sees where the file lives. Otherwise just reveal it in the tree.
+    const ws = get(workspaceStore);
+    if (!ws.rootPath) {
+      await workspaceStore.loadWorkspace(workspaceStore.parentDirectory(path) || "/");
+    }
+    await workspaceStore.openFile(path);
+
     logOperationEnd("file", `Saved: ${path}`);
   } catch (e) {
     logError("file", `Save failed: ${path}`, String(e));
@@ -45,43 +53,24 @@ export async function openDocument() {
     return;
   }
 
-  const active = tabStore.getActiveTab();
-  const shouldReplace =
-    active &&
-    !active.isDirty &&
-    active.path === null &&
-    active.content.trim() === "";
-
-  // Reject non-Markdown files selected via the "All Files" dialog filter.
   if (!isMarkdownPath(result.path)) {
     logWarn("file", `Refused to open non-Markdown file: ${result.path}`);
-    tabStore.setLoading(false);
     return;
   }
 
-  tabStore.setLoading(true);
-  logOperationStart("file", `Open: ${result.path}`);
-  try {
-    if (shouldReplace) {
-      tabStore.loadDocument(result.content, result.path);
-    } else {
-      tabStore.newTab(result.content, undefined, result.path);
-    }
-    addRecentFile(result.path);
-    await workspaceStore.syncToFile(result.path);
-    logOperationEnd("file", `Open: ${result.path}`);
-  } catch (e) {
-    logError("file", `Open failed: ${result.path}`, String(e));
-    alert("Open failed: " + String(e));
-  } finally {
-    tabStore.setLoading(false);
-  }
+  await openDocumentByPath(result.path);
 }
 
 export async function openDocumentByPath(path: string, opts: { pushHistory?: boolean } = {}) {
   if (!isMarkdownPath(path)) {
     logWarn("file", `Refused to open non-Markdown file: ${path}`);
-    tabStore.setLoading(false);
+    return;
+  }
+
+  // Always focus an existing tab for the same file instead of duplicating it.
+  const existing = get(tabStore).tabs.find((t) => t.path === path);
+  if (existing) {
+    tabStore.switchTab(existing.id);
     return;
   }
 
@@ -108,7 +97,7 @@ export async function openDocumentByPath(path: string, opts: { pushHistory?: boo
       navHistoryStore.push(path);
     }
     addRecentFile(path);
-    await workspaceStore.syncToFile(path);
+    await workspaceStore.openFile(path);
     logOperationEnd("file", `Open: ${path}`);
   } catch (e) {
     logError("file", `Open failed: ${path}`, String(e));
