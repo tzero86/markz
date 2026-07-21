@@ -385,9 +385,15 @@ function createTtsStore() {
 
   function extractReadableText(container: HTMLElement): string {
     const clone = container.cloneNode(true) as HTMLElement;
+
+    // Inline code (backticks) should be read, not dropped.
+    clone.querySelectorAll("code").forEach((el) => {
+      const text = document.createTextNode(el.textContent || "");
+      el.replaceWith(text);
+    });
+
     const selectors = [
       "pre",
-      "code",
       ".mermaid-diagram",
       "svg",
       "img",

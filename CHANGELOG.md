@@ -1,5 +1,10 @@
 ## Unreleased
 
+## [0.8.69] - 2026-07-21
+
+### Fixed
+- **TTS no longer skips inline code** — `extractReadableText` now unwraps `<code>` elements instead of removing them, so words wrapped in backticks (`` `print()` ``) are read aloud instead of being silently dropped. Code blocks under `<pre>` are still excluded.
+
 ## [0.8.68] - 2026-07-10
 
 ### Fixed
