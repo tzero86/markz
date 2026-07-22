@@ -1,5 +1,15 @@
 ## Unreleased
 
+## [0.8.71] - 2026-07-22
+
+### Fixed
+- **Nested folders expand reliably on Windows** — `rel_path` is now computed by normalising the root and item paths to forward slashes before stripping the prefix, so mixed or trailing Windows separators no longer break nested directory expansion.
+- **Windows test flake fixed** — `rename_workspace_entry_renames_file` now compares paths using `Path::join` instead of a hard-coded forward-slash string.
+
+### Changed
+- Added backend tests for `list_workspace_files_shallow` and `list_dir_children`.
+- Added diagnostic logging around `toggleDir` and `loadChildren` to make future tree-loading issues visible in the debug panel.
+
 ## [0.8.70] - 2026-07-22
 
 ### Fixed
