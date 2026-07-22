@@ -51,6 +51,49 @@ test.describe("Workspace file tree", () => {
     await expect(page.locator(".tree-file").first()).toBeVisible();
   });
 
+  test("expands nested directories on click", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "__e2e_workspace_files",
+        JSON.stringify([
+          {
+            name: "docs",
+            path: "/test-workspace/docs",
+            rel_path: "docs",
+            is_dir: true,
+            children: [
+              {
+                name: "sub",
+                path: "/test-workspace/docs/sub",
+                rel_path: "docs/sub",
+                is_dir: true,
+                children: [
+                  { name: "inner.md", path: "/test-workspace/docs/sub/inner.md", rel_path: "docs/sub/inner.md", is_dir: false, children: [] },
+                ],
+              },
+            ],
+          },
+        ])
+      );
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-dir", { timeout: 5000 });
+
+    // Expand top-level docs directory.
+    const docsBtn = page.locator(".tree-dir", { hasText: "docs" });
+    await docsBtn.click();
+    await expect(docsBtn.locator(".tree-chevron.expanded")).toBeVisible();
+    await expect(page.locator(".tree-dir", { hasText: "sub" })).toBeVisible();
+
+    // Expand nested sub directory.
+    const subBtn = page.locator(".tree-dir", { hasText: "sub" });
+    await subBtn.click();
+    await expect(subBtn.locator(".tree-chevron.expanded")).toBeVisible();
+    await expect(page.locator(".tree-file", { hasText: "inner.md" })).toBeVisible();
+  });
+
   test("opens file from tree", async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
@@ -90,7 +133,7 @@ test.describe("Workspace file tree", () => {
     await expect(page.locator('.tab.active')).toContainText("notes.md");
   });
 
-  test("opening a folder replaces unrelated existing tabs", async ({ page }) => {
+  test("opening a folder keeps unrelated existing tabs", async ({ page }) => {
     // Open an unrelated file so we have a stale tab.
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/some/other.md"));
     await page.keyboard.press("Control+o");
@@ -110,9 +153,55 @@ test.describe("Workspace file tree", () => {
     await openFolderBtn.click();
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
-    // The unrelated tab should be gone; only a fresh untitled tab remains.
-    await expect(page.locator('.tab:has-text("other.md")')).not.toBeVisible();
-    await expect(page.locator('.tab:has-text("Untitled")')).toBeVisible();
+    // The unrelated tab should remain open, and a new untitled tab should be
+    // created for the folder context.
+    await expect(page.locator('.tab:has-text("other.md")')).toBeVisible();
+    await expect(page.locator('.tab:has-text("Untitled")')).toHaveCount(2);
+    await expect(page.locator('.tab.active')).toContainText("Untitled");
+  });
+
+  test("refresh preserves nested expanded directories", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "__e2e_workspace_files",
+        JSON.stringify([
+          {
+            name: "docs",
+            path: "/test-workspace/docs",
+            rel_path: "docs",
+            is_dir: true,
+            children: [
+              {
+                name: "sub",
+                path: "/test-workspace/docs/sub",
+                rel_path: "docs/sub",
+                is_dir: true,
+                children: [
+                  { name: "inner.md", path: "/test-workspace/docs/sub/inner.md", rel_path: "docs/sub/inner.md", is_dir: false, children: [] },
+                ],
+              },
+            ],
+          },
+        ])
+      );
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-dir", { timeout: 5000 });
+
+    // Expand docs and sub.
+    await page.locator(".tree-dir", { hasText: "docs" }).click();
+    await page.locator(".tree-dir", { hasText: "sub" }).click();
+    await expect(page.locator(".tree-file", { hasText: "inner.md" })).toBeVisible();
+
+    // Trigger a workspace-changed refresh.
+    await page.evaluate(() => (window as any).__markz_emit_event("markz:workspace-changed", null));
+    await page.waitForTimeout(600);
+
+    // The nested directory should still be expanded after refresh.
+    await expect(page.locator(".tree-dir", { hasText: "sub" }).locator(".tree-chevron.expanded")).toBeVisible();
+    await expect(page.locator(".tree-file", { hasText: "inner.md" })).toBeVisible();
   });
 
   test("search finds matches", async ({ page }) => {

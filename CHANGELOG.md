@@ -1,5 +1,11 @@
 ## Unreleased
 
+## [0.8.70] - 2026-07-22
+
+### Fixed
+- **Opening a folder no longer warns about unsaved files** — `openFolder` no longer closes existing tabs, so choosing a new workspace leaves your open files untouched and never triggers the "unsaved changes" prompt.
+- **Nested workspace folders stay expandable after refresh** — The file-tree refresh now reloads expanded directories from shallow to deep, so nested folders remain open instead of collapsing to the top level.
+
 ## [0.8.69] - 2026-07-21
 
 ### Fixed

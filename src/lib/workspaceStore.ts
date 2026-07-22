@@ -84,19 +84,20 @@ function createWorkspaceStore() {
       logOperationEnd("workspace", "Refresh workspace", `${tree.length} top-level items`);
 
       // Re-load children for any directories that were expanded before the
-      // refresh so the tree does not collapse under the user.
-      const promises: Promise<void>[] = [];
-      for (const relPath of prevExpanded) {
-        const node = findNode(tree, relPath);
+      // refresh so the tree does not collapse under the user. Process from
+      // shallow to deep so parent chains are loaded before nested dirs are
+      // looked up.
+      const expandedList = Array.from(prevExpanded).sort(
+        (a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b)
+      );
+      for (const relPath of expandedList) {
+        const node = findNode(get({ subscribe }).fileTree, relPath);
         if (node && node.is_dir && node.children.length === 0) {
-          promises.push(
-            loadChildren(node).catch((e) => {
-              logError("workspace", `Failed to reload expanded dir ${relPath}`, String(e));
-            })
-          );
+          await loadChildren(node).catch((e) => {
+            logError("workspace", `Failed to reload expanded dir ${relPath}`, String(e));
+          });
         }
       }
-      await Promise.all(promises);
 
       // A manual refresh should also surface changes to open files, just like
       // the file-system watcher does for external edits.
