@@ -87,10 +87,15 @@ async fn read_dir_shallow(dir: &Path, root: &Path) -> Result<Vec<FileTreeNode>, 
         }
 
         let path_str = path.to_string_lossy().to_string();
-        let rel_path = path
-            .strip_prefix(root)
-            .map(normalize_rel)
-            .unwrap_or_else(|_| name.clone());
+        // Compute rel_path by normalising both sides to forward slashes and
+        // stripping the root prefix. This avoids Path::strip_prefix quirks with
+        // mixed separators or trailing slashes on Windows.
+        let root_norm = root.to_string_lossy().replace('\\', "/");
+        let path_norm = path.to_string_lossy().replace('\\', "/");
+        let rel_path = path_norm
+            .strip_prefix(&root_norm)
+            .map(|s| s.trim_start_matches('/').to_string())
+            .unwrap_or_else(|| name.clone());
 
         children.push(FileTreeNode {
             name,
@@ -280,9 +285,49 @@ mod tests {
         let new_path = rename_workspace_entry(old_path.clone(), "new.md".to_string())
             .await
             .unwrap();
-        assert_eq!(new_path, format!("{}/new.md", root));
+        let expected = std::path::Path::new(&root).join("new.md");
+        assert_eq!(new_path, expected.to_string_lossy().to_string());
         assert!(!std::path::Path::new(&old_path).exists());
         assert!(std::path::Path::new(&new_path).exists());
+    }
+
+    #[tokio::test]
+    async fn list_workspace_files_shallow_returns_top_level_entries() {
+        let (_dir, root) = temp_dir_with_file("notes.md", "# notes").await;
+        let docs = std::path::Path::new(&root).join("docs");
+        tokio::fs::create_dir(&docs).await.unwrap();
+        tokio::fs::write(docs.join("readme.md"), "# readme").await.unwrap();
+
+        let tree = list_workspace_files_shallow(root.clone()).await.unwrap();
+        let names: Vec<_> = tree.iter().map(|n| n.name.as_str()).collect();
+        assert!(names.contains(&"docs"));
+        assert!(names.contains(&"notes.md"));
+
+        let docs_node = tree.iter().find(|n| n.name == "docs").unwrap();
+        assert!(docs_node.is_dir);
+        assert!(docs_node.children.is_empty());
+    }
+
+    #[tokio::test]
+    async fn list_dir_children_returns_nested_entries_with_rel_paths() {
+        let (_dir, root) = temp_dir_with_file("notes.md", "# notes").await;
+        let docs = std::path::Path::new(&root).join("docs");
+        tokio::fs::create_dir(&docs).await.unwrap();
+        tokio::fs::write(docs.join("readme.md"), "# readme").await.unwrap();
+        let sub = docs.join("sub");
+        tokio::fs::create_dir(&sub).await.unwrap();
+        tokio::fs::write(sub.join("inner.md"), "# inner").await.unwrap();
+
+        let children = list_dir_children(docs.to_string_lossy().to_string(), root.clone())
+            .await
+            .unwrap();
+        let readme = children.iter().find(|n| n.name == "readme.md").unwrap();
+        assert_eq!(readme.rel_path, "docs/readme.md");
+        assert!(!readme.is_dir);
+
+        let sub_node = children.iter().find(|n| n.name == "sub").unwrap();
+        assert_eq!(sub_node.rel_path, "docs/sub");
+        assert!(sub_node.is_dir);
     }
 
     #[tokio::test]

@@ -112,11 +112,23 @@ function createWorkspaceStore() {
     const state = get({ subscribe });
     if (!state.rootPath) return;
     logOperationStart("workspace", `Load children: ${node.rel_path}`);
+    logOperationStart("workspace", `Load children args: path=${node.path}, root=${state.rootPath}`);
     try {
       const children = await invoke<FileTreeNode[]>("list_dir_children", {
         path: node.path,
         root: state.rootPath,
       });
+      // Defensive check: children should be located under the requested node.
+      const invalid = children.filter(
+        (c) => c.rel_path !== node.rel_path && !c.rel_path.startsWith(node.rel_path + "/")
+      );
+      if (invalid.length > 0) {
+        logError(
+          "workspace",
+          `Children rel_path mismatch for ${node.rel_path}`,
+          invalid.map((c) => c.rel_path).join(", ")
+        );
+      }
       update((s) => ({ ...s, fileTree: setNodeChildren(s.fileTree, node.rel_path, children) }));
       logOperationEnd("workspace", `Load children: ${node.rel_path}`, `${children.length} items`);
     } catch (e) {
@@ -126,6 +138,7 @@ function createWorkspaceStore() {
 
   async function toggleDir(node: FileTreeNode) {
     const relPath = node.rel_path;
+    logOperationStart("workspace", `Toggle dir: ${relPath}, is_dir=${node.is_dir}, children=${node.children.length}`);
     const isExpanded = get({ subscribe }).expandedDirs.has(relPath);
     if (!isExpanded && node.is_dir && node.children.length === 0) {
       await loadChildren(node);
@@ -139,6 +152,7 @@ function createWorkspaceStore() {
       }
       return { ...s, expandedDirs: next };
     });
+    logOperationEnd("workspace", `Toggle dir: ${relPath}`, isExpanded ? "collapsed" : "expanded");
   }
 
   async function search(query: string) {

@@ -165,7 +165,9 @@
   }
 
   function parentPathForNode(node: FileTreeNode): string {
-    return node.is_dir ? node.path : node.path.substring(0, node.path.lastIndexOf("/"));
+    if (node.is_dir) return node.path;
+    const lastSep = Math.max(node.path.lastIndexOf("/"), node.path.lastIndexOf("\\"));
+    return lastSep === -1 ? node.path : node.path.substring(0, lastSep);
   }
 
   function buildContextMenuItems(node: FileTreeNode): ContextMenuItem[] {
