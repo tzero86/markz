@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Columns2, AlignLeft, Eye, Type, ZoomIn, Text, GitBranch } from "@lucide/svelte";
+  import { Columns2, AlignLeft, Eye, Type, ZoomIn, Text, GitBranch, Lock } from "@lucide/svelte";
   import { activeDocumentStore, autoSaveFlash } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
@@ -48,6 +48,13 @@
       <span class="save-dot"></span>
       <span class="save-text">{$activeDocumentStore.isDirty ? "Unsaved" : "Saved"}</span>
     </div>
+    {#if $activeDocumentStore.readOnly}
+      <div class="status-divider"></div>
+      <span class="status-item read-only-badge" title="This file type is not editable in MarkZ">
+        <Lock size={12} strokeWidth={2} />
+        Read-only
+      </span>
+    {/if}
     <div class="status-divider"></div>
     <span class="status-item cursor-info">
       <Type size={12} strokeWidth={2} />
@@ -211,6 +218,9 @@
   .cursor-info {
     font-family: var(--font-mono);
     font-size: 11px;
+  }
+  .read-only-badge {
+    color: var(--text-tertiary);
   }
 
   /* Stat badges */

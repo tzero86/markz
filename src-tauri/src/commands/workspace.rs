@@ -7,7 +7,9 @@ pub struct FileTreeNode {
     pub path: String,
     pub rel_path: String,
     pub is_dir: bool,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    // Always serialize `children` (even when empty) so the frontend can rely
+    // on it being an array. Omitting it for empty dirs made the JS side read
+    // `node.children.length` on `undefined`, which crashed folder expansion.
     pub children: Vec<FileTreeNode>,
 }
 
@@ -306,6 +308,22 @@ mod tests {
         let docs_node = tree.iter().find(|n| n.name == "docs").unwrap();
         assert!(docs_node.is_dir);
         assert!(docs_node.children.is_empty());
+    }
+
+    #[test]
+    fn file_tree_node_always_serializes_children_array() {
+        // Regression: `children` used to be skipped when empty, so the frontend
+        // received `children: undefined` for empty dirs and crashed on
+        // `node.children.length` during expansion.
+        let node = FileTreeNode {
+            name: "docs".to_string(),
+            path: "/root/docs".to_string(),
+            rel_path: "docs".to_string(),
+            is_dir: true,
+            children: Vec::new(),
+        };
+        let json = serde_json::to_value(&node).unwrap();
+        assert_eq!(json["children"], serde_json::json!([]));
     }
 
     #[tokio::test]

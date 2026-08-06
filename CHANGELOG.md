@@ -1,4 +1,13 @@
-## Unreleased
+## [0.8.72] - 2026-08-05
+
+### Added
+- **Keyboard navigation in the file tree** — the tree follows the WAI-ARIA tree pattern: `↑`/`↓` move focus, `→` expands a folder (and enters it), `←` collapses or moves to the parent, `Home`/`End` jump to the first/last node, `Enter`/`Space` activate, and typing letters jumps to a matching file name. One node is tabbable at a time (roving tabindex).
+- **Image files open with a preview** — clicking a `.png`, `.jpg`, `.gif`, `.svg`, etc. in the file tree (or via `Ctrl+O`) opens a read-only tab that shows the image in the preview pane and a "preview only" notice in the editor. Images are served through a local `asset://` protocol.
+- **Binary and oversized files open safely** — files that aren't valid UTF-8 (e.g. UTF-16 PowerShell scripts) or exceed 5 MB open in a read-only tab with a "can't be edited — binary or too large" notice instead of freezing the UI or erroring.
+
+### Fixed
+- **Nested folders now expand reliably** — the file tree backend no longer omits the `children` field for empty directories, so clicking a folder can never crash on a missing array. The frontend also tolerates trees that omit the field.
+- **Non-Markdown files open read-only** — clicking a `.txt`, `.json`, or any other text file in the tree (or via `Ctrl+O`) now opens it in a read-only tab: the editor rejects typing, the toolbar is disabled, the preview shows the raw text verbatim, the status bar shows a "Read-only" badge, and the Save button is disabled. Markdown files remain fully editable.
 
 ## [0.8.71] - 2026-07-22
 

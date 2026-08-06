@@ -30,6 +30,8 @@ pub async fn get_backlinks(doc_path: String) -> Result<Vec<DocumentInfo>, String
                 path: p.to_string_lossy().to_string(),
                 content,
                 title,
+                kind: "text".to_string(),
+                size: std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0),
             });
         }
     }

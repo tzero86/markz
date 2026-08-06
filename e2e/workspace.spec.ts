@@ -94,6 +94,117 @@ test.describe("Workspace file tree", () => {
     await expect(page.locator(".tree-file", { hasText: "inner.md" })).toBeVisible();
   });
 
+  test("expands directory even when children field is missing", async ({ page }) => {
+    // Simulate the old backend shape: the shallow listing strips the
+    // `children` key from directories entirely (serde skip_serializing_if),
+    // so the frontend must not crash on `node.children.length` when expanding.
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "__e2e_workspace_files",
+        JSON.stringify([
+          {
+            name: "docs",
+            path: "/test-workspace/docs",
+            rel_path: "docs",
+            is_dir: true,
+            children: [
+              { name: "readme.md", path: "/test-workspace/docs/readme.md", rel_path: "docs/readme.md", is_dir: false, children: [] },
+            ],
+          },
+          { name: "notes.md", path: "/test-workspace/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+        ])
+      );
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-dir", { timeout: 5000 });
+
+    // The docs dir has no `children` key in the shallow listing, but must still expand.
+    const docsBtn = page.locator(".tree-dir", { hasText: "docs" });
+    await docsBtn.click();
+    await expect(docsBtn.locator(".tree-chevron.expanded")).toBeVisible();
+    await expect(page.locator(".tree-file", { hasText: "readme.md" })).toBeVisible();
+  });
+
+  test("opens non-markdown file in read-only tab", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "__e2e_workspace_files",
+        JSON.stringify([
+          { name: "notes.txt", path: "/test-workspace/notes.txt", rel_path: "notes.txt", is_dir: false, children: [] },
+          { name: "notes.md", path: "/test-workspace/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+        ])
+      );
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    // Open the .txt file — it should open in a read-only tab.
+    await page.locator(".tree-file", { hasText: "notes.txt" }).click();
+    await expect(page.locator('.tab:has-text("notes.txt")')).toBeVisible();
+    await expect(page.locator(".read-only-badge")).toBeVisible();
+    await expect(page.locator('button[aria-label="Save file"]')).toBeDisabled();
+
+    // The editor must reject typing in a read-only tab.
+    const contentBefore = await page.locator(".cm-content").innerText();
+    await page.locator(".cm-content").click();
+    await page.keyboard.type("hello");
+    expect(await page.locator(".cm-content").innerText()).toBe(contentBefore);
+
+    // Markdown files remain editable — the badge disappears.
+    await page.locator(".tree-file", { hasText: "notes.md" }).click();
+    await expect(page.locator(".read-only-badge")).toHaveCount(0);
+  });
+
+  test("opens image file with preview and editor notice", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "__e2e_workspace_files",
+        JSON.stringify([
+          { name: "photo.png", path: "/test-workspace/photo.png", rel_path: "photo.png", is_dir: false, children: [] },
+          { name: "notes.md", path: "/test-workspace/notes.md", rel_path: "notes.md", is_dir: false, children: [] },
+        ])
+      );
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    // Open the image file — it should open in a read-only tab with a preview.
+    await page.locator(".tree-file", { hasText: "photo.png" }).click();
+    await expect(page.locator('.tab:has-text("photo.png")')).toBeVisible();
+    await expect(page.locator(".read-only-badge")).toBeVisible();
+    await expect(page.locator(".editor-file-notice")).toBeVisible();
+    await expect(page.locator(".preview-image")).toBeVisible();
+  });
+
+  test("opens binary file with notice and no crash", async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "__e2e_workspace_files",
+        JSON.stringify([
+          { name: "script.ps1", path: "/test-workspace/script.ps1", rel_path: "script.ps1", is_dir: false, children: [] },
+        ])
+      );
+      localStorage.setItem("__e2e_binary_paths", JSON.stringify(["/test-workspace/script.ps1"]));
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-file", { timeout: 5000 });
+
+    // Open the binary file — it should open in a read-only tab with a notice, no crash.
+    await page.locator(".tree-file", { hasText: "script.ps1" }).click();
+    await expect(page.locator('.tab:has-text("script.ps1")')).toBeVisible();
+    await expect(page.locator(".read-only-badge")).toBeVisible();
+    await expect(page.locator(".editor-file-notice")).toBeVisible();
+    await expect(page.locator(".preview-binary-notice")).toBeVisible();
+  });
+
   test("opens file from tree", async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
@@ -402,6 +513,42 @@ test.describe("File tree navigation", () => {
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
     await expect(page.locator(".tree-file", { hasText: "readme.txt" })).toBeVisible();
+  });
+
+  test("keyboard navigation moves focus, expands folders, and opens files", async ({ page }) => {
+    // Default mock tree: docs/ (dir) + notes.md (file), dirs sorted first.
+    await page.evaluate(() => {
+      localStorage.setItem("__e2e_open_folder_result", "/test-workspace");
+    });
+    await page.click('.activity-btn[aria-label="Files"]');
+    await page.locator(".file-tree-scroller .btn-secondary").click();
+    await page.waitForSelector(".tree-dir", { timeout: 5000 });
+
+    // Focus the first node (docs) and move down to notes.md.
+    await page.locator(".tree-dir").first().focus();
+    await expect(page.locator(".tree-node:focus")).toHaveText("docs");
+    await page.keyboard.press("ArrowDown");
+    await expect(page.locator(".tree-node:focus")).toHaveText("notes.md");
+    await page.keyboard.press("ArrowUp");
+    await expect(page.locator(".tree-node:focus")).toHaveText("docs");
+
+    // ArrowRight expands the folder and moves into its first child.
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator(".tree-dir").first().locator(".tree-chevron.expanded")).toBeVisible();
+    await expect(page.locator(".tree-node:focus")).toHaveText("readme.md");
+
+    // ArrowLeft on a child moves focus to the parent; a second ArrowLeft on
+    // the expanded parent collapses it.
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.locator(".tree-node:focus")).toHaveText("docs");
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.locator(".tree-dir").first().locator(".tree-chevron.expanded")).toHaveCount(0);
+
+    // Enter opens the file under focus.
+    await page.keyboard.press("ArrowDown");
+    await expect(page.locator(".tree-node:focus")).toHaveText("notes.md");
+    await page.keyboard.press("Enter");
+    await expect(page.locator('.tab:has-text("notes.md")')).toBeVisible();
   });
 });
 

@@ -4,7 +4,7 @@
   import { Eye, Copy, Check, Volume2, Volume, Square, ChevronDown, ChevronUp, Search, X, Presentation } from "@lucide/svelte";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { startupComplete } from "../../lib/startupStore";
-  import { invoke } from "@tauri-apps/api/core";
+  import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { scrollSync } from "../../lib/scrollSync";
   import { resolvedTheme } from "../../lib/themeStore";
   import { highlightCodeBlocksChunked, setHljsTheme } from "./syntaxHighlighter";
@@ -29,6 +29,9 @@
 
   let htmlContent = $state("");
   let isRendering = $state(false);
+  let isReadOnly = $derived($activeDocumentStore.readOnly ?? false);
+  let isImage = $derived($activeDocumentStore.kind === "image");
+  let isBinary = $derived($activeDocumentStore.kind === "binary");
   let previewDiv: HTMLDivElement;
   let contentDiv: HTMLDivElement | undefined = $state();
   let copyDropdownOpen = $state(false);
@@ -74,6 +77,23 @@
     // its startup sequence.
     if (!isStartupComplete) {
       htmlContent = "";
+      return;
+    }
+    if (isImage) {
+      const src = docPath ? convertFileSrc(docPath, "asset") : "";
+      htmlContent = `<div class="preview-image-wrap"><img class="preview-image" src="${src}" alt="${escapeHtml($activeDocumentStore.title)}" /></div>`;
+      return;
+    }
+    if (isBinary) {
+      const sizeMb = ($activeDocumentStore.size / (1024 * 1024)).toFixed(1);
+      htmlContent = `<div class="preview-binary-notice"><p>This file can't be displayed in the preview.</p><p class="preview-binary-meta">${sizeMb} MB — binary or too large to open.</p></div>`;
+      return;
+    }
+    if (isReadOnly) {
+      // Plain-text view for non-Markdown files: escape the raw content so it
+      // renders verbatim (no markdown interpretation), wrapped in <pre> so
+      // line breaks and whitespace are preserved.
+      htmlContent = `<pre class="readonly-text">${escapeHtml(content)}</pre>`;
       return;
     }
     // Bump generation so stale async renders (from a previous content) don't
@@ -933,7 +953,7 @@
           onclick={() => window.dispatchEvent(new CustomEvent("markz:start-presentation"))}
           aria-label="Start presentation"
           data-tooltip="Start presentation"
-          disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}
+          disabled={(!$activeDocumentStore.path && !$activeDocumentStore.content) || $activeDocumentStore.kind !== "text"}
         >
           <Presentation size={12} strokeWidth={1.5} />
         </button>
@@ -1460,4 +1480,8 @@
       display: none !important;
     }
   }
+  .preview-image-wrap { display: flex; justify-content: center; padding: var(--space-4); }
+  .preview-image { max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: var(--radius-sm); }
+  .preview-binary-notice { padding: var(--space-6); text-align: center; color: var(--text-tertiary); font-size: var(--text-sm); }
+  .preview-binary-meta { margin-top: var(--space-2); font-size: 12px; }
 </style>

@@ -515,6 +515,8 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     window.addEventListener("markz:open-palette", handleOpenPalette);
     window.addEventListener("markz:print-pdf", handlePrintPdf);
     const handleStartPresentation = async () => {
+      const active = tabStore.getActiveTab();
+      if (!active || (active.kind ?? "text") !== "text") return;
       const doc = tabStore.getActiveTab();
       if (!doc) return;
       try {

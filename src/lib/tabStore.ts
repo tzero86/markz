@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { saveSession, type SessionTab } from "./sessionStore";
 import { workspaceStore } from "./workspaceStore";
 import { debugLogStore } from "./debugLogStore";
+import { isMarkdownPath } from "./fileTypes";
 export interface Tab {
   id: string;
   content: string;
@@ -12,6 +13,11 @@ export interface Tab {
   isDirty: boolean;
   isLoading: boolean;
   pinned?: boolean;
+  readOnly?: boolean;
+  /** "text" = editable/read-only text, "image" = preview only, "binary" = not displayable. */
+  kind?: "text" | "image" | "binary";
+  /** File size in bytes (0 when unknown). */
+  size?: number;
   /** 1-based line numbers where manual slide breaks are set. */
   slideBreaks?: number[];
 }
@@ -409,7 +415,13 @@ function createTabStore() {
     scheduleAutoSave();
   }
 
-  function loadDocument(content: string, path: string) {
+  function loadDocument(
+    content: string,
+    path: string,
+    readOnly = false,
+    kind: "text" | "image" | "binary" = "text",
+    size = 0
+  ) {
     update((state) => {
       const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
       if (idx === -1) return state;
@@ -421,6 +433,9 @@ function createTabStore() {
         title: path.split(/[\\/]/).pop() || "Untitled",
         isDirty: false,
         isLoading: false,
+        readOnly,
+        kind,
+        size,
       };
       return { ...state, tabs: newTabs };
     });
@@ -436,6 +451,9 @@ function createTabStore() {
         ...newTabs[idx],
         path,
         title: path ? path.split(/[\\/]/).pop() || "Untitled" : "Untitled",
+        readOnly: false,
+        kind: "text",
+        size: 0,
       };
       return { ...state, tabs: newTabs };
     });
@@ -516,7 +534,14 @@ function createTabStore() {
 
   // --- Tab lifecycle ---
 
-  function newTab(content?: string, title?: string, path?: string | null) {
+  function newTab(
+    content?: string,
+    title?: string,
+    path?: string | null,
+    readOnly = false,
+    kind: "text" | "image" | "binary" = "text",
+    size = 0
+  ) {
     const tab: Tab = {
       id: genId(),
       content: content ?? "",
@@ -527,6 +552,9 @@ function createTabStore() {
       isDirty: false,
       isLoading: false,
       pinned: false,
+      readOnly,
+      kind,
+      size,
     };
     update((state) => {
       const newTabs = [...state.tabs, tab];
@@ -721,6 +749,9 @@ function createTabStore() {
           isDirty: false,
           isLoading: false,
           pinned: tab.pinned ?? false,
+          readOnly: !isMarkdownPath(tab.path),
+          kind: "text",
+          size: 0,
           slideBreaks: breaksByPath.get(tab.path),
         });
       } else {
@@ -732,6 +763,7 @@ function createTabStore() {
           isDirty: tab.isDirty,
           isLoading: false,
           pinned: tab.pinned ?? false,
+          readOnly: false,
           slideBreaks: tab.slide_breaks,
         });
       }
@@ -808,6 +840,9 @@ export const activeDocumentStore = derived(tabStore, ($tabStore) => {
       title: active.title,
       isDirty: active.isDirty,
       isLoading: active.isLoading,
+      readOnly: active.readOnly ?? false,
+      kind: active.kind ?? "text",
+      size: active.size ?? 0,
       slideBreaks: active.slideBreaks,
     };
   }
@@ -817,6 +852,9 @@ export const activeDocumentStore = derived(tabStore, ($tabStore) => {
     title: "Untitled",
     isDirty: false,
     isLoading: false,
+    readOnly: false,
+    kind: "text",
+    size: 0,
     slideBreaks: undefined,
   };
 });

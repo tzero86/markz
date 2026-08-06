@@ -111,17 +111,135 @@
     }
   }
   async function handleOpenFile(path: string) {
-    // MarkZ is a Markdown editor — only open Markdown files to avoid rendering
-    // huge/binary files as documents (which can freeze or crash the UI).
-    if (!isMarkdownPath(path)) {
-      console.warn("Ignoring non-Markdown file from file tree:", path);
-      return;
-    }
     await openDocumentByPath(path);
   }
 
   function handleToggleDir(node: FileTreeNode) {
     workspaceStore.toggleDir(node);
+  }
+
+  // ── Keyboard navigation (WAI-ARIA tree pattern) ─────────────────────────
+  // Roving tabindex: exactly one node is tabbable (treeFocusPath, or the
+  // first visible node when nothing has been focused yet). Arrow keys move
+  // focus, Enter/Space activate, letters type-ahead.
+  let treeFocusPath = $state<string | null>(null);
+  let typeAheadBuffer = "";
+  let typeAheadTimer: ReturnType<typeof setTimeout> | null = null;
+
+  let visibleNodes = $derived.by<{ node: FileTreeNode; depth: number }[]>(() => {
+    const out: { node: FileTreeNode; depth: number }[] = [];
+    const walk = (nodes: FileTreeNode[], depth: number) => {
+      for (const n of nodes) {
+        out.push({ node: n, depth });
+        if (n.is_dir && $workspaceStore.expandedDirs.has(n.rel_path) && (n.children?.length ?? 0) > 0) {
+          walk(n.children, depth + 1);
+        }
+      }
+    };
+    walk($workspaceStore.fileTree, 0);
+    return out;
+  });
+  let firstVisiblePath = $derived(visibleNodes[0]?.node.path ?? null);
+
+  // If the focused node disappears (refresh, rename, delete), drop the focus
+  // anchor so the tree falls back to the first-node tab stop.
+  $effect(() => {
+    if (treeFocusPath && !visibleNodes.some((n) => n.node.path === treeFocusPath)) {
+      treeFocusPath = null;
+    }
+  });
+
+  function focusTreeNode(path: string) {
+    treeFocusPath = path;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-tree-path="${CSS.escape(path)}"]`) as HTMLElement | null;
+      if (el) {
+        el.focus({ preventScroll: true });
+        el.scrollIntoView({ block: "nearest" });
+      }
+    });
+  }
+
+  function parentPathOf(relPath: string): string | null {
+    const idx = relPath.lastIndexOf("/");
+    return idx === -1 ? null : relPath.slice(0, idx);
+  }
+
+  function typeAhead(key: string, startIdx: number) {
+    if (typeAheadTimer) clearTimeout(typeAheadTimer);
+    typeAheadBuffer = (typeAheadBuffer + key).toLowerCase();
+    typeAheadTimer = setTimeout(() => { typeAheadBuffer = ""; }, 800);
+
+    const n = visibleNodes.length;
+    for (let i = 1; i <= n; i++) {
+      const candidate = visibleNodes[(startIdx + i) % n].node;
+      if (candidate.name.toLowerCase().startsWith(typeAheadBuffer)) {
+        focusTreeNode(candidate.path);
+        return;
+      }
+    }
+  }
+
+  async function onTreeNodeKeydown(e: KeyboardEvent, node: FileTreeNode) {
+    if (visibleNodes.length === 0) return;
+    const currentIdx = visibleNodes.findIndex((n) => n.node.path === node.path);
+    const idx = currentIdx === -1 ? 0 : currentIdx;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        focusTreeNode(visibleNodes[Math.min(idx + 1, visibleNodes.length - 1)].node.path);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        focusTreeNode(visibleNodes[Math.max(idx - 1, 0)].node.path);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        if (node.is_dir) {
+          if (!$workspaceStore.expandedDirs.has(node.rel_path)) {
+            // toggleDir is async (loads children first), so await it before
+            // moving focus into the freshly expanded subtree.
+            await workspaceStore.toggleDir(node);
+            const firstChild = visibleNodes.find((n) => n.node.rel_path.startsWith(node.rel_path + "/"));
+            if (firstChild) focusTreeNode(firstChild.node.path);
+          } else if ((node.children?.length ?? 0) > 0) {
+            focusTreeNode(node.children[0].path);
+          }
+        }
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        if (node.is_dir && $workspaceStore.expandedDirs.has(node.rel_path)) {
+          workspaceStore.toggleDir(node);
+        } else {
+          const parentRel = parentPathOf(node.rel_path);
+          if (parentRel) {
+            const parent = visibleNodes.find((n) => n.node.rel_path === parentRel);
+            if (parent) focusTreeNode(parent.node.path);
+          }
+        }
+        break;
+      case "Home":
+        e.preventDefault();
+        focusTreeNode(visibleNodes[0].node.path);
+        break;
+      case "End":
+        e.preventDefault();
+        focusTreeNode(visibleNodes[visibleNodes.length - 1].node.path);
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        if (node.is_dir) workspaceStore.toggleDir(node);
+        else handleOpenFile(node.path);
+        break;
+      default:
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          typeAhead(e.key, idx);
+        }
+    }
   }
 
   function handleSearchInput(value: string) {
@@ -446,7 +564,7 @@
             subtitle="This folder doesn't contain any visible files."
           />
         {:else}
-          <ul class="file-tree">
+          <ul class="file-tree" role="tree">
             {#each $workspaceStore.fileTree as node (node.path)}
               {@render fileTreeNode(node, 0)}
             {/each}
@@ -497,7 +615,12 @@
         <button
           class="tree-node tree-dir"
           style="padding-left: {12 + depth * 14}px"
+          role="treeitem"
+          aria-expanded={$workspaceStore.expandedDirs.has(node.rel_path)}
+          tabindex={treeFocusPath === node.path || (treeFocusPath === null && node.path === firstVisiblePath) ? 0 : -1}
+          data-tree-path={node.path}
           onclick={() => handleToggleDir(node)}
+          onkeydown={(e) => onTreeNodeKeydown(e, node)}
           oncontextmenu={(e) => handleContextMenu(e, node)}
         >
           <span class="tree-chevron" class:expanded={$workspaceStore.expandedDirs.has(node.rel_path)}>
@@ -507,8 +630,8 @@
           <span class="tree-label">{node.name}</span>
         </button>
       {/if}
-      {#if $workspaceStore.expandedDirs.has(node.rel_path) && node.children.length > 0}
-        <ul class="file-tree">
+      {#if $workspaceStore.expandedDirs.has(node.rel_path) && (node.children?.length ?? 0) > 0}
+        <ul class="file-tree" role="group">
           {#each node.children as child (child.path)}
             {@render fileTreeNode(child, depth + 1)}
           {/each}
@@ -536,7 +659,11 @@
           class="tree-node tree-file"
           class:active={isActiveFile(node.path)}
           style="padding-left: {26 + depth * 14}px"
+          role="treeitem"
+          tabindex={treeFocusPath === node.path || (treeFocusPath === null && node.path === firstVisiblePath) ? 0 : -1}
+          data-tree-path={node.path}
           onclick={() => handleOpenFile(node.path)}
+          onkeydown={(e) => onTreeNodeKeydown(e, node)}
           oncontextmenu={(e) => handleContextMenu(e, node)}
         >
           <FileText size={12} strokeWidth={2} />

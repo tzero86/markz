@@ -146,6 +146,11 @@ pub struct DocumentInfo {
     path: String,
     content: String,
     title: String,
+    /// How the frontend should treat this file: "text" (editable/read-only
+    /// text), "image" (preview only), or "binary" (not displayable).
+    kind: String,
+    /// File size in bytes.
+    size: u64,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -211,6 +216,25 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::default().build())
+        .register_uri_scheme_protocol("asset", |_ctx, request| {
+            // Serve local files (e.g. images opened in the preview pane) to the
+            // webview. The URL is `asset://localhost/<absolute path>`.
+            let path = request.uri().path().trim_start_matches('/');
+            let decoded = percent_encoding::percent_decode_str(path)
+                .decode_utf8_lossy()
+                .to_string();
+            let file = std::path::PathBuf::from(&decoded);
+            match std::fs::read(&file) {
+                Ok(data) => tauri::http::Response::builder()
+                    .header("Content-Type", crate::guess_mime(&file))
+                    .body(data)
+                    .unwrap(),
+                Err(_) => tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap(),
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::documents::render_preview,
             commands::documents::open_document,

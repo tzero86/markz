@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { FileText } from "@lucide/svelte";
+  import { FileText, Image as ImageIcon } from "@lucide/svelte";
   import { onMount } from "svelte";
   import { EditorView } from "@codemirror/view";
   import { invoke } from "@tauri-apps/api/core";
   import { tabStore, activeDocumentStore } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
-  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck, setCustomDictionary, setVimMode, setSlideBreaks } from "./codemirror";
+  import { initEditor, setEditorTheme, setEditorFont, setWordWrap, setMinimap, setSpellcheck, setCustomDictionary, setVimMode, setSlideBreaks, setReadOnly } from "./codemirror";
   import { scrollSync } from "../../lib/scrollSync";
   import { insertMarkdownImage } from "./editorCommands";
   import Toolbar from "./Toolbar.svelte";
@@ -38,6 +38,13 @@
   let pendingImages = $state<PendingImage[]>([]);
 
   let currentPendingImage = $derived(pendingImages[0] ?? null);
+  let isReadOnly = $derived($activeDocumentStore.readOnly ?? false);
+  let isImage = $derived($activeDocumentStore.kind === "image");
+  let isBinary = $derived($activeDocumentStore.kind === "binary");
+
+  $effect(() => {
+    if (editorView) setReadOnly(editorView, isReadOnly);
+  });
 
   function detectSlideBreaks(content: string): number[] {
     const lines = content.split("\n");
@@ -394,6 +401,7 @@
       customDictionary: [],
       slideBreaks: $activeDocumentStore.slideBreaks,
       slideBreaksEnabled: slideBreakMode,
+      readOnly: isReadOnly,
       onSlideBreakToggle: (line) => {
         const tab = tabStore.getActiveTab();
         if (!tab) return;
@@ -499,7 +507,7 @@
   });
 </script>
 <div class="editor-pane">
-  <Toolbar view={editorView} slideBreakMode={slideBreakMode} onToggleSlideBreakMode={toggleSlideBreakMode} />
+  <Toolbar view={editorView} slideBreakMode={slideBreakMode} onToggleSlideBreakMode={toggleSlideBreakMode} readOnly={isReadOnly} />
   <div class="editor-area">
     {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
       <div class="editor-empty-hint">
@@ -507,6 +515,17 @@
           <FileText size={40} strokeWidth={1.2} />
         </div>
         <span>Open a file or create a new document to start writing.</span>
+      </div>
+    {/if}
+    {#if isImage}
+      <div class="editor-file-notice">
+        <ImageIcon size={32} strokeWidth={1.2} />
+        <span>This is an image file — preview only.</span>
+      </div>
+    {:else if isBinary}
+      <div class="editor-file-notice">
+        <FileText size={32} strokeWidth={1.2} />
+        <span>This file can't be edited — binary or too large to open.</span>
       </div>
     {/if}
     <div
@@ -660,5 +679,19 @@
     100% {
       background: transparent;
     }
+  }
+  .editor-file-notice {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    background: var(--bg-base);
+    pointer-events: none;
   }
 </style>

@@ -4,7 +4,7 @@ import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
 import { contentZoomStore } from "./contentZoomStore";
 import { workspaceStore } from "./workspaceStore";
-import { logOperationStart, logOperationEnd, logError, logWarn } from "./debugLogStore";
+import { logOperationStart, logOperationEnd, logError } from "./debugLogStore";
 import { isMarkdownPath } from "./fileTypes";
 import { navHistoryStore } from "./navHistoryStore";
 
@@ -53,20 +53,11 @@ export async function openDocument() {
     return;
   }
 
-  if (!isMarkdownPath(result.path)) {
-    logWarn("file", `Refused to open non-Markdown file: ${result.path}`);
-    return;
-  }
-
+  // Non-Markdown files open read-only (handled inside openDocumentByPath).
   await openDocumentByPath(result.path);
 }
 
 export async function openDocumentByPath(path: string, opts: { pushHistory?: boolean } = {}) {
-  if (!isMarkdownPath(path)) {
-    logWarn("file", `Refused to open non-Markdown file: ${path}`);
-    return;
-  }
-
   // Always focus an existing tab for the same file instead of duplicating it.
   const existing = get(tabStore).tabs.find((t) => t.path === path);
   if (existing) {
@@ -84,14 +75,19 @@ export async function openDocumentByPath(path: string, opts: { pushHistory?: boo
   tabStore.setLoading(true);
   logOperationStart("file", `Open: ${path}`);
   try {
-    const info = await invoke<{ content: string; path: string }>(
-      "open_document",
-      { path }
-    );
+    const info = await invoke<{
+      content: string;
+      path: string;
+      kind?: "text" | "image" | "binary";
+      size?: number;
+    }>("open_document", { path });
+    const kind = info.kind ?? "text";
+    const size = info.size ?? 0;
+    const readOnly = kind !== "text" || !isMarkdownPath(path);
     if (shouldReplace) {
-      tabStore.loadDocument(info.content, info.path);
+      tabStore.loadDocument(info.content, info.path, readOnly, kind, size);
     } else {
-      tabStore.newTab(info.content, undefined, info.path);
+      tabStore.newTab(info.content, undefined, info.path, readOnly, kind, size);
     }
     if (opts.pushHistory !== false) {
       navHistoryStore.push(path);

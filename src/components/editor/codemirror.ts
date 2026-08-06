@@ -76,6 +76,7 @@ const spellcheckCompartment = new Compartment();
 const dictionaryCompartment = new Compartment();
 const vimCompartment = new Compartment();
 const slideBreakCompartment = new Compartment();
+const readOnlyCompartment = new Compartment();
 
 function buildDictionaryPlugin(words: string[]): Extension {
   if (words.length === 0) return [];
@@ -212,6 +213,7 @@ export interface EditorConfig {
   customDictionary?: string[];
   slideBreaks?: number[];
   slideBreaksEnabled?: boolean;
+  readOnly?: boolean;
   onSlideBreakToggle?: (line: number) => void;
   onChange: (content: string) => void;
   onCursorChange?: (pos: CursorPosition) => void;
@@ -289,6 +291,7 @@ export function initEditor(
         slideBreaksEnabled
       )
     ),
+    readOnlyCompartment.of(EditorState.readOnly.of(config.readOnly ?? false)),
     closeBrackets(),
     // Extend bracket auto-pairing with Markdown emphasis/code delimiters.
     // closeBrackets() reads its config from language data; the default markdown
@@ -367,6 +370,12 @@ export function setWordWrap(view: EditorView, enabled: boolean) {
   const ext: Extension = enabled ? EditorView.lineWrapping : [];
   view.dispatch({
     effects: wrapCompartment.reconfigure(ext),
+  });
+}
+
+export function setReadOnly(view: EditorView, readOnly: boolean) {
+  view.dispatch({
+    effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(readOnly)),
   });
 }
 

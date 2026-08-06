@@ -496,6 +496,15 @@ function makeShallow(nodes: MockTreeNode[]): MockTreeNode[] {
   return nodes.map((n) => ({ ...n, children: n.is_dir ? [] : n.children }));
 }
 
+/** Strip the `children` key from directories entirely — simulates the old
+ *  backend shape where empty dirs omitted the field (serde skip_serializing_if). */
+function stripChildren(nodes: MockTreeNode[]): MockTreeNode[] {
+  return nodes.map((n) => {
+    const { children: _children, ...rest } = n;
+    return n.is_dir ? rest : n;
+  });
+}
+
 function findNodeByPath(nodes: MockTreeNode[], path: string): MockTreeNode | null {
   for (const n of nodes) {
     if (n.path === path) return n;
@@ -696,7 +705,11 @@ export function injectTauriMock() {
       const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");
       const path = (args as { path?: string })?.path || "/test.md";
       const content = fileOverrides[path] || "# Test\n\nHello world.";
-      return { path, content };
+      const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif"];
+      const ext = path.split(".").pop()?.toLowerCase() || "";
+      const binaryPaths = JSON.parse(localStorage.getItem("__e2e_binary_paths") || "[]");
+      const kind = binaryPaths.includes(path) ? "binary" : IMAGE_EXTS.includes(ext) ? "image" : "text";
+      return { path, content, kind, size: content.length };
     },
     save_image: () => ({
       relative_path: "images/test.png",
@@ -744,6 +757,8 @@ export function injectTauriMock() {
     list_workspace_files_shallow: (args) => {
       const root = (args as { root?: string })?.root || "";
       if (!root) return [];
+      const override = localStorage.getItem("__e2e_workspace_files");
+      if (override) { try { return stripChildren(JSON.parse(override)); } catch { /* fall through */ } }
       return makeShallow(getWorkspaceTree(root));
     },
     list_dir_children: (args) => {
@@ -751,7 +766,7 @@ export function injectTauriMock() {
       const root = (args as { root?: string })?.root || "";
       if (!path || !root) return [];
       const node = findNodeByPath(getWorkspaceTree(root), path);
-      return node && node.is_dir ? makeShallow(node.children) : [];
+      return node && node.is_dir ? makeShallow(node.children || []) : [];
     },
     create_workspace_file: (args) => {
       const path = (args as { path?: string })?.path || "";
@@ -966,6 +981,7 @@ export const tauriMockInitFunc = new Function(
   'const callbackRegistry = {};\n' +
   'let nextCallbackId = 1;\n' +
   'function makeShallow(nodes) { return nodes.map((n) => ({ ...n, children: n.is_dir ? [] : n.children })); }\n' +
+  'function stripChildren(nodes) { return nodes.map(function(n) { if (!n.is_dir) return n; var copy = {}; for (var k in n) { if (k !== "children") copy[k] = n[k]; } return copy; }); }\n' +
   'function findNodeByPath(nodes, path) { for (const n of nodes) { if (n.path === path) return n; if (n.is_dir && n.children) { const found = findNodeByPath(n.children, path); if (found) return found; } } return null; }\n' +
   'function findNodeAndParent(nodes, path) { for (let i = 0; i < nodes.length; i++) { if (nodes[i].path === path) return { node: nodes[i], parent: nodes }; if (nodes[i].is_dir && nodes[i].children) { const found = findNodeAndParent(nodes[i].children, path); if (found.node) return found; } } return { node: null, parent: null }; }\n' +
   'function relPathFor(root, path) { var prefix = root.replace(/\\\\/g, "/") + "/"; var normalized = path.replace(/\\\\/g, "/"); return normalized.startsWith(prefix) ? normalized.slice(prefix.length) : normalized; }\n' +
@@ -1078,7 +1094,11 @@ export const tauriMockInitFunc = new Function(
   '    const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");\n' +
   '    const path = args?.path || "/test.md";\n' +
   '    const content = fileOverrides[path] || "# Test\\n\\nHello world.";\n' +
-  '    return { path, content };\n' +
+  '    const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif"];\n' +
+  '    const ext = path.split(".").pop()?.toLowerCase() || "";\n' +
+  '    const binaryPaths = JSON.parse(localStorage.getItem("__e2e_binary_paths") || "[]");\n' +
+  '    const kind = binaryPaths.includes(path) ? "binary" : IMAGE_EXTS.includes(ext) ? "image" : "text";\n' +
+  '    return { path, content, kind, size: content.length };\n' +
   '  },\n' +
   '  save_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),\n' +
   '  git_status: (args) => {\n' +
@@ -1120,6 +1140,8 @@ export const tauriMockInitFunc = new Function(
   '  list_workspace_files_shallow: (args) => {\n' +
   '    const root = args?.root || "";\n' +
   '    if (!root) return [];\n' +
+  '    const override = localStorage.getItem("__e2e_workspace_files");\n' +
+  '    if (override) { try { return stripChildren(JSON.parse(override)); } catch { /* fall through */ } }\n' +
   '    return makeShallow(getWorkspaceTree(root));\n' +
   '  },\n' +
   '  list_dir_children: (args) => {\n' +
@@ -1127,7 +1149,7 @@ export const tauriMockInitFunc = new Function(
   '    const root = args?.root || "";\n' +
   '    if (!path || !root) return [];\n' +
   '    const node = findNodeByPath(getWorkspaceTree(root), path);\n' +
-  '    return node && node.is_dir ? makeShallow(node.children) : [];\n' +
+  '    return node && node.is_dir ? makeShallow(node.children || []) : [];\n' +
   '  },\n' +
   '  create_workspace_file: (args) => {\n' +
   '    var path = args?.path || "";\n' +
@@ -1320,6 +1342,7 @@ export const tauriMockScriptString = `
   let nextCallbackId = 1;
 
   function makeShallow(nodes) { return nodes.map((n) => ({ ...n, children: n.is_dir ? [] : n.children })); }
+  function stripChildren(nodes) { return nodes.map(function(n) { if (!n.is_dir) return n; var copy = {}; for (var k in n) { if (k !== "children") copy[k] = n[k]; } return copy; }); }
   function findNodeByPath(nodes, path) { for (const n of nodes) { if (n.path === path) return n; if (n.is_dir && n.children) { const found = findNodeByPath(n.children, path); if (found) return found; } } return null; }
   function getWorkspaceTree(root) {
     const override = localStorage.getItem("__e2e_workspace_files");
@@ -1428,7 +1451,11 @@ export const tauriMockScriptString = `
       const fileOverrides = JSON.parse(localStorage.getItem("__e2e_file_contents") || "{}");
       const path = args?.path || "/test.md";
       const content = fileOverrides[path] || "# Test\n\nHello world.";
-      return { path, content };
+      const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif"];
+      const ext = path.split(".").pop()?.toLowerCase() || "";
+      const binaryPaths = JSON.parse(localStorage.getItem("__e2e_binary_paths") || "[]");
+      const kind = binaryPaths.includes(path) ? "binary" : IMAGE_EXTS.includes(ext) ? "image" : "text";
+      return { path, content, kind, size: content.length };
     },
     save_image: () => ({ relative_path: "images/test.png", absolute_path: "/tmp/images/test.png", filename: "test.png" }),
     git_status: (args) => {
@@ -1471,6 +1498,8 @@ export const tauriMockScriptString = `
     list_workspace_files_shallow: (args) => {
       const root = args?.root || "";
       if (!root) return [];
+      const override = localStorage.getItem("__e2e_workspace_files");
+      if (override) { try { return stripChildren(JSON.parse(override)); } catch { /* fall through */ } }
       return makeShallow(getWorkspaceTree(root));
     },
     list_dir_children: (args) => {
@@ -1478,7 +1507,7 @@ export const tauriMockScriptString = `
       const root = args?.root || "";
       if (!path || !root) return [];
       const node = findNodeByPath(getWorkspaceTree(root), path);
-      return node && node.is_dir ? makeShallow(node.children) : [];
+      return node && node.is_dir ? makeShallow(node.children || []) : [];
     },
     search_workspace: (args) => {
       const root = args?.root || "";

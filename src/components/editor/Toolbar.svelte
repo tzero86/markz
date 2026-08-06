@@ -37,9 +37,10 @@
     view: EditorView | null;
     slideBreakMode?: boolean;
     onToggleSlideBreakMode?: () => void;
+    readOnly?: boolean;
   }
 
-  let { view, slideBreakMode = false, onToggleSlideBreakMode }: Props = $props();
+  let { view, slideBreakMode = false, onToggleSlideBreakMode, readOnly = false }: Props = $props();
 
   let showTableDialog = $state(false);
   let tableRows = $state(3);
@@ -106,6 +107,7 @@
           onclick={item.action}
           title={item.title}
           type="button"
+          disabled={readOnly}
         >
           <Icon size={13} strokeWidth={1.5} />
         </button>
@@ -119,6 +121,7 @@
       onclick={() => onToggleSlideBreakMode?.()}
       title={slideBreakMode ? "Exit slide break mode" : "Edit slide breaks"}
       type="button"
+      disabled={readOnly}
     >
       <Presentation size={13} strokeWidth={1.5} />
     </button>
@@ -204,6 +207,10 @@
   .tool-btn.active {
     background: var(--accent-subtle);
     color: var(--accent-default);
+  }
+  .tool-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
   .table-dialog-backdrop {

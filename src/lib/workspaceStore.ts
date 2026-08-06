@@ -92,7 +92,7 @@ function createWorkspaceStore() {
       );
       for (const relPath of expandedList) {
         const node = findNode(get({ subscribe }).fileTree, relPath);
-        if (node && node.is_dir && node.children.length === 0) {
+        if (node && node.is_dir && (node.children?.length ?? 0) === 0) {
           await loadChildren(node).catch((e) => {
             logError("workspace", `Failed to reload expanded dir ${relPath}`, String(e));
           });
@@ -138,9 +138,9 @@ function createWorkspaceStore() {
 
   async function toggleDir(node: FileTreeNode) {
     const relPath = node.rel_path;
-    logOperationStart("workspace", `Toggle dir: ${relPath}, is_dir=${node.is_dir}, children=${node.children.length}`);
+    logOperationStart("workspace", `Toggle dir: ${relPath}, is_dir=${node.is_dir}, children=${node.children?.length ?? 0}`);
     const isExpanded = get({ subscribe }).expandedDirs.has(relPath);
-    if (!isExpanded && node.is_dir && node.children.length === 0) {
+    if (!isExpanded && node.is_dir && (node.children?.length ?? 0) === 0) {
       await loadChildren(node);
     }
     update((s) => {
@@ -249,7 +249,7 @@ function createWorkspaceStore() {
       const dirNode = findNode(currentNodes, relSoFar);
       if (!dirNode) break;
 
-      if (dirNode.is_dir && dirNode.children.length === 0) {
+      if (dirNode.is_dir && (dirNode.children?.length ?? 0) === 0) {
         try {
           const children = await invoke<FileTreeNode[]>("list_dir_children", {
             path: dirNode.path,
@@ -280,7 +280,7 @@ function createWorkspaceStore() {
   function findNode(tree: FileTreeNode[], relPath: string): FileTreeNode | null {
     for (const node of tree) {
       if (node.rel_path === relPath) return node;
-      if (node.is_dir && node.children.length > 0) {
+      if (node.is_dir && node.children?.length > 0) {
         const found = findNode(node.children, relPath);
         if (found) return found;
       }
@@ -297,7 +297,7 @@ function createWorkspaceStore() {
       if (node.rel_path === relPath) {
         return { ...node, children };
       }
-      if (node.is_dir && node.children.length > 0) {
+      if (node.is_dir && node.children?.length > 0) {
         return { ...node, children: setNodeChildren(node.children, relPath, children) };
       }
       return node;
