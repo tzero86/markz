@@ -221,6 +221,24 @@ function createWorkspaceStore() {
     }
     await openFile(path);
   }
+  /**
+   * Sync the workspace root to a file that may be outside the current root.
+   * If the file is already inside the workspace, just reveal it. Otherwise,
+   * re-root the workspace at the file's parent directory so the file tree
+   * always reflects the active document's location.
+   */
+  async function syncActiveFile(path: string | null) {
+    if (path === null) return;
+    const state = get({ subscribe });
+    if (state.rootPath && pathInWorkspace(path, state.rootPath)) {
+      await revealFilePath(path);
+      return;
+    }
+    // File is outside the current workspace — re-root at its parent dir.
+    const parentDir = parentDirectory(path);
+    await loadWorkspace(parentDir);
+    await revealFilePath(path);
+  }
 
   async function revealFilePath(path: string) {
     const state = get({ subscribe });
@@ -391,6 +409,7 @@ function createWorkspaceStore() {
     search,
     closeWorkspace,
     openFile,
+    syncActiveFile,
     revealFilePath,
     syncToFile,
     parentDirectory,

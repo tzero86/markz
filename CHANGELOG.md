@@ -1,4 +1,8 @@
-## [0.8.72] - 2026-08-05
+## [0.8.73] - 2026-09-05
+
+### Fixed
+- **File tree syncs to active tab's location** — switching tabs now re-roots the file tree when the active file is outside the current workspace, so the tree always reflects the active document's folder.
+
 
 ### Added
 - **Keyboard navigation in the file tree** — the tree follows the WAI-ARIA tree pattern: `↑`/`↓` move focus, `→` expands a folder (and enters it), `←` collapses or moves to the parent, `Home`/`End` jump to the first/last node, `Enter`/`Space` activate, and typing letters jumps to a matching file name. One node is tabbable at a time (roving tabindex).

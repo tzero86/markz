@@ -250,8 +250,7 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         lastActivePath = path;
         // Reveal the active file in the existing workspace when possible,
         // instead of re-rooting to its parent and evicting the open folder.
-        if (path) {
-          workspaceStore.openFile(path).catch(() => {});
+          workspaceStore.syncActiveFile(path).catch(() => {});
           // If we switched to a file that was externally modified, prompt to reload
           checkExternalChanges(path);
         }
