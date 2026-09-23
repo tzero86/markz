@@ -1,3 +1,9 @@
+## [0.8.76] - 2026-09-22
+
+### Fixed
+
+- **Image URLs in exports were malformed on Linux and macOS** — `resolve_image_url` prefixed a hard-coded `file:///` to the resolved path, so an absolute Unix path became `file:////tmp/x`: four slashes, and an invalid URL. Every JIRA, Confluence, Slack and GitHub export that referenced an image by path produced a broken image link on those platforms. Windows was unaffected only because drive paths have no leading slash, which is why local verification missed it. The URL is now built from the path so the slash count is correct on every platform, and a platform-independent test asserts the Unix shape.
+
 ## [0.8.75] - 2026-09-22
 
 ### Fixed
