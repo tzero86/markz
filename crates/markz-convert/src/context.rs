@@ -248,7 +248,20 @@ pub fn resolve_image_url(url: &str, ctx: &ConvertContext) -> String {
     } else {
         return url.to_string();
     };
-    format!("file:///{}", abs.to_string_lossy().replace('\\', "/"))
+    file_url_for_path(&abs)
+}
+
+/// The `file://` URL for an absolute path, with an empty authority and exactly
+/// three slashes: `file:///C:/x` on Windows (a drive path gains the leading
+/// slash) and `file:///tmp/x` on Unix (the path already has one). Prefixing
+/// `file:///` blindly produced the malformed `file:////tmp/x` on Unix.
+fn file_url_for_path(path: &Path) -> String {
+    let slashed = path.to_string_lossy().replace('\\', "/");
+    if slashed.starts_with('/') {
+        format!("file://{slashed}")
+    } else {
+        format!("file:///{slashed}")
+    }
 }
 
 /// Resolve an image to its raw bytes.
@@ -489,6 +502,22 @@ mod tests {
 
         assert_eq!(resolve_image_bytes(&url, &ctx), Ok(png_bytes()));
         assert_eq!(resolve_image_url(&url, &ctx), url);
+        // An empty authority means exactly three slashes; `file:////tmp/x` is
+        // malformed. Guards both the helper and resolve_image_url.
+        assert!(!url.contains("////"), "malformed file URL: {url}");
+    }
+
+    /// The Unix URL shape must be assertable from Windows too, since the
+    /// `#[cfg(not(windows))]` helper branch is otherwise never compiled here.
+    #[test]
+    fn test_file_url_for_path_is_well_formed_on_both_platforms() {
+        assert_eq!(file_url_for_path(Path::new("/tmp/x.png")), "file:///tmp/x.png");
+        assert_eq!(file_url_for_path(Path::new("C:/x.png")), "file:///C:/x.png");
+        assert_eq!(file_url_for_path(Path::new(r"C:\x.png")), "file:///C:/x.png");
+        for p in ["/tmp/x.png", "/tmp/a b/x.png", "C:/x.png"] {
+            let url = file_url_for_path(Path::new(p));
+            assert!(!url.contains("////"), "malformed file URL for {p}: {url}");
+        }
     }
 
     #[test]
