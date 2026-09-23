@@ -1,3 +1,9 @@
+## [0.8.75] - 2026-09-22
+
+### Fixed
+
+- **Test build on Linux and macOS** — the `#[cfg(test)]` helper that builds `file://` URLs used an inline format argument on a `Path`, which does not implement `Display`. Because that branch is `#[cfg(not(windows))]`, it compiled on Windows and failed only on Linux/macOS CI. The released v0.8.74 binaries are unaffected: the code lives in a test-only module and is never part of the release build. No behaviour change.
+
 ## [0.8.74] - 2026-09-22
 
 > Corrects the v0.8.73 entry below: re-rooting the tree at the active file's folder is what caused a

@@ -381,7 +381,7 @@ pub(crate) mod test_util {
         #[cfg(windows)]
         let url = format!("file:///{}", path.to_string_lossy().replace('\\', "/"));
         #[cfg(not(windows))]
-        let url = format!("file://{path}");
+        let url = format!("file://{}", path.display());
         url
     }
 }
