@@ -65,14 +65,18 @@ pub async fn get_wikilinks(doc_path: String) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub async fn resolve_wikilink(target: String, doc_dir: String) -> Result<Option<String>, String> {
+    // `Path::join` keeps the platform's native separator, so the returned path
+    // compares equal to the one the tree or an open tab already holds instead of
+    // being a hand-built forward-slash string.
+    let dir = std::path::Path::new(&doc_dir);
     let candidates = [
-        format!("{}/{}.md", doc_dir, target),
-        format!("{}/{}.mdx", doc_dir, target),
-        format!("{}/{}/index.md", doc_dir, target),
+        dir.join(format!("{target}.md")),
+        dir.join(format!("{target}.mdx")),
+        dir.join(&target).join("index.md"),
     ];
     for c in &candidates {
-        if std::path::Path::new(c).exists() {
-            return Ok(Some(c.clone()));
+        if c.exists() {
+            return Ok(Some(c.to_string_lossy().to_string()));
         }
     }
     Ok(None)

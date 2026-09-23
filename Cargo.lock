@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "markz"
-version = "0.8.73"
+version = "0.8.74"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2555,11 +2555,12 @@ dependencies = [
  "ureq",
  "uuid",
  "windows",
+ "zip 4.6.1",
 ]
 
 [[package]]
 name = "markz-config"
-version = "0.8.73"
+version = "0.8.74"
 dependencies = [
  "dirs",
  "log",
@@ -2570,7 +2571,7 @@ dependencies = [
 
 [[package]]
 name = "markz-convert"
-version = "0.8.73"
+version = "0.8.74"
 dependencies = [
  "base64 0.22.1",
  "docx-rs",
@@ -2584,7 +2585,7 @@ dependencies = [
 
 [[package]]
 name = "markz-core"
-version = "0.8.73"
+version = "0.8.74"
 dependencies = [
  "htmd",
  "log",
@@ -2598,7 +2599,7 @@ dependencies = [
 
 [[package]]
 name = "markz-images"
-version = "0.8.73"
+version = "0.8.74"
 dependencies = [
  "chrono",
  "dirs",
@@ -2612,7 +2613,7 @@ dependencies = [
 
 [[package]]
 name = "markz-templates"
-version = "0.8.73"
+version = "0.8.74"
 dependencies = [
  "chrono",
  "dirs",

@@ -3,10 +3,19 @@ import { invoke } from "@tauri-apps/api/core";
 import { tabStore } from "./tabStore";
 import { addRecentFile } from "./recentFiles";
 import { contentZoomStore } from "./contentZoomStore";
-import { workspaceStore } from "./workspaceStore";
+import { workspaceStore, IS_WINDOWS } from "./workspaceStore";
 import { logOperationStart, logOperationEnd, logError } from "./debugLogStore";
 import { isMarkdownPath } from "./fileTypes";
 import { navHistoryStore } from "./navHistoryStore";
+
+/** Compare paths ignoring separator style — `resolve_wikilink` builds its
+ *  result by string formatting, so a forward-slash result must still match the
+ *  backslash path a tab already holds. Case-folded on Windows only, where the
+ *  filesystem treats `C:\a\b.md` and `c:/A/B.md` as the same file. */
+function normalizePath(path: string): string {
+  const slashed = path.replace(/\\/g, "/");
+  return IS_WINDOWS ? slashed.toLowerCase() : slashed;
+}
 
 export async function saveDocument() {
   const doc = tabStore.getActiveTab();
@@ -59,7 +68,12 @@ export async function openDocument() {
 
 export async function openDocumentByPath(path: string, opts: { pushHistory?: boolean } = {}) {
   // Always focus an existing tab for the same file instead of duplicating it.
-  const existing = get(tabStore).tabs.find((t) => t.path === path);
+  // The comparison is separator-insensitive, so a wikilink result spelled with
+  // forward slashes does not open a second tab holding the same file.
+  const target = normalizePath(path);
+  const existing = get(tabStore).tabs.find(
+    (t) => t.path !== null && normalizePath(t.path) === target
+  );
   if (existing) {
     tabStore.switchTab(existing.id);
     return;
@@ -81,20 +95,24 @@ export async function openDocumentByPath(path: string, opts: { pushHistory?: boo
       kind?: "text" | "image" | "binary";
       size?: number;
     }>("open_document", { path });
+    // The backend's own spelling of the path is authoritative for the tab, the
+    // recent-files list and the tree reveal, so every later comparison sees the
+    // same string.
+    const docPath = info.path;
     const kind = info.kind ?? "text";
     const size = info.size ?? 0;
-    const readOnly = kind !== "text" || !isMarkdownPath(path);
+    const readOnly = kind !== "text" || !isMarkdownPath(docPath);
     if (shouldReplace) {
-      tabStore.loadDocument(info.content, info.path, readOnly, kind, size);
+      tabStore.loadDocument(info.content, docPath, readOnly, kind, size);
     } else {
-      tabStore.newTab(info.content, undefined, info.path, readOnly, kind, size);
+      tabStore.newTab(info.content, undefined, docPath, readOnly, kind, size);
     }
     if (opts.pushHistory !== false) {
-      navHistoryStore.push(path);
+      navHistoryStore.push(docPath);
     }
-    addRecentFile(path);
-    await workspaceStore.openFile(path);
-    logOperationEnd("file", `Open: ${path}`);
+    addRecentFile(docPath);
+    await workspaceStore.openFile(docPath);
+    logOperationEnd("file", `Open: ${docPath}`);
   } catch (e) {
     logError("file", `Open failed: ${path}`, String(e));
     alert("Open failed: " + String(e));
@@ -132,8 +150,8 @@ export async function openFolder() {
 }
 
 export function newDocument() {
+  // A new tab is purely a tab operation: it must not touch the workspace.
   tabStore.newTab("", "Untitled", null);
-  workspaceStore.syncToFile(null).catch(() => {});
 }
 
 export function closeActiveTab() {

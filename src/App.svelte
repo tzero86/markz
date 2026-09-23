@@ -27,9 +27,11 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   import CommandPalette from "./components/ui/CommandPalette.svelte";
   import type { PaletteMode } from "./lib/commandPalette";
   import { getSession } from "./lib/sessionStore";
-  import { workspaceStore } from "./lib/workspaceStore";
+  import { workspaceStore, IS_WINDOWS } from "./lib/workspaceStore";
   import { presetStore } from "./lib/themeStore";
   import { startupComplete } from "./lib/startupStore";
+  import { sanitizeHtml } from "./lib/sanitizeHtml";
+  import { isMarkdownPath } from "./lib/fileTypes";
 
   import { confirm } from "@tauri-apps/plugin-dialog";
   // Always start at 100% zoom — prevents stale localStorage values
@@ -202,6 +204,12 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   /* Sync open-files watcher + surface external file changes */
   let lastActivePath: string | null = null;
   const externallyModifiedPaths = new Set<string>();
+  /** Content last known to be on disk, per open path. It is refreshed whenever a
+   *  tab for that path is clean — a clean buffer is by definition showing what the
+   *  file holds — and pruned once no tab references the path. External changes are
+   *  detected by comparing the file against THIS, never against the live buffer:
+   *  a dirty buffer differing from disk only means the tab has unsaved edits. */
+  const diskSnapshots = new Map<string, string>();
 
   async function checkExternalChanges(path: string) {
     if (!externallyModifiedPaths.has(path)) return;
@@ -226,8 +234,18 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     }
 
     try {
-      const info = await invoke<{ content: string; path: string }>("open_document", { path });
-      tabStore.loadDocument(info.content, info.path);
+      const info = await invoke<{
+        content: string;
+        path: string;
+        kind?: "text" | "image" | "binary";
+        size?: number;
+      }>("open_document", { path });
+      // Reload through the same classification `openDocumentByPath` uses, so an
+      // image/binary tab stays read-only instead of coming back as an editable
+      // text buffer whose Ctrl+S would write typed text over the file.
+      const kind = info.kind ?? "text";
+      const readOnly = kind !== "text" || !isMarkdownPath(info.path);
+      tabStore.loadDocument(kind === "text" ? info.content : "", info.path, readOnly, kind, info.size ?? 0);
     } catch (e) {
       console.error("Failed to reload externally changed file:", e);
     }
@@ -237,6 +255,19 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
   const unsubscribeWorkspaceSync = tabStore.subscribe((state) => {
     const active = state.tabs.find((t) => t.id === state.activeTabId);
     const path = active?.path ?? null;
+
+    // Track what each open file holds on disk: a clean tab is showing it, and a
+    // path no tab references any more needs no snapshot. Session restore and
+    // auto-save both land here, so no save/load call site has to remember.
+    const openPaths = new Set<string>();
+    for (const tab of state.tabs) {
+      if (!tab.path) continue;
+      openPaths.add(tab.path);
+      if (!tab.isDirty) diskSnapshots.set(tab.path, tab.content);
+    }
+    for (const known of diskSnapshots.keys()) {
+      if (!openPaths.has(known)) diskSnapshots.delete(known);
+    }
 
     // During startup the restore process creates many tabs in quick succession.
     // Avoid the repeated per-tab cost of re-watching files and re-scanning the
@@ -248,12 +279,11 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
       if (path !== lastActivePath) {
         lastActivePath = path;
-        // Reveal the active file in the existing workspace when possible,
-        // instead of re-rooting to its parent and evicting the open folder.
-          workspaceStore.syncActiveFile(path).catch(() => {});
-          // If we switched to a file that was externally modified, prompt to reload
-          checkExternalChanges(path);
-        }
+        // Reveal the file in the tree only when it belongs to the open root;
+        // this never re-roots the workspace or evicts the open folder.
+        workspaceStore.openFile(path).catch(() => {});
+        // If we switched to a file that was externally modified, prompt to reload
+        checkExternalChanges(path);
       }
     }
   });
@@ -262,10 +292,26 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     forceSinglePane ? "editor" : viewMode
   );
 
-  // When a folder is explicitly opened (or the root changes because no
-  // workspace existed), ensure the active tab belongs to that workspace. We
-  // intentionally do not switch away from a file that was just opened via
-  // Ctrl+O / double-click, because openFile() above only re-roots when needed.
+  /** Separator-bounded containment, mirroring `workspaceStore.pathInWorkspace`: a
+   *  root contains a path only when the two name the same entry or the path sits
+   *  below it — never when the root is a mere string prefix of it (`Doc` must not
+   *  swallow `Documents/readme.md`). Separators are normalised on both sides (a
+   *  session may store forward slashes where a tab path uses backslashes) and
+   *  case is folded on Windows only, where `C:\Docs` and `c:\docs` are the same
+   *  directory. */
+  function pathWithinRoot(path: string | null | undefined, root: string | null | undefined): boolean {
+    if (!path || !root) return false;
+    const toComparable = (p: string) => {
+      const slashed = p.replace(/\\/g, "/");
+      return IS_WINDOWS ? slashed.toLowerCase() : slashed;
+    };
+    const normRoot = toComparable(root).replace(/\/+$/, "");
+    const norm = toComparable(path);
+    return norm === normRoot || norm.startsWith(normRoot + "/");
+  }
+
+  // Opening a folder changes the tree, never the tabs: reveal the active tab
+  // when it lives inside the new root, and leave every tab untouched otherwise.
   let lastWorkspaceRoot: string | null = null;
   $effect(() => {
     const ws = $workspaceStore;
@@ -275,43 +321,14 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
     lastWorkspaceRoot = ws.rootPath;
     if (!ws.rootPath) return;
 
-    function isInWorkspace(path: string | null): boolean {
-      if (!path) return false;
-      const root = ws.rootPath!.replace(/[/\\]+$/, "").replace(/\\/g, "/");
-      const norm = path.replace(/\\/g, "/");
-      return norm === root || norm.startsWith(root + "/");
-    }
-
     const tabState = get(tabStore);
     const activeTab = tabState.tabs.find((t) => t.id === tabState.activeTabId);
 
-    // If a file open operation triggered this root change, the active tab is
-    // already inside the new root — keep it focused.
-    if (activeTab && isInWorkspace(activeTab.path)) {
-      // Make sure the file is revealed in the tree, but do not spawn a new tab.
-      if (activeTab.path) {
-        workspaceStore.revealFilePath(activeTab.path).catch(() => {});
-      }
-      return;
+    // Reveal the active tab in the new tree when it lives inside the root.
+    // Everything else is left alone — opening a folder never changes tabs.
+    if (activeTab?.path && pathWithinRoot(activeTab.path, ws.rootPath)) {
+      workspaceStore.revealFilePath(activeTab.path).catch(() => {});
     }
-
-    const existing = tabState.tabs.find((t) => isInWorkspace(t.path));
-    if (existing) {
-      tabStore.switchTab(existing.id);
-      return;
-    }
-
-    if (
-      activeTab &&
-      activeTab.path === null &&
-      !activeTab.isDirty &&
-      activeTab.content.trim() === ""
-    ) {
-      // Reuse the clean Untitled tab as the folder context.
-      return;
-    }
-
-    tabStore.newTab("", "Untitled", null);
   });
 
   function handleSelectActivity(activity: "files" | "outline" | "links") {
@@ -387,9 +404,14 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         const active = tabStore.getActiveTab();
         if (active?.path) {
           const savedWs = session?.workspacePath;
-          const useSavedWs = savedWs && active.path.replace(/\\/g, "/").startsWith(savedWs.replace(/\\/g, "/"));
+          // Only follow the saved workspace when it genuinely contains the active
+          // tab; a mere string prefix (`…\Doc` vs `…\Documents\readme.md`) must
+          // not win, or the tree roots somewhere the open file does not live.
+          const useSavedWs = !!savedWs && pathWithinRoot(active.path, savedWs);
           const t3 = performance.now();
-          const target = useSavedWs ? savedWs : active.path.replace(/\\/g, "/").split("/").slice(0, -1).join("/") || "/";
+          const target = useSavedWs && savedWs
+            ? savedWs
+            : active.path.replace(/\\/g, "/").split("/").slice(0, -1).join("/") || "/";
           workspaceStore.loadWorkspace(target).then(() => {
             debugLogStore.add("info", "startup", `workspaceStore.loadWorkspace took ${(performance.now() - t3).toFixed(1)}ms`);
           }).catch(() => {});
@@ -472,8 +494,16 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
         const result = results[i];
         if (result.status !== "fulfilled") continue;
         const { path, content } = result.value;
-        const tab = get(tabStore).tabs.find((t) => t.path === path);
-        if (!tab || tab.content === content) continue;
+        const snapshot = diskSnapshots.get(path);
+        if (snapshot === undefined) {
+          // First sight of this file (e.g. a tab restored from a session that
+          // was saved while dirty): adopt the current contents as the baseline.
+          // Comparing against the buffer instead would misread every unsaved
+          // edit as an external modification.
+          diskSnapshots.set(path, content);
+          continue;
+        }
+        if (content === snapshot) continue;
         externallyModifiedPaths.add(path);
         if (tabStore.getActiveTab()?.path === path) {
           checkExternalChanges(path);
@@ -535,7 +565,18 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
           markdown,
           docPath: doc.path,
         });
-        slideDeck = deck;
+        // The renderer passes raw HTML blocks through verbatim, so slide title
+        // and content are untrusted. Sanitize them here — the single boundary
+        // that produces the deck — so every {@html} sink in PresentationMode
+        // receives pre-sanitized HTML. Non-HTML deck fields pass through as-is.
+        slideDeck = {
+          ...deck,
+          slides: (deck?.slides ?? []).map((slide: any) => ({
+            ...slide,
+            title: typeof slide.title === "string" ? sanitizeHtml(slide.title) : slide.title,
+            content: typeof slide.content === "string" ? sanitizeHtml(slide.content) : slide.content,
+          })),
+        };
         presentationOpen = true;
       } catch (e) {
         console.error("Failed to render slides:", e);

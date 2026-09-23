@@ -117,8 +117,14 @@ fn table_header_style() -> Style {
 // --- Main converter --------------------------------------------------------
 
 /// Convert a MarkZ AST Document into a DOCX file as a byte vector.
-/// Local images are embedded; remote images become hyperlink text.
-pub fn convert(document: &Document, ctx: &ConvertContext) -> Result<Vec<u8>, ConvertDocxError> {
+///
+/// Local images inside the document directory are embedded; remote images and images that cannot
+/// be read or decoded fall back to their alt text. Returns the packed bytes together with one
+/// warning line per image reference that was not embedded.
+pub fn convert(
+    document: &Document,
+    ctx: &ConvertContext,
+) -> Result<(Vec<u8>, Vec<String>), ConvertDocxError> {
     let mut docx = Docx::new()
         .page_margin(
             PageMargin::new()
@@ -208,48 +214,61 @@ pub fn convert(document: &Document, ctx: &ConvertContext) -> Result<Vec<u8>, Con
         )
         .add_numbering(Numbering::new(ORDERED_NUM_ID, ORDERED_ABSTRACT_NUM_ID));
 
+    let mut warnings = Vec::new();
     for block in &document.blocks {
-        docx = append_block(docx, block, ctx, 0)?;
+        docx = append_block(docx, block, ctx, 0, &mut warnings)?;
     }
 
     let mut buf = Cursor::new(Vec::new());
     docx.build()
         .pack(&mut buf)
         .map_err(|e| ConvertDocxError::Other(e.to_string()))?;
-    Ok(buf.into_inner())
+    Ok((buf.into_inner(), warnings))
 }
 
 // --- Image helpers ---------------------------------------------------------
 
-/// Compute scaled image dimensions in EMUs, fitting within the page width.
-fn scaled_image_size(bytes: &[u8]) -> Option<(u32, u32)> {
-    use image::ImageReader;
-
-    let reader = ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .ok()?;
-    let (width_px, height_px) = reader.into_dimensions().ok()?;
-
+/// Scale image pixel dimensions to EMUs, fitting within the page width.
+fn scaled_image_size(width_px: u32, height_px: u32) -> (u32, u32) {
     let width_emu = (width_px as u64) * EMU_PER_PX;
     let height_emu = (height_px as u64) * EMU_PER_PX;
 
     if width_emu > MAX_IMAGE_WIDTH_EMU {
         let scale = MAX_IMAGE_WIDTH_EMU as f64 / width_emu as f64;
-        let new_width = (width_emu as f64 * scale) as u32;
-        let new_height = (height_emu as f64 * scale) as u32;
-        Some((new_width, new_height))
+        (
+            (width_emu as f64 * scale) as u32,
+            (height_emu as f64 * scale) as u32,
+        )
     } else {
-        Some((width_emu as u32, height_emu as u32))
+        (width_emu as u32, height_emu as u32)
     }
 }
 
-/// Create a styled image Pic that fits the page.
-fn create_pic(bytes: &[u8]) -> Pic {
-    if let Some((w, h)) = scaled_image_size(bytes) {
-        Pic::new(bytes).size(w, h)
-    } else {
-        Pic::new(bytes)
-    }
+/// Reason recorded when the `image` crate cannot decode local or downloaded bytes.
+const UNSUPPORTED_IMAGE: &str = "unsupported image format";
+
+/// Decode `bytes` and build a page-fitted [`Pic`], or return the reason it cannot be embedded.
+///
+/// docx-rs's `Pic::new` panics when the `image` crate cannot decode the bytes (SVG, WebP, …), so
+/// the decode happens here and the pixels are re-encoded as PNG for `Pic::new_with_dimensions`.
+fn render_pic(bytes: &[u8]) -> Result<Pic, &'static str> {
+    use image::{GenericImageView, ImageFormat, ImageReader};
+
+    let image = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|_| UNSUPPORTED_IMAGE)?
+        .decode()
+        .map_err(|_| UNSUPPORTED_IMAGE)?;
+    let (width_px, height_px) = image.dimensions();
+
+    let mut png = Cursor::new(Vec::new());
+    image
+        .write_to(&mut png, ImageFormat::Png)
+        .map_err(|_| "could not be re-encoded as PNG")?;
+
+    // `new_with_dimensions` sizes from pixels; override with the page-fitted EMU dimensions.
+    let (width_emu, height_emu) = scaled_image_size(width_px, height_px);
+    Ok(Pic::new_with_dimensions(png.into_inner(), width_px, height_px).size(width_emu, height_emu))
 }
 
 // --- Block appenders -------------------------------------------------------
@@ -259,6 +278,7 @@ fn append_block(
     block: &Block,
     ctx: &ConvertContext,
     list_depth: usize,
+    warnings: &mut Vec<String>,
 ) -> Result<Docx, ConvertDocxError> {
     match block {
         Block::Heading { level, text } => {
@@ -270,7 +290,7 @@ fn append_block(
                 5 => "Heading5",
                 _ => "Heading6",
             };
-            let para = inlines_to_paragraph(Paragraph::new().style(style), text, ctx);
+            let para = inlines_to_paragraph(Paragraph::new().style(style), text, ctx, warnings);
             Ok(docx.add_paragraph(para))
         }
         Block::Paragraph { text } => {
@@ -280,6 +300,7 @@ fn append_block(
                     .line_spacing(LineSpacing::new().after(120)),
                 text,
                 ctx,
+                warnings,
             );
             Ok(docx.add_paragraph(para))
         }
@@ -295,11 +316,11 @@ fn append_block(
                 match b {
                     Block::Paragraph { text } => {
                         let para =
-                            inlines_to_paragraph(Paragraph::new().style("BlockQuote"), text, ctx);
+                            inlines_to_paragraph(Paragraph::new().style("BlockQuote"), text, ctx, warnings);
                         d = d.add_paragraph(para);
                     }
                     _ => {
-                        d = append_block(d, b, ctx, list_depth)?;
+                        d = append_block(d, b, ctx, list_depth, warnings)?;
                     }
                 }
             }
@@ -312,7 +333,8 @@ fn append_block(
                 for (j, b) in item.blocks.iter().enumerate() {
                     match b {
                         Block::Paragraph { text } if j == 0 => {
-                            let mut para = inlines_to_paragraph(Paragraph::new(), text, ctx);
+                            let mut para =
+                                inlines_to_paragraph(Paragraph::new(), text, ctx, warnings);
                             if let Some(checked) = item.task {
                                 let prefix = if checked { "[x] " } else { "[ ] " };
                                 para = Paragraph::new()
@@ -331,10 +353,10 @@ fn append_block(
                             d = d.add_paragraph(para);
                         }
                         Block::List { .. } => {
-                            d = append_block(d, b, ctx, list_depth + 1)?;
+                            d = append_block(d, b, ctx, list_depth + 1, warnings)?;
                         }
                         _ => {
-                            d = append_block(d, b, ctx, list_depth)?;
+                            d = append_block(d, b, ctx, list_depth, warnings)?;
                         }
                     }
                 }
@@ -351,6 +373,7 @@ fn append_block(
                         Paragraph::new().style("TableHeader"),
                         &cell.text,
                         ctx,
+                        warnings,
                     )
                 })
                 .map(|para| {
@@ -366,7 +389,7 @@ fn append_block(
                 let cells: Vec<docx_rs::TableCell> = row
                     .iter()
                     .map(|cell| {
-                        let para = inlines_to_paragraph(Paragraph::new(), &cell.text, ctx);
+                        let para = inlines_to_paragraph(Paragraph::new(), &cell.text, ctx, warnings);
                         docx_rs::TableCell::new()
                             .vertical_align(VAlignType::Center)
                             .add_paragraph(para)
@@ -405,7 +428,7 @@ fn append_block(
         Block::FootnoteDefinition { blocks, .. } => {
             let mut d = docx;
             for b in blocks {
-                d = append_block(d, b, ctx, list_depth)?;
+                d = append_block(d, b, ctx, list_depth, warnings)?;
             }
             Ok(d)
         }
@@ -423,10 +446,16 @@ fn extract_first_run(para: &Paragraph) -> Option<Run> {
 }
 
 /// Convert a slice of Inline elements into a Paragraph with styled runs.
-fn inlines_to_paragraph(para: Paragraph, inlines: &[Inline], ctx: &ConvertContext) -> Paragraph {
+fn inlines_to_paragraph(
+    para: Paragraph,
+    inlines: &[Inline],
+    ctx: &ConvertContext,
+    warnings: &mut Vec<String>,
+) -> Paragraph {
     let mut paragraph = para;
     for inline in inlines {
-        paragraph = append_inline_to_paragraph(paragraph, inline, ctx, false, false, false);
+        paragraph =
+            append_inline_to_paragraph(paragraph, inline, ctx, false, false, false, warnings);
     }
     paragraph
 }
@@ -452,6 +481,7 @@ fn append_inline_to_paragraph(
     bold: bool,
     italic: bool,
     strike: bool,
+    warnings: &mut Vec<String>,
 ) -> Paragraph {
     match inline {
         Inline::Text(text) => {
@@ -468,21 +498,21 @@ fn append_inline_to_paragraph(
         Inline::Emphasis(inner) => {
             let mut p = para;
             for i in inner {
-                p = append_inline_to_paragraph(p, i, ctx, bold, true, strike);
+                p = append_inline_to_paragraph(p, i, ctx, bold, true, strike, warnings);
             }
             p
         }
         Inline::Strong(inner) => {
             let mut p = para;
             for i in inner {
-                p = append_inline_to_paragraph(p, i, ctx, true, italic, strike);
+                p = append_inline_to_paragraph(p, i, ctx, true, italic, strike, warnings);
             }
             p
         }
         Inline::Strikethrough(inner) => {
             let mut p = para;
             for i in inner {
-                p = append_inline_to_paragraph(p, i, ctx, bold, italic, true);
+                p = append_inline_to_paragraph(p, i, ctx, bold, italic, true, warnings);
             }
             p
         }
@@ -502,12 +532,19 @@ fn append_inline_to_paragraph(
             para.add_hyperlink(hyperlink)
         }
         Inline::Image { alt, url, .. } => {
-            if let Some(bytes) = resolve_image_bytes(url, ctx) {
-                if !bytes.is_empty() {
-                    let pic = create_pic(&bytes);
-                    return para
-                        .add_run(apply_style(Run::new().add_image(pic), bold, italic, strike));
-                }
+            match resolve_image_bytes(url, ctx) {
+                Ok(bytes) => match render_pic(&bytes) {
+                    Ok(pic) => {
+                        return para.add_run(apply_style(
+                            Run::new().add_image(pic),
+                            bold,
+                            italic,
+                            strike,
+                        ));
+                    }
+                    Err(reason) => warnings.push(format!("{}: {}", url, reason)),
+                },
+                Err(err) => warnings.push(format!("{}: {}", url, err)),
             }
             para.add_run(apply_style(
                 Run::new().add_text(format!("[{}]", alt)),
@@ -576,6 +613,7 @@ fn extract_plain_text(inlines: &[Inline]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::test_util::{png_bytes, TempDir};
     use markz_core::ast::{Block, Inline, ListItem, TableCell as AstTableCell};
     #[allow(unused_imports)]
 
@@ -584,6 +622,21 @@ mod tests {
             frontmatter: None,
             blocks,
         }
+    }
+
+    fn image_doc(alt: &str, url: &str) -> Document {
+        doc_with_blocks(vec![Block::Paragraph {
+            text: vec![Inline::Image {
+                alt: alt.to_string(),
+                url: url.to_string(),
+                title: None,
+            }],
+        }])
+    }
+
+    /// The DOCX zip stores entry names uncompressed, so this detects an embedded picture.
+    fn has_media(bytes: &[u8]) -> bool {
+        bytes.windows(11).any(|w| w == b"word/media/")
     }
 
     #[test]
@@ -598,10 +651,9 @@ mod tests {
             },
         ]);
         let ctx = ConvertContext::default();
-        let result = convert(&doc, &ctx);
-        assert!(result.is_ok());
-        let bytes = result.unwrap();
+        let (bytes, warnings) = convert(&doc, &ctx).expect("clean export");
         assert!(!bytes.is_empty());
+        assert!(warnings.is_empty());
     }
 
     #[test]
@@ -680,9 +732,97 @@ mod tests {
             },
         ]);
         let ctx = ConvertContext::default();
-        let result = convert(&doc, &ctx);
-        assert!(result.is_ok());
-        let bytes = result.unwrap();
+        let (bytes, _) = convert(&doc, &ctx).expect("clean export");
         assert!(!bytes.is_empty());
     }
+
+    #[test]
+    fn test_embedded_png_produces_no_warnings() {
+        let dir = TempDir::new("docx-png");
+        let ctx = dir.context("docs/readme.md");
+        dir.write("docs/assets/pic.png", &png_bytes());
+
+        let (bytes, warnings) = convert(&image_doc("Pic", "assets/pic.png"), &ctx)
+            .expect("export succeeds");
+
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert!(has_media(&bytes));
+    }
+
+    /// Regression test for the DOCX export crash: docx-rs's `Pic::new` panicked on bytes the
+    /// `image` crate cannot decode, aborting the whole export. Demonstrated before the fix by
+    /// calling `create_pic` with these SVG bytes: it aborted at docx-rs `pic.rs:58`.
+    #[test]
+    fn test_svg_image_warns_instead_of_panicking() {
+        let dir = TempDir::new("docx-svg");
+        let ctx = dir.context("docs/readme.md");
+        dir.write(
+            "docs/diagram.svg",
+            br#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>"#,
+        );
+
+        let (bytes, warnings) = convert(&image_doc("Diagram", "diagram.svg"), &ctx)
+            .expect("export succeeds");
+
+        assert!(!bytes.is_empty());
+        assert_eq!(warnings, vec!["diagram.svg: unsupported image format"]);
+        assert!(!has_media(&bytes));
+    }
+
+    #[test]
+    fn test_missing_image_warns_and_export_succeeds() {
+        let dir = TempDir::new("docx-missing");
+        let ctx = dir.context("docs/readme.md");
+
+        let (bytes, warnings) = convert(&image_doc("Gone", "assets/gone.png"), &ctx)
+            .expect("export succeeds");
+
+        assert!(!bytes.is_empty());
+        assert_eq!(warnings, vec!["assets/gone.png: image not found"]);
+        assert!(!has_media(&bytes));
+    }
+
+    #[test]
+    fn test_absolute_image_outside_document_directory_is_not_embedded() {
+        let dir = TempDir::new("docx-outside");
+        let ctx = dir.context("docs/readme.md");
+        let outside = dir.write("outside.png", &png_bytes());
+
+        let (bytes, warnings) = convert(&image_doc("Secret", &outside.to_string_lossy()), &ctx)
+            .expect("export succeeds");
+
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(
+            warnings[0].contains("outside the document directory"),
+            "{warnings:?}"
+        );
+        assert!(!has_media(&bytes));
+    }
+
+    #[test]
+    fn test_unc_image_reference_is_not_embedded() {
+        let dir = TempDir::new("docx-unc");
+        let ctx = dir.context("docs/readme.md");
+
+        let (bytes, warnings) = convert(&image_doc("Share", r"\\server\share\a.png"), &ctx)
+            .expect("export succeeds");
+
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(warnings[0].contains(r"\\server\share\a.png"), "{warnings:?}");
+        assert!(!has_media(&bytes));
+    }
+
+    #[test]
+    fn test_file_url_image_is_embedded() {
+        let dir = TempDir::new("docx-file-url");
+        let ctx = dir.context("docs/readme.md");
+        let png = dir.write("docs/assets/pic.png", &png_bytes());
+        let url = crate::context::test_util::file_url(&png);
+
+        let (bytes, warnings) = convert(&image_doc("Pic", &url), &ctx).expect("export succeeds");
+
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert!(has_media(&bytes));
+    }
 }
+

@@ -17,8 +17,8 @@
   import { debugLogStore } from "../../lib/debugLogStore";
   import { onMount } from "svelte";
   import TableEditorModal from "../editor/TableEditorModal.svelte";
-  import DOMPurify from "dompurify";
   import { getCachedPreview, setCachedPreview } from "../../lib/previewCache";
+  import { sanitizeHtml } from "../../lib/sanitizeHtml";
 
   type CopyFormat = "html" | "jira" | "confluence" | "slack" | "github" | "word-pandoc";
 
@@ -132,7 +132,7 @@
       try {
         const rawHtml = await invoke<string>("render_preview", { markdown: content, docPath });
         logRenderTiming("render_preview returned", renderStart);
-        const result = DOMPurify.sanitize(rawHtml);
+        const result = sanitizeHtml(rawHtml);
         logRenderTiming("DOMPurify sanitized", renderStart);
         // Guard: the content we started rendering must still match the
         // current active document. If tabs were switched while we were

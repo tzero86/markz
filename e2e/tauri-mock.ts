@@ -844,7 +844,8 @@ export function injectTauriMock() {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");
       calls.push(args);
       localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));
-      return null;
+      // Mirrors the command: "" for a clean export, one warning per line otherwise.
+      return "";
     },
     copy_via_pandoc: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_copy_pandoc_calls") || "[]");
@@ -859,7 +860,8 @@ export function injectTauriMock() {
       const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");
       calls.push(args);
       localStorage.setItem("__e2e_export_docx_calls", JSON.stringify(calls));
-      return null;
+      // Mirrors the command: "" for a clean export, one warning per line otherwise.
+      return "";
     },
     save_session: (args) => {
       localStorage.setItem(
@@ -1215,7 +1217,7 @@ export const tauriMockInitFunc = new Function(
   '    const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");\n' +
   '    calls.push(args);\n' +
   '    localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));\n' +
-  '    return null;\n' +
+  '    return "";\n' +
   '  },\n' +
   '  copy_via_pandoc: (args) => {\n' +
   '    const calls = JSON.parse(localStorage.getItem("__e2e_copy_pandoc_calls") || "[]");\n' +
@@ -1230,7 +1232,7 @@ export const tauriMockInitFunc = new Function(
   '    const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");\n' +
   '    calls.push(args);\n' +
   '    localStorage.setItem("__e2e_export_docx_calls", JSON.stringify(calls));\n' +
-  '    return null;\n' +
+  '    return "";\n' +
   '  },\n' +
   '  save_session: (args) => {\n' +
   '    localStorage.setItem("markz-session", JSON.stringify({\n' +
@@ -1525,7 +1527,8 @@ export const tauriMockScriptString = `
       const calls = JSON.parse(localStorage.getItem("__e2e_export_pandoc_calls") || "[]");
       calls.push(args);
       localStorage.setItem("__e2e_export_pandoc_calls", JSON.stringify(calls));
-      return null;
+      // Mirrors the command: "" for a clean export, one warning per line otherwise.
+      return "";
     },
     copy_via_pandoc: (args) => {
       const calls = JSON.parse(localStorage.getItem("__e2e_copy_pandoc_calls") || "[]");
@@ -1540,7 +1543,8 @@ export const tauriMockScriptString = `
       const calls = JSON.parse(localStorage.getItem("__e2e_export_docx_calls") || "[]");
       calls.push(args);
       localStorage.setItem("__e2e_export_docx_calls", JSON.stringify(calls));
-      return null;
+      // Mirrors the command: "" for a clean export, one warning per line otherwise.
+      return "";
     },
     save_session: (args) => {
       localStorage.setItem("markz-session", JSON.stringify({

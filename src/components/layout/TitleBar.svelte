@@ -179,9 +179,10 @@
       triggerRef?.focus();
       logOperationStart("export", `${label} → ${outputPath}`);
       try {
+        let warnings: string;
         if (command === "export_via_pandoc") {
           showToast("Exporting...", "info");
-          await invoke("export_via_pandoc", {
+          warnings = await invoke<string>("export_via_pandoc", {
             markdown: doc.content,
             docPath: doc.path,
             outputPath,
@@ -191,14 +192,23 @@
           showToast("Exporting...", "info");
           const { prepareMarkdownForDocx } = await import("../../lib/docxPrep");
           const preparedMarkdown = await prepareMarkdownForDocx(doc.content);
-          await invoke(command, {
+          warnings = await invoke<string>(command, {
             markdown: preparedMarkdown,
             docPath: doc.path,
             outputPath,
           });
         }
         logOperationEnd("export", `${label} → ${outputPath}`);
-        showToast(`Exported ${label}`, "success");
+        // The export commands report partially completed exports — images pandoc
+        // could not embed, a rejected reference-doc — as one warning per line;
+        // only a clean run gets the success toast.
+        const exportWarnings = warnings.trim();
+        if (exportWarnings) {
+          logError("export", `${label} → ${outputPath} warnings`, exportWarnings);
+          showToast(exportWarnings, "error");
+        } else {
+          showToast(`Exported ${label}`, "success");
+        }
       } catch (e) {
         logError("export", `${label} → ${outputPath} failed`, String(e));
         showToast(`Failed to ${label.toLowerCase()}`, "error");

@@ -1,4 +1,4 @@
-use crate::{parse_document, embed_local_images, DocumentInfo};
+use crate::{parse_document, embed_local_images, DocumentInfo, IMAGE_EXTS};
 use log::info;
 use tauri::{AppHandle, Emitter};
 
@@ -47,11 +47,6 @@ pub async fn render_preview(
 /// Files larger than this are never loaded into the editor/preview — reading
 /// and rendering multi-megabyte text files freezes the UI.
 const MAX_TEXT_FILE_BYTES: u64 = 5 * 1024 * 1024;
-
-/// Extensions that are safe to display as images in the preview pane.
-const IMAGE_EXTS: &[&str] = &[
-    "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif",
-];
 
 fn is_image_path(path: &std::path::Path) -> bool {
     path.extension()

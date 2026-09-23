@@ -1,3 +1,41 @@
+## [0.8.74] - 2026-09-22
+
+> Corrects the v0.8.73 entry below: re-rooting the tree at the active file's folder is what caused a
+> deliberately opened workspace to be evicted, and it has been removed.
+
+### Fixed
+
+- **The file tree scrolls again** — a folder with more files than fit the sidebar could not be scrolled at all. `.sidebar` was a block container, so the scroller's `flex: 1` and `overflow-y: auto` never engaged: the list grew to its full content height and was clipped. The sidebar is now a bounded column flex container and the file list is the sole scroll region, with the breadcrumbs and search box pinned above it. The Outline and Links panes share the same fix.
+- **Opening a file no longer evicts your folder** — v0.8.73 re-rooted the tree at the active file's folder whenever that file was outside the current root, so `Ctrl+O`, a recent file, or an OS file association replaced the folder you had deliberately opened. The tree root now changes only when you explicitly open a folder (or save an untitled document with no folder open). A file that is already inside the root is revealed instead.
+- **Opening a folder no longer switches the active tab** — choosing a workspace used to make an unrelated "Untitled" tab active, discarding your place.
+- **A new tab no longer closes your folder** — `Ctrl+T` ran the code path that closed the workspace, wiping the file tree.
+- **Creating a file can no longer destroy an existing one** — the name-collision check compared a mixed-separator path and only scanned the top level, so it never matched and the backend truncated the existing file to zero bytes. The check now normalises separators, folds case on Windows, and walks the whole tree; the backend refuses to write over an existing entry.
+- **Pandoc exports embed document-relative images** — pandoc was given a temp file with no working directory and no `--resource-path`, so `![](assets/x.png)` resolved against the app's own directory and was silently dropped from DOCX/PDF/HTML/EPUB output. Exports now run with the document's folder as the child's working directory and resource path.
+- **Exports report images they could not embed** — pandoc writes an unresolvable image to stderr and still exits 0, so a partial export looked like a success. Both export paths now surface pandoc's warnings, and an unsaved document warns that relative images could not be resolved.
+- **DOCX export no longer crashes on SVG, WebP, AVIF, or ICO images** — the native converter fell into a docx-rs constructor that panics for any format outside its decoder list. Unsupported images are now reported and replaced with their alt text instead of aborting the export. The same converter also no longer silently substitutes `[alt]` text for unresolvable images.
+- **Deleting a file or folder warns about unsaved changes** — deleting from the tree closed the tab without a prompt, discarding the buffer. Deleting a folder now warns about every dirty file inside it.
+- **"Changed on disk" is no longer raised for your own unsaved edits** — the check compared the in-memory buffer against disk, which is just the definition of *dirty*, so renaming any file in the workspace prompted you to discard unrelated edits.
+- **Reloading an externally changed image or binary tab keeps it read-only** — reloading reset the tab to an editable text buffer, so `Ctrl+S` would have written over the file.
+- **"Close Others" respects a declined prompt** — answering "no" for a dirty tab only skipped it in the loop while the tab was closed anyway.
+- **Closing the last tab no longer empties the tab strip** — it left an empty tab bar whose editor silently discarded keystrokes.
+- **Closing a tab no longer closes your folder** — `Ctrl+W` on the default untitled tab discarded an explicitly opened workspace.
+- **Renaming a folder updates every open tab inside it** — only the first exact match was rewritten, so tabs kept dead paths and saved to the old location.
+- **Quick open (`Ctrl+P`) closes the palette after opening a file** — the palette stayed on top of the document it had just opened; activation now dismisses it in every mode and on both the keyboard and click paths.
+- **Wikilinks resolve on Windows** — the document's directory was derived by splitting on `/`, which yields `.` for every Windows path, so `[[Target]]` silently searched the app directory. Resolved paths now use the platform separator, so an already-open file is focused instead of opening a duplicate tab.
+- **File-tree expansion survives a refresh** — refreshing restored the pre-request expansion set, undoing folders you opened while it was in flight, and never pruned keys for directories that were renamed or deleted. A double-click on a not-yet-loaded folder could also cancel itself out and leave it collapsed.
+
+### Security
+
+- **Presentation mode sanitizes document HTML** — pressing `F5` on an untrusted document rendered raw HTML through `{@html}` without sanitization, giving that document script execution in the app origin (and, with `csp: null`, the full command surface: arbitrary file write and recursive delete). The deck is now sanitized at the boundary that produces it, through the same single sanitizer the preview pane uses.
+- **The preview no longer reads arbitrary local files** — any `<img src="...">` in a document was read off disk and inlined, with no scheme, extension, or containment check. An absolute path could inline any readable file, and a UNC path made Windows authenticate outbound to the attacker's host. Local image references are now confined to the document's directory, extension- and magic-byte-checked, size-capped, and `file://` aware.
+- **Image paths in the converters are confined to the document directory** — JIRA/Confluence/Slack/GitHub and DOCX exports previously accepted any path or URL from document content; `file://` URLs are now handled, and UNC, device, and escaping paths are refused.
+- **`reference-doc` frontmatter is validated** — a document could name a UNC path and make pandoc authenticate to an attacker's SMB share during export. The value is now resolved inside the document directory, extension-checked, and refused otherwise.
+
+### Changed
+
+- **File-tree and tab path comparisons are consistent** — separator-insensitive everywhere and case-insensitive on Windows only. This stops the same file being opened twice with divergent buffers, and lets the tree highlight a file whose path arrived in the other separator style.
+- **Content zoom always starts at 100% on launch** — the zoom level is not persisted across restarts. This is existing behaviour, now covered by a test rather than being incidental.
+
 ## [0.8.73] - 2026-09-05
 
 ### Fixed

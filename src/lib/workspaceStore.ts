@@ -26,6 +26,49 @@ interface WorkspaceState {
   searchLoading: boolean;
 }
 
+/** Windows path comparison is case-insensitive; every other platform is not.
+ *  Resolved once here (the webview reports it through `navigator`, the test
+ *  runner through `process`) so no call site has to re-decide. Exported so the
+ *  case-insensitivity tests guard on the same decision the code makes. */
+export const IS_WINDOWS = ((): boolean => {
+  const runtime: unknown = globalThis;
+  if (typeof runtime === "object" && runtime !== null && "process" in runtime) {
+    const proc: unknown = runtime.process;
+    if (typeof proc === "object" && proc !== null && "platform" in proc) {
+      return proc.platform === "win32";
+    }
+  }
+  return typeof navigator !== "undefined" && /windows|win32/i.test(navigator.userAgent);
+})();
+
+/** Normalise a path for comparison: forward slashes everywhere, folded case on
+ *  Windows where `C:\Docs` and `c:\docs` name the same directory. */
+function normalizePath(path: string): string {
+  const slashed = path.replace(/\\/g, "/");
+  return IS_WINDOWS ? slashed.toLowerCase() : slashed;
+}
+
+/** Every path present in the loaded tree, normalised for comparison. Directories
+ *  only appear with their children once listed, so this is the best picture
+ *  available without another round trip. */
+function collectPaths(tree: FileTreeNode[], into: Set<string>): Set<string> {
+  for (const node of tree) {
+    into.add(normalizePath(node.path).replace(/\/$/, ""));
+    if (node.children?.length > 0) collectPaths(node.children, into);
+  }
+  return into;
+}
+
+/** `rel_path`s of every directory present in the loaded tree. */
+function collectDirRelPaths(tree: FileTreeNode[], into: Set<string>): Set<string> {
+  for (const node of tree) {
+    if (!node.is_dir) continue;
+    into.add(node.rel_path);
+    if (node.children?.length > 0) collectDirRelPaths(node.children, into);
+  }
+  return into;
+}
+
 function createWorkspaceStore() {
   const { subscribe, set, update } = writable<WorkspaceState>({
     rootPath: null,
@@ -79,25 +122,35 @@ function createWorkspaceStore() {
     logOperationStart("workspace", "Refresh workspace");
     try {
       const tree = await invoke<FileTreeNode[]>("list_workspace_files_shallow", { root: state.rootPath });
-      const prevExpanded = state.expandedDirs;
-      update((s) => ({ ...s, fileTree: tree, expandedDirs: prevExpanded }));
+      // `state` is a pre-await snapshot: writing it back would undo every
+      // directory the user expanded while the listing was in flight.
+      update((s) => ({ ...s, fileTree: tree }));
       logOperationEnd("workspace", "Refresh workspace", `${tree.length} top-level items`);
 
-      // Re-load children for any directories that were expanded before the
-      // refresh so the tree does not collapse under the user. Process from
-      // shallow to deep so parent chains are loaded before nested dirs are
-      // looked up.
-      const expandedList = Array.from(prevExpanded).sort(
+      // Re-load children for any directories that are still expanded so the
+      // tree does not collapse under the user. Process from shallow to deep so
+      // parent chains are loaded before nested dirs are looked up.
+      const expandedList = Array.from(get({ subscribe }).expandedDirs).sort(
         (a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b)
       );
       for (const relPath of expandedList) {
         const node = findNode(get({ subscribe }).fileTree, relPath);
         if (node && node.is_dir && (node.children?.length ?? 0) === 0) {
-          await loadChildren(node).catch((e) => {
-            logError("workspace", `Failed to reload expanded dir ${relPath}`, String(e));
-          });
+          await loadChildren(node);
         }
       }
+
+      // Drop expansion keys whose directory no longer exists in the refreshed
+      // tree: a deleted or renamed directory must not leave a stale key behind,
+      // which would render a later same-named folder expanded-but-empty.
+      update((s) => {
+        const present = collectDirRelPaths(s.fileTree, new Set<string>());
+        const next = new Set<string>();
+        for (const key of s.expandedDirs) {
+          if (present.has(key)) next.add(key);
+        }
+        return { ...s, expandedDirs: next };
+      });
 
       // A manual refresh should also surface changes to open files, just like
       // the file-system watcher does for external edits.
@@ -107,10 +160,12 @@ function createWorkspaceStore() {
     }
   }
 
-  async function loadChildren(node: FileTreeNode) {
-    if (!node.is_dir) return;
+  /** Returns whether the children were loaded, so callers that committed to
+   *  an expansion can roll it back when the listing failed. */
+  async function loadChildren(node: FileTreeNode): Promise<boolean> {
+    if (!node.is_dir) return false;
     const state = get({ subscribe });
-    if (!state.rootPath) return;
+    if (!state.rootPath) return false;
     logOperationStart("workspace", `Load children: ${node.rel_path}`);
     logOperationStart("workspace", `Load children args: path=${node.path}, root=${state.rootPath}`);
     try {
@@ -131,28 +186,47 @@ function createWorkspaceStore() {
       }
       update((s) => ({ ...s, fileTree: setNodeChildren(s.fileTree, node.rel_path, children) }));
       logOperationEnd("workspace", `Load children: ${node.rel_path}`, `${children.length} items`);
+      return true;
     } catch (e) {
       logError("workspace", `Failed to load children: ${node.rel_path}`, String(e));
+      return false;
     }
   }
 
   async function toggleDir(node: FileTreeNode) {
     const relPath = node.rel_path;
     logOperationStart("workspace", `Toggle dir: ${relPath}, is_dir=${node.is_dir}, children=${node.children?.length ?? 0}`);
-    const isExpanded = get({ subscribe }).expandedDirs.has(relPath);
-    if (!isExpanded && node.is_dir && (node.children?.length ?? 0) === 0) {
-      await loadChildren(node);
+    if (get({ subscribe }).expandedDirs.has(relPath)) {
+      update((s) => {
+        const next = new Set(s.expandedDirs);
+        next.delete(relPath);
+        return { ...s, expandedDirs: next };
+      });
+      logOperationEnd("workspace", `Toggle dir: ${relPath}`, "collapsed");
+      return;
     }
+    // Commit the expansion before awaiting the listing: an overlapping toggle
+    // must read the committed intent (and collapse it) instead of deciding from
+    // the stale pre-await state and cancelling this expansion out.
     update((s) => {
       const next = new Set(s.expandedDirs);
-      if (next.has(relPath)) {
-        next.delete(relPath);
-      } else {
-        next.add(relPath);
-      }
+      next.add(relPath);
       return { ...s, expandedDirs: next };
     });
-    logOperationEnd("workspace", `Toggle dir: ${relPath}`, isExpanded ? "collapsed" : "expanded");
+    if (node.is_dir && (node.children?.length ?? 0) === 0) {
+      const loaded = await loadChildren(node);
+      if (!loaded) {
+        // Never leave a directory rendered expanded with no children.
+        update((s) => {
+          const next = new Set(s.expandedDirs);
+          next.delete(relPath);
+          return { ...s, expandedDirs: next };
+        });
+        logOperationEnd("workspace", `Toggle dir: ${relPath}`, "expand failed");
+        return;
+      }
+    }
+    logOperationEnd("workspace", `Toggle dir: ${relPath}`, "expanded");
   }
 
   async function search(query: string) {
@@ -193,51 +267,27 @@ function createWorkspaceStore() {
     const lastSep = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
     if (lastSep === -1) return ".";
     if (lastSep === 0) return "/";
+    // `C:\notes.md` -> `C:\`: a bare `C:` is drive-relative and would resolve
+    // against the process working directory instead of the drive root.
+    if (lastSep === 2 && /^[A-Za-z]:[\\/]/.test(path)) return path.slice(0, 3);
     return path.slice(0, lastSep);
   }
 
   function pathInWorkspace(path: string, rootPath: string): boolean {
-    const root = rootPath.replace(/\\/g, "/").replace(/\/$/, "");
-    const norm = path.replace(/\\/g, "/");
+    const root = normalizePath(rootPath).replace(/\/$/, "");
+    const norm = normalizePath(path);
     return norm === root || norm.startsWith(root + "/");
   }
 
-  /** Reveal a file in the existing workspace tree if it belongs to the
-   *  current root. Does not re-root the workspace, so opening a single file
-   *  does not feel like opening a folder. */
-  async function openFile(path: string) {
-    const state = get({ subscribe });
-    if (state.rootPath && pathInWorkspace(path, state.rootPath)) {
-      await revealFilePath(path);
-    }
-  }
-
-  async function syncToFile(path: string | null) {
-    const state = get({ subscribe });
-    if (path === null) {
-      if (state.rootPath === null) return;
-      await closeWorkspace();
-      return;
-    }
-    await openFile(path);
-  }
-  /**
-   * Sync the workspace root to a file that may be outside the current root.
-   * If the file is already inside the workspace, just reveal it. Otherwise,
-   * re-root the workspace at the file's parent directory so the file tree
-   * always reflects the active document's location.
-   */
-  async function syncActiveFile(path: string | null) {
+  /** Reveal a file in the open tree when it belongs to the current root.
+   *  Never re-roots: the root only changes when the user explicitly opens a
+   *  folder (or saves an untitled document into one). */
+  async function openFile(path: string | null) {
     if (path === null) return;
     const state = get({ subscribe });
     if (state.rootPath && pathInWorkspace(path, state.rootPath)) {
       await revealFilePath(path);
-      return;
     }
-    // File is outside the current workspace — re-root at its parent dir.
-    const parentDir = parentDirectory(path);
-    await loadWorkspace(parentDir);
-    await revealFilePath(path);
   }
 
   async function revealFilePath(path: string) {
@@ -327,7 +377,13 @@ function createWorkspaceStore() {
     let counter = 1;
     const ext = isDir ? "" : baseName.slice(baseName.lastIndexOf("."));
     const stem = isDir ? baseName : baseName.slice(0, baseName.lastIndexOf("."));
-    while (get({ subscribe }).fileTree.find((n) => n.path === `${parentPath}/${candidate}`)) {
+    // The whole tree, not just the top level: directories are nested once
+    // listed, and on Windows `node.path` uses backslashes while `parentPath`
+    // here is joined with forward slashes — both sides must be normalised or
+    // the comparison silently never matches.
+    const taken = collectPaths(get({ subscribe }).fileTree, new Set<string>());
+    const parent = normalizePath(parentPath).replace(/\/$/, "");
+    while (taken.has(`${parent}/${normalizePath(candidate)}`)) {
       counter++;
       candidate = isDir ? `${stem}-${counter}` : `${stem}-${counter}${ext}`;
     }
@@ -409,9 +465,7 @@ function createWorkspaceStore() {
     search,
     closeWorkspace,
     openFile,
-    syncActiveFile,
     revealFilePath,
-    syncToFile,
     parentDirectory,
     createFile,
     createFolder,

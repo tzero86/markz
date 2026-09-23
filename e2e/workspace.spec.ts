@@ -245,6 +245,8 @@ test.describe("Workspace file tree", () => {
   });
 
   test("opening a folder keeps unrelated existing tabs", async ({ page }) => {
+    const untitledBefore = await page.locator('.tab:has-text("Untitled")').count();
+
     // Open an unrelated file so we have a stale tab.
     await page.evaluate(() => localStorage.setItem("__e2e_open_file_result", "/some/other.md"));
     await page.keyboard.press("Control+o");
@@ -264,11 +266,12 @@ test.describe("Workspace file tree", () => {
     await openFolderBtn.click();
     await page.waitForSelector(".tree-file", { timeout: 5000 });
 
-    // The unrelated tab should remain open, and a new untitled tab should be
-    // created for the folder context.
+    // The unrelated tab should remain open, and it must still be the active
+    // one: opening a folder never creates a tab and never steals focus.
     await expect(page.locator('.tab:has-text("other.md")')).toBeVisible();
-    await expect(page.locator('.tab:has-text("Untitled")')).toHaveCount(2);
-    await expect(page.locator('.tab.active')).toContainText("Untitled");
+    await expect(page.locator('.tab.active')).toContainText("other.md");
+    await expect(page.locator('.tab:has-text("Untitled")')).toHaveCount(untitledBefore);
+    await expect(page.locator(".file-tree-breadcrumbs")).toHaveAttribute("title", "/test-workspace");
   });
 
   test("refresh preserves nested expanded directories", async ({ page }) => {
@@ -449,7 +452,9 @@ test.describe("Workspace tree follows active tab", () => {
     await expect(page.locator(".file-tree-scroller .empty-state h3")).toContainText("No folder open");
   });
 
-  test("opening folder creates an untitled tab when no file in the folder is open", async ({ page }) => {
+  test("opening a folder keeps the active tab and re-roots the tree", async ({ page }) => {
+    const untitledBefore = await page.locator('.tab:has-text("Untitled")').count();
+
     // Start with an unrelated file open so the active tab is outside the folder.
     await page.evaluate(() => {
       localStorage.setItem("__e2e_open_file_result", "/other-project/file.md");
@@ -464,15 +469,16 @@ test.describe("Workspace tree follows active tab", () => {
     });
     await page.locator('[aria-label="Open folder"]').click();
 
-    // The active tab should now reflect the new folder context, not the old file.
-    await expect(page.locator('.tab.active')).toContainText("Untitled");
+    // Opening a folder must never change which tab is active, and must not
+    // create a tab of its own.
+    await expect(page.locator('.tab.active')).toContainText("file.md");
+    await expect(page.locator('.tab:has-text("Untitled")')).toHaveCount(untitledBefore);
 
     // Open the Files panel to inspect the new workspace tree.
     await page.click('.activity-btn[aria-label="Files"]');
     await page.waitForSelector(".tree-file", { timeout: 5000 });
-    await expect(page.locator(".file-tree-breadcrumbs")).toContainText("test-workspace");
-    // The old file tab may remain, but it must no longer be active.
-    await expect(page.locator('.tab.active')).not.toContainText("file.md");
+    await expect(page.locator(".file-tree-breadcrumbs")).toHaveAttribute("title", "/test-workspace");
+    await expect(page.locator('.tab.active')).toContainText("file.md");
   });
 });
 

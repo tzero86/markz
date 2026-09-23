@@ -24,6 +24,22 @@
 
   let inputValue = $state("");
 
+  /** Rules the backend enforces on a new/renamed entry (`validate_entry_name`):
+   *  reject here so the dialog never submits a name the command will refuse.
+   *  The trailing dot/space test looks at the raw value because Windows strips
+   *  both, so `report.` and `report ` would not land under the name typed. */
+  function validateName(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return "Enter a name.";
+    if (trimmed === "." || trimmed === "..") return "`.` and `..` cannot be used as a name.";
+    if (/[\\/]/.test(trimmed)) return "Names cannot contain path separators.";
+    if (/^[A-Za-z]:/.test(trimmed)) return "Names cannot contain a drive prefix.";
+    if (/[. ]$/.test(value)) return "Names cannot end with a dot or a space.";
+    return null;
+  }
+
+  let error = $derived(validateName(inputValue));
+
   $effect(() => {
     if (open) {
       inputValue = value;
@@ -46,9 +62,8 @@
   }
 
   function submit() {
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    onConfirm(trimmed);
+    if (error) return;
+    onConfirm(inputValue.trim());
     onClose();
   }
 </script>
@@ -67,14 +82,25 @@
 
       <div class="modal-body">
         <div class="field">
-          <label for="prompt-input">{label}</label>
-          <input id="prompt-input" type="text" bind:value={inputValue} />
+          <label for="prompt-input">
+            {label}
+            <span class="label-hint">
+              {error ??
+                "No path separators, drive prefixes, or trailing dot or space."}
+            </span>
+          </label>
+          <input
+            id="prompt-input"
+            type="text"
+            bind:value={inputValue}
+            aria-invalid={error ? "true" : undefined}
+          />
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" onclick={onClose}>Cancel</button>
-        <button class="btn-primary" onclick={submit} disabled={!inputValue.trim()}>
+        <button class="btn-primary" onclick={submit} disabled={!!error}>
           {confirmLabel}
         </button>
       </div>
@@ -142,6 +168,13 @@
     font-size: var(--text-sm);
     font-weight: 500;
     color: var(--text-secondary);
+  }
+  .field .label-hint {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    font-weight: 400;
+    color: var(--text-tertiary);
   }
   .field input {
     background: var(--bg-surface);

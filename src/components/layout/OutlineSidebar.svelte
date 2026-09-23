@@ -5,7 +5,7 @@
   import { confirm } from "@tauri-apps/plugin-dialog";
   import { activeDocumentStore, tabStore } from "../../lib/tabStore";
   import { openDocumentByPath } from "../../lib/keyboard";
-  import { workspaceStore, type FileTreeNode } from "../../lib/workspaceStore";
+  import { workspaceStore, IS_WINDOWS, type FileTreeNode } from "../../lib/workspaceStore";
   import { isMarkdownPath } from "../../lib/fileTypes";
   import { Link2, ArrowLeft, ArrowRight, FolderOpen, Search, FileText, Folder, ChevronRight, ListTree, FilePlus, FolderPlus } from "@lucide/svelte";
   import { generateToc, type TocEntry } from "../../lib/toc";
@@ -95,7 +95,9 @@
   async function handleResolveOutgoing(target: string) {
     const docPath = $activeDocumentStore.path;
     if (!docPath) return;
-    const dir = docPath.substring(0, docPath.lastIndexOf("/")) || ".";
+    // `parentDirectory` handles both `/` and `\`, so a Windows document passes
+    // its real folder instead of collapsing to "." (the process CWD).
+    const dir = workspaceStore.parentDirectory(docPath);
     try {
       const resolved = await invoke<string | null>("resolve_wikilink", {
         target,
@@ -380,8 +382,42 @@
     renamingNode = null;
   }
 
+  /** Paths compare separator-insensitively everywhere, and case-insensitively
+   *  on Windows only, where `C:\Docs\a.md` and `c:/docs/A.md` are one file. */
+  function normalizePath(path: string): string {
+    const slashed = path.replace(/\\/g, "/");
+    return IS_WINDOWS ? slashed.toLowerCase() : slashed;
+  }
+
+  /** `path` is `root` itself or lives inside it — separator-bounded, so
+   *  `C:/docs2` is not treated as living inside `C:/docs`. */
+  function pathAtOrUnder(path: string, root: string): boolean {
+    const normRoot = normalizePath(root).replace(/\/+$/, "");
+    const norm = normalizePath(path);
+    return norm === normRoot || norm.startsWith(normRoot + "/");
+  }
+
+  /** Open tabs that hold unsaved edits in the node being deleted or in any
+   *  file underneath it (deleting a folder discards its files' edits too). */
+  function dirtyTabsAtOrUnder(path: string) {
+    return get(tabStore).tabs.filter(
+      (t) => t.isDirty && t.path !== null && pathAtOrUnder(t.path, path)
+    );
+  }
+
   async function handleDelete(node: FileTreeNode) {
-    const confirmed = await confirm(`Delete "${node.name}"?`);
+    const dirtyTabs = dirtyTabsAtOrUnder(node.path);
+    const message =
+      dirtyTabs.length === 0
+        ? `Delete "${node.name}"?`
+        : `Delete "${node.name}"?\n\nUnsaved changes will be discarded in:\n${dirtyTabs
+            .map((t) => `- ${t.path}`)
+            .join("\n")}`;
+    const options =
+      dirtyTabs.length === 0
+        ? { title: "Delete" }
+        : { title: "Unsaved Changes", kind: "warning" as const };
+    const confirmed = await confirm(message, options);
     if (!confirmed) return;
     const ok = await workspaceStore.deleteEntry(node.path);
     if (ok) {
@@ -475,17 +511,8 @@
       {/if}
     </div>
   {:else}
-    <div class="toc-scroller file-tree-scroller">
-      {#if !$workspaceStore.rootPath}
-        <EmptyState
-          icon={FolderOpen}
-          iconSize={32}
-          title="No folder open"
-          subtitle="Open a folder to browse files and search across your workspace."
-          actionLabel="Open folder"
-          action={() => workspaceStore.openWorkspace()}
-        />
-      {:else}
+    <div class="file-tree-pane">
+      {#if $workspaceStore.rootPath}
         <div class="file-tree-header">
           <div class="file-tree-breadcrumbs" title={$workspaceStore.rootPath}>
             {#each crumbs as crumb, i (crumb.path)}
@@ -533,44 +560,57 @@
             oninput={(e) => handleSearchInput(e.currentTarget.value)}
           />
         </div>
-        {#if $workspaceStore.searchLoading}
-          <div class="empty">Searching…</div>
-        {:else if $workspaceStore.searchResults.length > 0}
-          <ul class="link-list search-results">
-            {#each $workspaceStore.searchResults as result (result.path + ":" + result.line_number)}
-              <li>
-                <button class="link-btn search-result-btn" onclick={() => handleOpenFile(result.path)}>
-                  <FileText size={12} />
-                  <div class="search-result-text">
-                    <div class="search-result-path">{result.rel_path}:{result.line_number}</div>
-                    <div class="search-result-context">{result.context}</div>
-                  </div>
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {:else if searchInput.trim()}
+      {/if}
+      <div class="toc-scroller file-tree-scroller">
+        {#if !$workspaceStore.rootPath}
           <EmptyState
-            icon={Search}
+            icon={FolderOpen}
             iconSize={32}
-            title="No matches"
-            subtitle="Try a different search term."
-          />
-        {:else if $workspaceStore.fileTree.length === 0}
-          <EmptyState
-            icon={FileText}
-            iconSize={32}
-            title="Empty folder"
-            subtitle="This folder doesn't contain any visible files."
+            title="No folder open"
+            subtitle="Open a folder to browse files and search across your workspace."
+            actionLabel="Open folder"
+            action={() => workspaceStore.openWorkspace()}
           />
         {:else}
-          <ul class="file-tree" role="tree">
-            {#each $workspaceStore.fileTree as node (node.path)}
-              {@render fileTreeNode(node, 0)}
-            {/each}
-          </ul>
+          {#if $workspaceStore.searchLoading}
+            <div class="empty">Searching…</div>
+          {:else if $workspaceStore.searchResults.length > 0}
+            <ul class="link-list search-results">
+              {#each $workspaceStore.searchResults as result (result.path + ":" + result.line_number)}
+                <li>
+                  <button class="link-btn search-result-btn" onclick={() => handleOpenFile(result.path)}>
+                    <FileText size={12} />
+                    <div class="search-result-text">
+                      <div class="search-result-path">{result.rel_path}:{result.line_number}</div>
+                      <div class="search-result-context">{result.context}</div>
+                    </div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {:else if searchInput.trim()}
+            <EmptyState
+              icon={Search}
+              iconSize={32}
+              title="No matches"
+              subtitle="Try a different search term."
+            />
+          {:else if $workspaceStore.fileTree.length === 0}
+            <EmptyState
+              icon={FileText}
+              iconSize={32}
+              title="Empty folder"
+              subtitle="This folder doesn't contain any visible files."
+            />
+          {:else}
+            <ul class="file-tree" role="tree">
+              {#each $workspaceStore.fileTree as node (node.path)}
+                {@render fileTreeNode(node, 0)}
+              {/each}
+            </ul>
+          {/if}
         {/if}
-      {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -675,9 +715,12 @@
 {/snippet}
 <style>
   .sidebar {
+    display: flex;
     flex-direction: column;
     width: 100%;
     min-width: 100%;
+    height: 100%;
+    min-height: 0;
     background: var(--bg-surface);
     border-right: 1px solid var(--border-default);
     overflow: hidden;
@@ -686,6 +729,7 @@
 
   .toc-scroller {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: var(--space-2) 0;
@@ -779,10 +823,22 @@
   }
 
   /* File tree styles */
+  .file-tree-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
   .file-tree-scroller {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 0;
   }
   .file-tree-header {
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -856,6 +912,7 @@
     color: var(--text-primary);
   }
   .search-box {
+    flex: none;
     display: flex;
     align-items: center;
     gap: var(--space-2);

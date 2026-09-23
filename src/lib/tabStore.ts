@@ -314,6 +314,14 @@ function makeDefaultTab(): Tab {
     isLoading: false,
   };
 }
+// Windows paths compare case-insensitively, POSIX paths do not. Detect the
+// platform once instead of per comparison. Every path comparison below works on
+// a separator-normalised key with trailing separators removed, so `docs` never
+// matches `docs2` and `C:\a\x.md` matches `C:/a/x.md`.
+const isWindows =
+  (typeof process !== "undefined" && process.platform === "win32") ||
+  (typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent));
+
 function createTabStore() {
   const defaultTab = makeDefaultTab();
   const { subscribe, set, update } = writable<TabState>({
@@ -461,32 +469,56 @@ function createTabStore() {
   }
 
   function renameTabPath(oldPath: string, newPath: string) {
+    // Drop trailing separators: they never appear on a tab path and would
+    // otherwise break the prefix boundary ("docs/" must still match "docs/a.md").
+    const oldBase = oldPath.replace(/[\\/]+$/, "");
+    if (!oldBase) return; // a bare root has no renamable prefix
+    const newBase = newPath.replace(/[\\/]+$/, "");
+    const oldKey = (isWindows ? oldBase.toLowerCase() : oldBase).replace(/\\/g, "/");
     update((state) => {
-      const idx = state.tabs.findIndex((t) => t.path === oldPath);
-      if (idx === -1) return state;
-      const newTabs = [...state.tabs];
-      newTabs[idx] = {
-        ...newTabs[idx],
-        path: newPath,
-        title: newPath.split(/[\\/]/).pop() || "Untitled",
-      };
-      return { ...state, tabs: newTabs };
+      let changed = false;
+      const newTabs = state.tabs.map((t) => {
+        if (!t.path) return t;
+        const tabBase = t.path.replace(/[\\/]+$/, "");
+        const key = (isWindows ? tabBase.toLowerCase() : tabBase).replace(/\\/g, "/");
+        // Whole subtree: the path itself or anything separator-bounded beneath it.
+        if (key !== oldKey && !key.startsWith(`${oldKey}/`)) return t;
+        // Preserve the separator style this tab already used.
+        const base = t.path.includes("\\")
+          ? newBase.replace(/\//g, "\\")
+          : newBase.replace(/\\/g, "/");
+        const path = base + tabBase.slice(oldBase.length);
+        if (path === t.path) return t;
+        changed = true;
+        return { ...t, path, title: path.split(/[\\/]/).pop() || "Untitled" };
+      });
+      return changed ? { ...state, tabs: newTabs } : state;
     });
     if (!suppressPersist) persistSession();
   }
 
   function closeTabByPath(path: string) {
-    update((state) => {
-      const idx = state.tabs.findIndex((t) => t.path === path);
-      if (idx === -1) return state;
-      const tab = state.tabs[idx];
-      const newTabs = state.tabs.filter((t) => t.id !== tab.id);
-      let activeTabId = state.activeTabId;
-      if (activeTabId === tab.id) {
-        activeTabId = newTabs[Math.min(idx, newTabs.length - 1)]?.id ?? "";
-      }
-      return { ...state, tabs: newTabs, activeTabId };
+    const state = get({ subscribe });
+    const target = path.replace(/\\/g, "/").replace(/\/+$/, "");
+    // Every tab open on that file, regardless of separator style (and case on Windows).
+    const matches = state.tabs.filter((t) => {
+      if (!t.path) return false;
+      const key = t.path.replace(/\\/g, "/").replace(/\/+$/, "");
+      return isWindows ? key.toLowerCase() === target.toLowerCase() : key === target;
     });
+    if (matches.length === 0) return;
+
+    const closedIds = new Set(matches.map((t) => t.id));
+    const remaining = state.tabs.filter((t) => !closedIds.has(t.id));
+    if (remaining.length === 0) {
+      const fresh = makeEmptyTab();
+      set({ tabs: [fresh], activeTabId: fresh.id });
+    } else {
+      set({
+        tabs: remaining,
+        activeTabId: closedIds.has(state.activeTabId) ? remaining[0].id : state.activeTabId,
+      });
+    }
     if (!suppressPersist) persistSession();
   }
 
@@ -575,7 +607,11 @@ function createTabStore() {
     if (!suppressPersist) persistSession();
   }
 
-  async function maybeCloseWorkspace() {
+  // The workspace is only auto-closed when a file-backed tab was actually
+  // closed. Closing the default untitled tab must not throw away a folder the
+  // user explicitly opened.
+  async function maybeCloseWorkspace(closedFileTab: boolean) {
+    if (!closedFileTab) return;
     const state = get({ subscribe });
     const hasFileTabs = state.tabs.some((t) => t.path);
     if (!hasFileTabs && get(workspaceStore).rootPath) {
@@ -609,30 +645,50 @@ function createTabStore() {
       return { tabs: newTabs, activeTabId: newTabs[0].id };
     });
 
-    await maybeCloseWorkspace();
+    await maybeCloseWorkspace(tab.path !== null);
     if (!suppressPersist) persistSession();
     return true;
   }
   async function closeAllExcept(keepId: string): Promise<void> {
     const state = get({ subscribe });
     const toClose = state.tabs.filter((t) => t.id !== keepId && !t.pinned);
+    // A "no" keeps that tab open no matter what the answers for the other tabs
+    // were: the surviving set is built from the tabs the user agreed to discard.
+    const declined = new Set<string>();
     for (const tab of toClose) {
       if (tab.isDirty) {
         const proceed = await confirm(
           `"${tab.title}" has unsaved changes. Close without saving?`,
           { title: "Unsaved Changes", kind: "warning" }
         );
-        if (!proceed) continue;
+        if (!proceed) declined.add(tab.id);
       }
     }
+    const closeIds = new Set(toClose.filter((t) => !declined.has(t.id)).map((t) => t.id));
+    const closedFileTab = toClose.some((t) => closeIds.has(t.id) && t.path !== null);
+
     update((s) => {
-      const keepTab = s.tabs.find((t) => t.id === keepId);
-      const pinned = s.tabs.filter((t) => t.pinned && t.id !== keepId);
-      if (!keepTab) return { ...s, tabs: pinned, activeTabId: pinned[0]?.id ?? s.activeTabId };
-      return { tabs: [keepTab, ...pinned], activeTabId: keepTab.id };
+      const remaining = s.tabs.filter((t) => !closeIds.has(t.id));
+      if (remaining.length === 0) {
+        const fresh = makeEmptyTab();
+        return { tabs: [fresh], activeTabId: fresh.id };
+      }
+      const keepTab = remaining.find((t) => t.id === keepId);
+      if (!keepTab) {
+        const activeSurvived = remaining.some((t) => t.id === s.activeTabId);
+        return {
+          ...s,
+          tabs: remaining,
+          activeTabId: activeSurvived ? s.activeTabId : remaining[0].id,
+        };
+      }
+      return {
+        tabs: [keepTab, ...remaining.filter((t) => t.id !== keepId)],
+        activeTabId: keepTab.id,
+      };
     });
 
-    await maybeCloseWorkspace();
+    await maybeCloseWorkspace(closedFileTab);
     if (!suppressPersist) persistSession();
   }
   async function closeAll(): Promise<void> {
@@ -656,9 +712,10 @@ function createTabStore() {
       return { tabs: pinned, activeTabId: pinned[0].id };
     });
 
-    await maybeCloseWorkspace();
+    await maybeCloseWorkspace(toClose.some((t) => t.path !== null));
     if (!suppressPersist) persistSession();
   }
+
   function switchTab(id: string) {
     update((state) => {
       if (state.activeTabId === id) return state;

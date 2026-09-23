@@ -91,8 +91,93 @@ pub fn guess_mime(path: &std::path::Path) -> &'static str {
     }
 }
 
+/// Extensions the preview pane can display, and the set `open_document`
+/// classifies as `kind: "image"`. Defined once at the crate root and imported
+/// by `commands::documents` so the two classifications cannot drift apart.
+pub(crate) const IMAGE_EXTS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif",
+];
+
+/// Largest local image inlined into the preview HTML. Bigger files keep their
+/// original `src` and simply fail to load instead of freezing the webview.
+const MAX_EMBED_IMAGE_BYTES: u64 = 20 * 1024 * 1024;
+
+/// Drop a `file://` scheme, plus the extra slash Windows URLs carry, so that
+/// `file:///C:/x.png` yields `C:/x.png` rather than an unrooted `/C:/x.png`
+/// that `Path::is_absolute` would compare against the current drive root.
+fn strip_file_scheme(src: &str) -> &str {
+    let rest = src.strip_prefix("file://").unwrap_or(src);
+    if let Some(without_slash) = rest.strip_prefix('/') {
+        let bytes = without_slash.as_bytes();
+        if bytes.len() >= 2 && bytes[1] == b':' && bytes[0].is_ascii_alphabetic() {
+            return without_slash;
+        }
+    }
+    rest
+}
+
+/// Resolve an `<img src>` value to a readable file inside `base_dir`, or `None`
+/// when the reference must not be touched. `src` comes straight from document
+/// content, so UNC/device paths (`\\server\share`, `\\.\C:`), any `..` segment,
+/// non-image extensions, and paths whose canonical form escapes `base_dir` are
+/// all refused before any filesystem access.
+fn resolve_local_image(
+    base_dir: &std::path::Path,
+    src: &str,
+) -> Option<std::path::PathBuf> {
+    let value = strip_file_scheme(src);
+
+    if value.starts_with(r"\\") || value.starts_with("//") {
+        return None;
+    }
+    if value.split(['/', '\\']).any(|segment| segment == "..") {
+        return None;
+    }
+
+    let candidate = std::path::Path::new(value);
+    let extension = candidate
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())?;
+    if !IMAGE_EXTS.contains(&extension.as_str()) {
+        return None;
+    }
+
+    let full_path = if candidate.is_absolute() {
+        std::path::PathBuf::from(value)
+    } else {
+        base_dir.join(value)
+    };
+    let canonical = full_path.canonicalize().ok()?;
+    let base_canonical = base_dir.canonicalize().ok()?;
+    if !canonical.starts_with(&base_canonical) {
+        return None;
+    }
+    Some(canonical)
+}
+
+/// Read an image and encode it as a base64 `data:` URI, or `None` when it is
+/// unreadable or larger than `MAX_EMBED_IMAGE_BYTES`.
+async fn read_image_data_uri(path: &std::path::Path) -> Option<String> {
+    let size = tokio::fs::metadata(path).await.ok()?.len();
+    if size > MAX_EMBED_IMAGE_BYTES {
+        log::warn!(
+            "[embed_local_images] not inlining {}: {} bytes exceeds the {} byte limit",
+            path.display(),
+            size,
+            MAX_EMBED_IMAGE_BYTES
+        );
+        return None;
+    }
+    let data = tokio::fs::read(path).await.ok()?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+    Some(format!("data:{};base64,{}", guess_mime(path), b64))
+}
+
 /// Scan rendered HTML and embed local image files as base64 data URIs.
 /// This is async so blocking file reads don't starve the Tauri runtime.
+/// References that are refused (see `resolve_local_image`) or unreadable keep
+/// their original `src`, so the image simply does not load.
 pub async fn embed_local_images(html: &str, base_dir: &std::path::Path) -> String {
     let mut out = String::with_capacity(html.len() * 2);
     let mut rest = html;
@@ -110,25 +195,12 @@ pub async fn embed_local_images(html: &str, base_dir: &std::path::Path) -> Strin
         {
             out.push_str(src);
         } else {
-            let path_str = if src.starts_with("file://") {
-                &src[7..]
-            } else {
-                src
-            };
-
-            let full_path = if std::path::Path::new(path_str).is_absolute() {
-                std::path::PathBuf::from(path_str)
-            } else {
-                base_dir.join(path_str)
-            };
-
-            match tokio::fs::read(&full_path).await {
-                Ok(data) => {
-                    let mime = guess_mime(&full_path);
-                    let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
-                    out.push_str(&format!("data:{};base64,{}", mime, b64));
-                }
-                Err(_) => out.push_str(src),
+            match resolve_local_image(base_dir, src) {
+                Some(path) => match read_image_data_uri(&path).await {
+                    Some(data_uri) => out.push_str(&data_uri),
+                    None => out.push_str(src),
+                },
+                None => out.push_str(src),
             }
         }
 
@@ -306,4 +378,143 @@ pub fn run() {
     });
     #[cfg(not(target_os = "macos"))]
     app.run(|_app, _event| {});
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A 1x1 PNG header. Only the extension matters for the decision logic.
+    const TINY_PNG: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+    /// `file:///C:/...` on Windows, `file:///tmp/...` elsewhere.
+    fn file_url(path: &std::path::Path) -> String {
+        let display = path.display().to_string().replace('\\', "/");
+        if display.starts_with('/') {
+            format!("file://{}", display)
+        } else {
+            format!("file:///{}", display)
+        }
+    }
+
+    #[test]
+    fn unc_and_device_paths_are_refused() {
+        let dir = tempfile::tempdir().unwrap();
+
+        assert_eq!(resolve_local_image(dir.path(), r"\\server\share\a.png"), None);
+        assert_eq!(resolve_local_image(dir.path(), r"\\.\C:\x.png"), None);
+        assert_eq!(resolve_local_image(dir.path(), r"\\?\C:\x.png"), None);
+        assert_eq!(resolve_local_image(dir.path(), "//server/share/a.png"), None);
+    }
+
+    #[test]
+    fn paths_outside_the_document_directory_are_refused() {
+        let parent = tempfile::tempdir().unwrap();
+        let base = parent.path().join("docs");
+        std::fs::create_dir_all(&base).unwrap();
+        // A real image that only an escaping or absolute reference can reach.
+        let outside = parent.path().join("outside.png");
+        std::fs::write(&outside, TINY_PNG).unwrap();
+
+        assert_eq!(resolve_local_image(&base, "../outside.png"), None);
+        assert_eq!(resolve_local_image(&base, outside.to_str().unwrap()), None);
+        assert_eq!(
+            resolve_local_image(&base, &file_url(&outside)),
+            None,
+            "a file:// URL outside the document directory must be refused"
+        );
+        assert_eq!(resolve_local_image(&base, "C:/Windows/win.ini"), None);
+    }
+
+    #[test]
+    fn non_image_extensions_are_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("notes.txt"), b"hello").unwrap();
+        std::fs::write(dir.path().join("key.pem"), b"-----BEGIN KEY-----").unwrap();
+
+        assert_eq!(resolve_local_image(dir.path(), "notes.txt"), None);
+        assert_eq!(resolve_local_image(dir.path(), "key.pem"), None);
+    }
+
+    #[test]
+    fn images_inside_the_document_directory_resolve() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("assets")).unwrap();
+        let pic = dir.path().join("assets").join("pic.png");
+        std::fs::write(&pic, TINY_PNG).unwrap();
+        let canonical = pic.canonicalize().unwrap();
+
+        assert_eq!(
+            resolve_local_image(dir.path(), "assets/pic.png"),
+            Some(canonical.clone())
+        );
+        assert_eq!(
+            resolve_local_image(dir.path(), pic.to_str().unwrap()),
+            Some(canonical.clone())
+        );
+        assert_eq!(
+            resolve_local_image(dir.path(), &file_url(&pic)),
+            Some(canonical.clone()),
+            "a file:// URL inside the document directory must resolve"
+        );
+    }
+
+    #[test]
+    fn uppercase_extensions_are_accepted() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("SHOT.PNG"), TINY_PNG).unwrap();
+
+        assert!(resolve_local_image(dir.path(), "SHOT.PNG").is_some());
+    }
+
+    #[test]
+    fn file_scheme_strips_one_slash_to_keep_the_drive_letter() {
+        assert_eq!(strip_file_scheme("file:///C:/docs/pic.png"), "C:/docs/pic.png");
+        assert_eq!(strip_file_scheme("file:///tmp/pic.png"), "/tmp/pic.png");
+        assert_eq!(strip_file_scheme("photo.png"), "photo.png");
+    }
+
+    #[tokio::test]
+    async fn embed_inlines_local_images_and_leaves_refused_sources_untouched() {
+        let parent = tempfile::tempdir().unwrap();
+        let base = parent.path().join("docs");
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::write(base.join("pic.png"), TINY_PNG).unwrap();
+        std::fs::write(parent.path().join("outside.png"), TINY_PNG).unwrap();
+
+        let html = concat!(
+            r#"<p><img src="pic.png" alt="local"></p>"#,
+            r#"<p><img src="\\server\share\a.png"></p>"#,
+            r#"<p><img src="../outside.png"></p>"#,
+            r#"<p><img src="missing.png"></p>"#,
+        );
+        let out = embed_local_images(html, &base).await;
+
+        assert!(
+            out.contains(r#"src="data:image/png;base64,iVBORw0KGgo=""#),
+            "the document-relative image was not inlined: {out}"
+        );
+        assert!(
+            out.contains(r#"src="\\server\share\a.png""#),
+            "the UNC source was rewritten: {out}"
+        );
+        assert!(
+            out.contains(r#"src="../outside.png""#),
+            "the escaping source was rewritten: {out}"
+        );
+        assert!(
+            out.contains(r#"src="missing.png""#),
+            "the missing source was rewritten: {out}"
+        );
+    }
+
+    #[tokio::test]
+    async fn oversized_images_are_not_inlined() {
+        let dir = tempfile::tempdir().unwrap();
+        let big = dir.path().join("big.png");
+        std::fs::write(&big, vec![0u8; MAX_EMBED_IMAGE_BYTES as usize + 1]).unwrap();
+
+        let out = embed_local_images(r#"<img src="big.png">"#, dir.path()).await;
+        assert_eq!(out, r#"<img src="big.png">"#);
+    }
 }

@@ -53,39 +53,39 @@
 
   function buildCommands(): PaletteItem[] {
     return [
-      { id: "new-file", label: "New File", detail: "Create a new untitled document", icon: "new-file", category: "File", action: () => { newDocument(); onClose(); } },
-      { id: "open-file", label: "Open File...", detail: "Open an existing markdown file", icon: "file", category: "File", action: () => { openDocument(); onClose(); } },
-      { id: "open-folder", label: "Open Folder...", detail: "Open a workspace folder", icon: "folder", category: "File", action: () => { openFolder(); onClose(); } },
-      { id: "search-workspace", label: "Search Workspace", detail: "Search across all files in the workspace", icon: "search", category: "File", action: () => { window.dispatchEvent(new CustomEvent("markz:open-search")); onClose(); } },
-      { id: "save", label: "Save", detail: "Save the current document", icon: "save", category: "File", action: () => { saveDocument(); onClose(); } },
-      { id: "go-back", label: "Go Back", detail: "Navigate to the previous document (Alt+Left)", icon: "arrow-left", category: "File", action: () => { goBack(); onClose(); } },
-      { id: "go-forward", label: "Go Forward", detail: "Navigate to the next document (Alt+Right)", icon: "arrow-right", category: "File", action: () => { goForward(); onClose(); } },
-      { id: "close-tab", label: "Close Tab", detail: "Close the active tab", icon: "x", category: "File", action: () => { closeActiveTab(); onClose(); } },
-      { id: "toggle-sidebar", label: "Toggle Sidebar", detail: "Show or hide the sidebar panel", icon: "sidebar", category: "View", action: () => { toggleSidebar(); onClose(); } },
-      { id: "toggle-outline", label: "Show Outline", detail: "Switch sidebar to Outline view", icon: "outline", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-activity", { detail: "outline" })); onClose(); } },
-      { id: "toggle-files", label: "Show Files", detail: "Switch sidebar to Files view", icon: "folder", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-activity", { detail: "files" })); onClose(); } },
-      { id: "toggle-links", label: "Show Links", detail: "Switch sidebar to Links view", icon: "links", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-activity", { detail: "links" })); onClose(); } },
-      { id: "view-split", label: "Split View", detail: "Show editor and preview side by side", icon: "eye", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-view-mode", { detail: "split" })); onClose(); } },
-      { id: "view-editor", label: "Editor Only", detail: "Show only the editor pane", icon: "eye-off", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-view-mode", { detail: "editor" })); onClose(); } },
-      { id: "view-preview", label: "Preview Only", detail: "Show only the preview pane", icon: "eye", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-view-mode", { detail: "preview" })); onClose(); } },
-      { id: "zoom-in", label: "Zoom In", detail: "Increase content zoom", icon: "zoom-in", category: "View", action: () => { contentZoomStore.increase(); onClose(); } },
-      { id: "zoom-out", label: "Zoom Out", detail: "Decrease content zoom", icon: "zoom-out", category: "View", action: () => { contentZoomStore.decrease(); onClose(); } },
-      { id: "zoom-reset", label: "Reset Zoom", detail: "Reset zoom to 100%", icon: "rotate-ccw", category: "View", action: () => { contentZoomStore.reset(); onClose(); } },
-      { id: "toggle-debug-panel", label: "Toggle Debug Panel", detail: "Show or hide the debug log panel (Ctrl+Shift+Y)", icon: "bug", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:toggle-debug-panel")); onClose(); } },
-      { id: "git-diff", label: "Git Diff", detail: "Open the git diff panel", icon: "git", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:open-git-diff")); onClose(); } },
-      { id: "settings", label: "Settings", detail: "Open the settings modal", icon: "settings", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:open-settings")); onClose(); } },
-      { id: "help", label: "Help", detail: "Open the help modal", icon: "help", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:open-help")); onClose(); } },
-      { id: "export-docx", label: "Export to DOCX", detail: "Export current document as Word", icon: "download", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:export-docx")); onClose(); } },
-      { id: "print-pdf", label: "Print to PDF", detail: "Print preview as PDF", icon: "printer", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:print-pdf")); onClose(); } },
-      { id: "presentation", label: "Start Presentation", detail: "Present current document as slides", icon: "presentation", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:start-presentation")); onClose(); } },
-      { id: "toggle-slide-breaks", label: "Toggle Slide Break Mode", detail: "Edit slide boundaries in the gutter", icon: "presentation", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:toggle-slide-breaks")); onClose(); } },
-      { id: "new-from-template", label: "New from Template", detail: "Create a document from a template", icon: "template", category: "File", action: () => { window.dispatchEvent(new CustomEvent("markz:open-template-browser")); onClose(); } },
-      { id: "save-as-template", label: "Save as Template", detail: "Save current document as a reusable template", icon: "template", category: "File", action: () => { window.dispatchEvent(new CustomEvent("markz:open-save-template")); onClose(); } },
-      { id: "copy-jira", label: "Copy as JIRA", detail: "Copy document formatted for JIRA", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_jira", label: "Copy as JIRA", mode: "copy" } })); onClose(); } },
-      { id: "copy-confluence", label: "Copy as Confluence", detail: "Copy document formatted for Confluence", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_confluence", label: "Copy as Confluence", mode: "copy" } })); onClose(); } },
-      { id: "copy-slack", label: "Copy as Slack", detail: "Copy document formatted for Slack", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_slack", label: "Copy as Slack", mode: "copy" } })); onClose(); } },
-      { id: "copy-github", label: "Copy as GitHub", detail: "Copy document formatted for GitHub", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_github", label: "Copy as GitHub", mode: "copy" } })); onClose(); } },
-      { id: "copy-html", label: "Copy as HTML", detail: "Copy rendered HTML to clipboard", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "render_preview", label: "Copy as HTML", mode: "copy" } })); onClose(); } },
+      { id: "new-file", label: "New File", detail: "Create a new untitled document", icon: "new-file", category: "File", action: () => { newDocument(); } },
+      { id: "open-file", label: "Open File...", detail: "Open an existing markdown file", icon: "file", category: "File", action: () => { openDocument(); } },
+      { id: "open-folder", label: "Open Folder...", detail: "Open a workspace folder", icon: "folder", category: "File", action: () => { openFolder(); } },
+      { id: "search-workspace", label: "Search Workspace", detail: "Search across all files in the workspace", icon: "search", category: "File", action: () => { window.dispatchEvent(new CustomEvent("markz:open-search")); } },
+      { id: "save", label: "Save", detail: "Save the current document", icon: "save", category: "File", action: () => { saveDocument(); } },
+      { id: "go-back", label: "Go Back", detail: "Navigate to the previous document (Alt+Left)", icon: "arrow-left", category: "File", action: () => { goBack(); } },
+      { id: "go-forward", label: "Go Forward", detail: "Navigate to the next document (Alt+Right)", icon: "arrow-right", category: "File", action: () => { goForward(); } },
+      { id: "close-tab", label: "Close Tab", detail: "Close the active tab", icon: "x", category: "File", action: () => { closeActiveTab(); } },
+      { id: "toggle-sidebar", label: "Toggle Sidebar", detail: "Show or hide the sidebar panel", icon: "sidebar", category: "View", action: () => { toggleSidebar(); } },
+      { id: "toggle-outline", label: "Show Outline", detail: "Switch sidebar to Outline view", icon: "outline", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-activity", { detail: "outline" })); } },
+      { id: "toggle-files", label: "Show Files", detail: "Switch sidebar to Files view", icon: "folder", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-activity", { detail: "files" })); } },
+      { id: "toggle-links", label: "Show Links", detail: "Switch sidebar to Links view", icon: "links", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-activity", { detail: "links" })); } },
+      { id: "view-split", label: "Split View", detail: "Show editor and preview side by side", icon: "eye", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-view-mode", { detail: "split" })); } },
+      { id: "view-editor", label: "Editor Only", detail: "Show only the editor pane", icon: "eye-off", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-view-mode", { detail: "editor" })); } },
+      { id: "view-preview", label: "Preview Only", detail: "Show only the preview pane", icon: "eye", category: "View", action: () => { window.dispatchEvent(new CustomEvent("markz:set-view-mode", { detail: "preview" })); } },
+      { id: "zoom-in", label: "Zoom In", detail: "Increase content zoom", icon: "zoom-in", category: "View", action: () => { contentZoomStore.increase(); } },
+      { id: "zoom-out", label: "Zoom Out", detail: "Decrease content zoom", icon: "zoom-out", category: "View", action: () => { contentZoomStore.decrease(); } },
+      { id: "zoom-reset", label: "Reset Zoom", detail: "Reset zoom to 100%", icon: "rotate-ccw", category: "View", action: () => { contentZoomStore.reset(); } },
+      { id: "toggle-debug-panel", label: "Toggle Debug Panel", detail: "Show or hide the debug log panel (Ctrl+Shift+Y)", icon: "bug", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:toggle-debug-panel")); } },
+      { id: "git-diff", label: "Git Diff", detail: "Open the git diff panel", icon: "git", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:open-git-diff")); } },
+      { id: "settings", label: "Settings", detail: "Open the settings modal", icon: "settings", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:open-settings")); } },
+      { id: "help", label: "Help", detail: "Open the help modal", icon: "help", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:open-help")); } },
+      { id: "export-docx", label: "Export to DOCX", detail: "Export current document as Word", icon: "download", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:export-docx")); } },
+      { id: "print-pdf", label: "Print to PDF", detail: "Print preview as PDF", icon: "printer", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:print-pdf")); } },
+      { id: "presentation", label: "Start Presentation", detail: "Present current document as slides", icon: "presentation", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:start-presentation")); } },
+      { id: "toggle-slide-breaks", label: "Toggle Slide Break Mode", detail: "Edit slide boundaries in the gutter", icon: "presentation", category: "Tools", action: () => { window.dispatchEvent(new CustomEvent("markz:toggle-slide-breaks")); } },
+      { id: "new-from-template", label: "New from Template", detail: "Create a document from a template", icon: "template", category: "File", action: () => { window.dispatchEvent(new CustomEvent("markz:open-template-browser")); } },
+      { id: "save-as-template", label: "Save as Template", detail: "Save current document as a reusable template", icon: "template", category: "File", action: () => { window.dispatchEvent(new CustomEvent("markz:open-save-template")); } },
+      { id: "copy-jira", label: "Copy as JIRA", detail: "Copy document formatted for JIRA", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_jira", label: "Copy as JIRA", mode: "copy" } })); } },
+      { id: "copy-confluence", label: "Copy as Confluence", detail: "Copy document formatted for Confluence", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_confluence", label: "Copy as Confluence", mode: "copy" } })); } },
+      { id: "copy-slack", label: "Copy as Slack", detail: "Copy document formatted for Slack", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_slack", label: "Copy as Slack", mode: "copy" } })); } },
+      { id: "copy-github", label: "Copy as GitHub", detail: "Copy document formatted for GitHub", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "convert_to_github", label: "Copy as GitHub", mode: "copy" } })); } },
+      { id: "copy-html", label: "Copy as HTML", detail: "Copy rendered HTML to clipboard", icon: "clipboard-copy", category: "Export", action: () => { window.dispatchEvent(new CustomEvent("markz:trigger-copy", { detail: { command: "render_preview", label: "Copy as HTML", mode: "copy" } })); } },
     ];
   }
 
@@ -155,6 +155,9 @@
       recordCommandUse(item.id);
     }
     item.action();
+    // Activating an item always dismisses the palette — in both modes and via
+    // both the keyboard and click paths. Items must not close it themselves.
+    onClose();
   }
 
   onMount(() => {

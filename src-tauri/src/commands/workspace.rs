@@ -143,6 +143,11 @@ pub async fn list_dir_children(path: String, root: String) -> Result<Vec<FileTre
 #[tauri::command]
 pub async fn create_workspace_file(path: String) -> Result<String, String> {
     let p = Path::new(&path);
+    // `tokio::fs::write` opens with O_TRUNC, so writing over an existing entry
+    // would silently destroy it. Refuse instead.
+    if tokio::fs::try_exists(p).await.map_err(|e| e.to_string())? {
+        return Err("A file or folder with that name already exists".to_string());
+    }
     if let Some(parent) = p.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
     }
@@ -152,12 +157,57 @@ pub async fn create_workspace_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn create_workspace_folder(path: String) -> Result<String, String> {
-    tokio::fs::create_dir_all(&path).await.map_err(|e| e.to_string())?;
+    let p = Path::new(&path);
+    if tokio::fs::try_exists(p).await.map_err(|e| e.to_string())? {
+        return Err("A file or folder with that name already exists".to_string());
+    }
+    tokio::fs::create_dir_all(p).await.map_err(|e| e.to_string())?;
     Ok(path)
+}
+
+/// Windows reserves these stems for devices; they are unusable as entry names
+/// with or without an extension (`CON.txt` is also `CON`).
+const RESERVED_DEVICE_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
+/// A rename target must be one ordinary path component: anything else
+/// (`..\..\a.md`, `sub/x.md`, `C:evil`) would move the entry outside the
+/// directory it was renamed in.
+fn validate_entry_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Name cannot be empty".to_string());
+    }
+    if name == "." || name.split(['/', '\\']).any(|segment| segment == "..") {
+        return Err("Name cannot be `.` or reference a parent directory".to_string());
+    }
+    if name.contains(['/', '\\', '\0']) {
+        return Err("Name cannot contain path separators".to_string());
+    }
+    // `Path::join` replaces the whole path for a component carrying a drive
+    // prefix, so `C:evil` would escape the entry's directory.
+    let bytes = name.as_bytes();
+    if bytes.len() >= 2 && bytes[1] == b':' && bytes[0].is_ascii_alphabetic() {
+        return Err("Name cannot contain a drive prefix".to_string());
+    }
+    // Windows strips these, so the stored name would silently differ.
+    if name.ends_with('.') || name.ends_with(' ') {
+        return Err("Name cannot end with a dot or a space".to_string());
+    }
+    let stem = name.split('.').next().unwrap_or(name);
+    if RESERVED_DEVICE_NAMES
+        .iter()
+        .any(|reserved| reserved.eq_ignore_ascii_case(stem))
+    {
+        return Err(format!("`{name}` is a reserved device name on Windows"));
+    }
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn rename_workspace_entry(old_path: String, new_name: String) -> Result<String, String> {
+    validate_entry_name(&new_name)?;
     let old = Path::new(&old_path);
     let parent = old.parent().ok_or("Cannot rename root directory")?;
     let new_path = parent.join(&new_name);
@@ -357,6 +407,65 @@ mod tests {
         let old_path = format!("{}/a.md", root);
         let result = rename_workspace_entry(old_path, "b.md".to_string()).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn create_workspace_file_refuses_to_overwrite_existing_file() {
+        let (_dir, root) = temp_dir_with_file("keep.md", "# keep me").await;
+        let path = format!("{}/keep.md", root);
+
+        let result = create_workspace_file(path.clone()).await;
+
+        assert!(result.is_err());
+        assert_eq!(
+            tokio::fs::read_to_string(&path).await.unwrap(),
+            "# keep me"
+        );
+    }
+
+    #[tokio::test]
+    async fn create_workspace_folder_refuses_existing_path() {
+        let (_dir, root) = temp_dir_with_file("existing.md", "# ok").await;
+        let path = format!("{}/nested", root);
+        tokio::fs::create_dir(&path).await.unwrap();
+
+        assert!(create_workspace_folder(path).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn rename_workspace_entry_rejects_escaping_and_reserved_names() {
+        let (_dir, root) = temp_dir_with_file("a.md", "# a").await;
+        let old_path = format!("{}/a.md", root);
+        for name in [
+            "..",
+            "..\\..\\b.md",
+            "sub/x.md",
+            "C:evil.md",
+            "C:\\evil.md",
+            "trailing.",
+            "trailing ",
+            "nul\0.md",
+            "CON",
+            "con.txt",
+            "LPT9.log",
+            "",
+        ] {
+            let result = rename_workspace_entry(old_path.clone(), name.to_string()).await;
+            assert!(result.is_err(), "`{name}` should be rejected");
+        }
+        assert!(std::path::Path::new(&old_path).exists());
+    }
+
+    #[tokio::test]
+    async fn rename_workspace_entry_accepts_ordinary_dotted_names() {
+        let (_dir, root) = temp_dir_with_file("a.md", "# a").await;
+        let old_path = format!("{}/a.md", root);
+
+        let new_path = rename_workspace_entry(old_path, "console-md.md".to_string())
+            .await
+            .unwrap();
+
+        assert!(std::path::Path::new(&new_path).exists());
     }
 
     #[tokio::test]
