@@ -6,6 +6,9 @@ use std::fmt::Write;
 
 pub fn render(document: &Document) -> String {
     let mut output = String::new();
+    if let Some(frontmatter) = &document.frontmatter {
+        render_frontmatter(&mut output, frontmatter);
+    }
     let mut footnotes: Vec<&Block> = Vec::new();
     for block in &document.blocks {
         match block {
@@ -28,6 +31,77 @@ pub fn render(document: &Document) -> String {
         output.push_str("</ol>\n</div>\n");
     }
     output
+}
+
+/// Render document metadata as a key/value block above the body.
+///
+/// Values are emitted as escaped literal text, never re-parsed as Markdown, so
+/// `title: *draft*` keeps its asterisks. Nested mappings become dotted keys
+/// (`author.name`), arrays are comma-joined.
+fn render_frontmatter(output: &mut String, frontmatter: &Frontmatter) {
+    let mut rows = String::new();
+    match &frontmatter.metadata {
+        serde_json::Value::Object(map) => {
+            for (key, value) in map {
+                append_frontmatter_rows(&mut rows, key, value);
+            }
+        }
+        // Unparseable YAML/TOML (metadata is `Null`): show the raw block so the
+        // fields the user wrote stay visible instead of vanishing.
+        _ => {
+            let raw: Vec<&str> = frontmatter
+                .raw
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty() && *line != "---" && *line != "+++")
+                .collect();
+            if raw.is_empty() {
+                return;
+            }
+            output.push_str("<div class=\"frontmatter\"><pre class=\"frontmatter-raw\">");
+            escape_html(output, &raw.join("\n"));
+            output.push_str("</pre></div>");
+            output.push('\n');
+            return;
+        }
+    }
+    if rows.is_empty() {
+        return;
+    }
+    output.push_str("<div class=\"frontmatter\">");
+    output.push_str(&rows);
+    output.push_str("</div>");
+    output.push('\n');
+}
+
+fn append_frontmatter_rows(rows: &mut String, key: &str, value: &serde_json::Value) {
+    if let serde_json::Value::Object(map) = value {
+        for (sub_key, sub_value) in map {
+            append_frontmatter_rows(rows, &format!("{key}.{sub_key}"), sub_value);
+        }
+        return;
+    }
+    rows.push_str("<div class=\"frontmatter-row\"><span class=\"frontmatter-key\">");
+    escape_html(rows, key);
+    rows.push_str("</span><span class=\"frontmatter-value\">");
+    escape_html(rows, &frontmatter_value_text(value));
+    rows.push_str("</span></div>");
+}
+
+/// Flatten a metadata value to display text: scalars verbatim, arrays joined
+/// with `, `, and anything inside an array rendered as compact JSON.
+fn frontmatter_value_text(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => String::new(),
+        serde_json::Value::String(text) => text.clone(),
+        serde_json::Value::Bool(_) | serde_json::Value::Number(_) => value.to_string(),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .map(frontmatter_value_text)
+            .collect::<Vec<_>>()
+            .join(", "),
+        serde_json::Value::Object(_) => value.to_string(),
+    }
 }
 
 fn render_block(output: &mut String, block: &Block) {
@@ -290,6 +364,76 @@ fn escape_attr(output: &mut String, text: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_render_frontmatter_fields() {
+        let doc = crate::parser::parse_full("---\ntitle: Hello\nauthor: Alice\n---\n\n# Body");
+        let html = render(&doc);
+        assert!(
+            html.contains(
+                r#"<span class="frontmatter-key">title</span><span class="frontmatter-value">Hello</span>"#
+            ),
+            "{html}"
+        );
+        assert!(
+            html.contains(
+                r#"<span class="frontmatter-key">author</span><span class="frontmatter-value">Alice</span>"#
+            ),
+            "{html}"
+        );
+        assert!(html.contains(r#"<h1 id="body">Body</h1>"#), "{html}");
+        // The raw YAML must not survive as body text.
+        assert!(!html.contains("title: Hello"), "{html}");
+    }
+
+    #[test]
+    fn test_render_frontmatter_arrays_nesting_and_scalars() {
+        let doc = crate::parser::parse_full(
+            "---\ntags: [rust, tauri]\nauthor:\n  name: Alice\ndraft: true\ncount: 3\n---\n\nbody",
+        );
+        let html = render(&doc);
+        for expected in [
+            r#"<span class="frontmatter-key">tags</span><span class="frontmatter-value">rust, tauri</span>"#,
+            r#"<span class="frontmatter-key">author.name</span><span class="frontmatter-value">Alice</span>"#,
+            r#"<span class="frontmatter-key">draft</span><span class="frontmatter-value">true</span>"#,
+            r#"<span class="frontmatter-key">count</span><span class="frontmatter-value">3</span>"#,
+        ] {
+            assert!(html.contains(expected), "missing {expected} in {html}");
+        }
+    }
+
+    #[test]
+    fn test_render_frontmatter_escapes_markup() {
+        let doc = crate::parser::parse_full("---\ntitle: \"<img src=x onerror=alert(1)>\"\n---\n\nbody");
+        let html = render(&doc);
+        assert!(!html.contains("<img"), "{html}");
+        assert!(html.contains("&lt;img"), "{html}");
+    }
+
+    #[test]
+    fn test_render_frontmatter_only_document() {
+        let doc = crate::parser::parse_full("---\ntitle: Hello\nauthor: Alice\n---");
+        let html = render(&doc);
+        assert!(html.contains(r#"class="frontmatter-key""#), "{html}");
+        assert!(!html.contains("<h2"), "{html}");
+        assert!(!html.contains("<p>"), "{html}");
+    }
+
+    #[test]
+    fn test_render_unparseable_frontmatter_falls_back_to_raw() {
+        let doc = crate::parser::parse_full("---\nthis: [is: not: valid\n---\n\nbody");
+        assert!(doc.frontmatter.is_some());
+        let html = render(&doc);
+        assert!(html.contains(r#"class="frontmatter-raw""#), "{html}");
+        assert!(html.contains("not: valid"), "{html}");
+    }
+
+    #[test]
+    fn test_render_empty_frontmatter_renders_nothing() {
+        let doc = crate::parser::parse_full("---\n---\n\nbody");
+        let html = render(&doc);
+        assert!(!html.contains("frontmatter"), "{html}");
+    }
 
     #[test]
     fn test_render_heading() {

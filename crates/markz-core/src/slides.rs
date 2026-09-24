@@ -60,11 +60,7 @@ impl Default for SlideDeck {
 /// - Content before the first heading becomes a **title** slide.
 /// - If the first block is an H1, it becomes a title slide (not a section).
 pub fn parse_slides(markdown: &str) -> SlideDeck {
-    let mut doc = crate::parser::parse(markdown);
-    let remaining = crate::frontmatter::parse_into_document(markdown, &mut doc);
-    if !remaining.is_empty() {
-        doc.blocks = crate::parser::parse(&remaining).blocks;
-    }
+    let doc = crate::parser::parse_full(markdown);
 
     let mut deck = SlideDeck::default();
 

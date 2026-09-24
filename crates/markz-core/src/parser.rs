@@ -641,14 +641,20 @@ pub fn parse(markdown: &str) -> Document {
 }
 
 /// Parse Markdown text into a Document AST, including frontmatter extraction.
+///
+/// The frontmatter block is split into [`Document::frontmatter`] and never
+/// becomes part of [`Document::blocks`], so a document that contains *only*
+/// frontmatter parses to zero blocks. Anything that renders or counts blocks
+/// therefore cannot leak the raw YAML into its output.
 pub fn parse_full(markdown: &str) -> Document {
-    let text = preprocess_math(markdown);
-    let mut doc = parse(&text);
-    let remaining = crate::frontmatter::parse_into_document(&text, &mut doc);
-    if !remaining.is_empty() {
-        doc.blocks = parse(&remaining).blocks;
+    let (remaining, frontmatter) = crate::frontmatter::extract(markdown);
+    match frontmatter {
+        None => parse(markdown),
+        Some(frontmatter) => Document {
+            frontmatter: Some(frontmatter),
+            blocks: parse(remaining).blocks,
+        },
     }
-    doc
 }
 fn alignment_from_pulldown(a: pulldown_cmark::Alignment) -> Option<Alignment> {
     match a {

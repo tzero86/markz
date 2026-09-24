@@ -1,9 +1,12 @@
-use crate::ast::{Document, Frontmatter, FrontmatterFormat};
+use crate::ast::{Frontmatter, FrontmatterFormat};
 
 /// Extract frontmatter from raw Markdown text and parse it into structured metadata.
 /// Returns (remaining_text, frontmatter_if_any).
 pub fn extract(text: &str) -> (&str, Option<Frontmatter>) {
-    let trimmed = text.trim_start();
+    // A UTF-8 BOM is not whitespace, so it has to be skipped explicitly: a file
+    // saved by another editor with a BOM would otherwise never be recognised as
+    // having frontmatter, and its YAML would render as document text.
+    let trimmed = text.trim_start_matches('\u{feff}').trim_start();
 
     // YAML frontmatter: ---\n...\n---
     if trimmed.starts_with("---") {
@@ -52,13 +55,6 @@ fn parse_toml(text: &str) -> serde_json::Value {
     toml::from_str(text).unwrap_or_else(|_| serde_json::Value::Null)
 }
 
-/// Parse frontmatter and attach it to the document.
-pub fn parse_into_document(text: &str, doc: &mut Document) -> String {
-    let (remaining, fm) = extract(text);
-    doc.frontmatter = fm;
-    remaining.to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,14 +92,33 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_into_document() {
-        let text = "---\ntitle: Test\n---\n# Hello";
-        let mut doc = Document::new();
-        let remaining = parse_into_document(text, &mut doc);
-        assert_eq!(remaining, "\n# Hello");
+    fn test_frontmatter_only_document_has_no_blocks() {
+        // Regression: the YAML leaked into `blocks` whenever the body after the
+        // frontmatter block was empty (frontmatter-only document), because the
+        // body re-parse was skipped for an empty remainder.
+        let doc = crate::parser::parse_full("---\ntitle: Test\nauthor: Alice\n---");
         assert!(doc.frontmatter.is_some());
-        let fm = doc.frontmatter.unwrap();
-        assert_eq!(fm.metadata["title"], "Test");
+        assert_eq!(doc.frontmatter.unwrap().metadata["title"], "Test");
+        assert!(doc.blocks.is_empty());
+    }
+
+    #[test]
+    fn test_frontmatter_with_body_parses_body_only() {
+        let doc = crate::parser::parse_full("---\ntitle: Test\n---\n# Hello");
+        assert!(doc.frontmatter.is_some());
+        assert_eq!(doc.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_frontmatter_with_utf8_bom() {
+        let text = "\u{feff}---\ntitle: Hello\nauthor: Alice\n---\n\n# World";
+        let (rest, fm) = extract(text);
+        assert_eq!(fm.expect("frontmatter after BOM").metadata["title"], "Hello");
+        assert_eq!(rest, "\n\n# World");
+
+        let doc = crate::parser::parse_full(text);
+        assert_eq!(doc.blocks.len(), 1);
+        assert_eq!(doc.frontmatter.unwrap().metadata["author"], "Alice");
     }
 
     #[test]

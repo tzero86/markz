@@ -441,7 +441,18 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
 
     finishStartup();
 
+    // Content edits coalesce their session writes; make sure the pending one
+    // lands before the window goes away.
+    const flushSessionWhenHidden = () => {
+      if (document.visibilityState === "hidden") tabStore.flushSession();
+    };
+    const flushSessionOnUnload = () => tabStore.flushSession();
+    document.addEventListener("visibilitychange", flushSessionWhenHidden);
+    window.addEventListener("beforeunload", flushSessionOnUnload);
+
     return () => {
+      document.removeEventListener("visibilitychange", flushSessionWhenHidden);
+      window.removeEventListener("beforeunload", flushSessionOnUnload);
       if (unlisten) {
         unlisten();
       }

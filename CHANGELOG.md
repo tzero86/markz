@@ -1,3 +1,25 @@
+## [0.8.77] - 2026-09-24
+
+### Added
+
+- **Read-along highlighting while a document is read aloud** — the preview now tints the block being spoken, keeps it in view, and highlights the sentence and the current word, so the page can be followed with the audio. One audio clip is one sentence, so the sentence boundary is exact; the word is interpolated from the audio position, because neither the Edge nor the Windows engine reports word boundaries. Highlights are painted through the CSS Custom Highlight API, which leaves the preview DOM untouched, and are cleared on stop or when playback ends. Frontmatter is metadata and is not read aloud.
+
+### Fixed
+
+- **Frontmatter is rendered in the preview** — `html::render` ignored `Document::frontmatter`, so document metadata never appeared in the preview at all. It now renders as a key/value block above the body: keys in source order, nested mappings as dotted keys (`author.name`), arrays comma-joined, values escaped as literal text, and an unparseable block showing its raw lines rather than vanishing.
+- **Frontmatter no longer leaks into the body as a single paragraph** — the body was only re-parsed when text followed the closing delimiter, so a document that was *only* frontmatter (no trailing body, or no trailing newline) rendered its YAML as a setext heading/paragraph with every field joined onto one line — `title: Hello author: Bob`. The body is now parsed from whatever follows the block, which is empty in that case. `parser::parse_full` is the single entry point for the preview, converters, stats, TOC and slides, replacing four copies of this logic in `src-tauri`.
+- **Frontmatter in a file saved with a UTF-8 BOM is detected** — a BOM is not whitespace, so it defeated the `---` check and the YAML was rendered as body text. That is the usual shape of this bug on Windows, where other editors write the BOM.
+
+### Performance
+
+Measured on a 400-section / 560 KB document while typing: main-thread work per keystroke burst drops from 1218 ms to 885 ms, and the per-keystroke costs that scaled with document size are gone.
+
+- **The session is no longer serialised on every keystroke** — `setContent` called `persistSession`, so every keystroke rewrote *every* open document to disk (JSON + IPC + file write). Structural changes (tab opened, closed, switched, saved) still write immediately; keystroke churn is coalesced and flushed when the window is hidden or closed.
+- **The status bar counts words in one pass** — it ran `content.split(/\s+/)` per keystroke, materialising one string per word: 239 ms of the typing burst above, the largest single JavaScript consumer. A single allocation-free scan costs 96 ms.
+- **Preview renders are coalesced, and the debounce scales with the document** — each keystroke queued a full parse → IPC → sanitize pass, and sanitising a large preview is the most expensive step in it. A superseded render request is now dropped instead of stacked, and the debounce grows with document size (50–250 ms).
+- **The preview cache is keyed by document path, not `path + content`** — the old key copied and hashed the entire document on every render check.
+- **Scroll sync coalesces to one sync per animation frame and reads no layout** — a burst of wheel/trackpad scroll events each triggered a `scrollHeight`/`clientHeight` read that forced a full re-layout of a large preview (1.8 ms at 400 sections) plus a scroll write into the other pane. Metrics now come from a `ResizeObserver`, heading offsets are measured once per layout, and the editor→preview heading lookup is bounded instead of walking back to the top of a heading-free document.
+
 ## [0.8.76] - 2026-09-22
 
 ### Fixed

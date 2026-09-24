@@ -1,4 +1,3 @@
-use markz_core::frontmatter;
 use markz_core::parser;
 use markz_core::util::is_markdown_path;
 
@@ -52,13 +51,7 @@ pub fn handle_argv<R: tauri::Runtime>(app: &tauri::AppHandle<R>, args: &[String]
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 pub fn parse_document(markdown: &str) -> markz_core::ast::Document {
-    let text = parser::preprocess_math(markdown);
-    let mut doc = parser::parse(&text);
-    let remaining = frontmatter::parse_into_document(&text, &mut doc);
-    if !remaining.is_empty() {
-        doc.blocks = parser::parse(&remaining).blocks;
-    }
-    doc
+    parser::parse_full(markdown)
 }
 
 pub fn read_settings_sync() -> Option<markz_config::Settings> {

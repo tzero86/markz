@@ -9,11 +9,7 @@ pub async fn render_preview(
     doc_path: Option<String>,
 ) -> Result<String, String> {
     let t0 = std::time::Instant::now();
-    let mut doc = markz_core::parser::parse(&markdown);
-    let remaining = markz_core::frontmatter::parse_into_document(&markdown, &mut doc);
-    if !remaining.is_empty() {
-        doc.blocks = markz_core::parser::parse(&remaining).blocks;
-    }
+    let doc = markz_core::parser::parse_full(&markdown);
     let t1 = std::time::Instant::now();
     let mut html = markz_core::html::render(&doc);
     let t2 = std::time::Instant::now();
@@ -172,12 +168,7 @@ pub async fn save_file_dialog(
 
 #[tauri::command]
 pub async fn generate_toc(markdown: String) -> Result<Vec<markz_core::toc::TocEntry>, String> {
-    let text = markz_core::parser::preprocess_math(&markdown);
-    let mut doc = markz_core::parser::parse(&text);
-    let remaining = markz_core::frontmatter::parse_into_document(&text, &mut doc);
-    if !remaining.is_empty() {
-        doc.blocks = markz_core::parser::parse(&remaining).blocks;
-    }
+    let doc = markz_core::parser::parse_full(&markdown);
     Ok(markz_core::toc::generate_toc(&doc))
 }
 

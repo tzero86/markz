@@ -349,6 +349,30 @@ function createTabStore() {
   // Skip the per-tab session persistence and let restoreSession persist once
   // at the end. This avoids N redundant disk writes during startup.
   let suppressPersist = false;
+  /** Content edits arrive one per keystroke. Serialising every open document —
+   *  JSON + IPC + a disk write — on each keystroke is what makes typing feel
+   *  heavy once a document grows, so content churn is coalesced; structural
+   *  changes (tab opened, closed, switched, renamed, saved) still write
+   *  immediately. */
+  let sessionPersistTimer: number | undefined;
+  const SESSION_PERSIST_DEBOUNCE_MS = 1000;
+
+  function scheduleSessionPersist() {
+    clearTimeout(sessionPersistTimer);
+    sessionPersistTimer = window.setTimeout(() => {
+      sessionPersistTimer = undefined;
+      persistSession();
+    }, SESSION_PERSIST_DEBOUNCE_MS);
+  }
+
+  /** Write a pending session immediately — used when the window is hidden or
+   *  closed, so coalescing cannot lose the last edits. */
+  function flushSession() {
+    if (sessionPersistTimer === undefined) return;
+    clearTimeout(sessionPersistTimer);
+    sessionPersistTimer = undefined;
+    persistSession();
+  }
 
   // --- Recently saved tracking (to ignore self-triggered file-watch events) ---
   const recentlySavedPaths = new Set<string>();
@@ -397,6 +421,8 @@ function createTabStore() {
     }, autoSaveIntervalMs);
   }
   function persistSession() {
+    clearTimeout(sessionPersistTimer);
+    sessionPersistTimer = undefined;
     const state = get({ subscribe });
     const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
     const sessionTabs: SessionTab[] = state.tabs.map((t) => ({
@@ -419,7 +445,7 @@ function createTabStore() {
       newTabs[idx] = { ...newTabs[idx], content, isDirty: true };
       return { ...state, tabs: newTabs };
     });
-    if (!suppressPersist) persistSession();
+    if (!suppressPersist) scheduleSessionPersist();
     scheduleAutoSave();
   }
 
@@ -860,6 +886,7 @@ function createTabStore() {
     getActiveTab,
     hasDirtyTabs,
     persistSession,
+    flushSession,
     restoreSession,
     setAutoSave,
     addRecentlySaved,

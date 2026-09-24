@@ -3,6 +3,7 @@
   import { activeDocumentStore, autoSaveFlash } from "../../lib/tabStore";
   import { cursorPosition } from "../../lib/editorStore";
   import { contentZoomStore } from "../../lib/contentZoomStore";
+  import { countWords } from "../../lib/textStats";
   import { invoke } from "@tauri-apps/api/core";
   let {
     viewMode,
@@ -17,11 +18,7 @@
     onToggleSplitDirection: () => void;
     onOpenGitDiff?: () => void;
   } = $props();
-  let wordCount = $derived(
-    $activeDocumentStore.content.trim() === ""
-      ? 0
-      : $activeDocumentStore.content.trim().split(/\s+/).filter((w) => w.length > 0).length
-  );
+  let wordCount = $derived(countWords($activeDocumentStore.content));
   let charCount = $derived($activeDocumentStore.content.length);
   let readingTimeMinutes = $derived(Math.max(1, Math.ceil(wordCount / 200)));
   let gitStatus = $state<{ is_repo: boolean; branch: string | null; is_modified: boolean } | null>(null);

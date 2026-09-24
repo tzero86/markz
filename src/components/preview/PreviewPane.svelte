@@ -64,14 +64,23 @@
 
   // Debounced render with progress animation and content hash caching
   let timeout: ReturnType<typeof setTimeout>;
-  let lastCacheKey = "";
+  let lastRenderedContent = "";
   let lastPath: string | null = null;
   let renderGen = 0;
+  // Only one render runs at a time. While it is in flight, further edits are
+  // remembered and rendered once it finishes instead of stacking a full
+  // parse/render/sanitize pass per keystroke.
+  let renderInFlight = false;
+  let pendingRender: {
+    gen: number;
+    content: string;
+    docPath: string | null;
+  } | null = null;
   $effect(() => {
     const content = $activeDocumentStore.content;
     const docPath = $activeDocumentStore.path;
     const isStartupComplete = $startupComplete;
-    const cacheKey = `${docPath ?? "null"}:${content}`;
+    const cacheKey = docPath ?? "null";
     // Don't waste renders on transient startup state (e.g. the welcome tab
     // that gets replaced by session restore). Wait until App.svelte finishes
     // its startup sequence.
@@ -103,13 +112,13 @@
     // switches view modes (Split -> Editor -> Preview -> Split). If we already
     // have a rendered result for this exact document + content, use it
     // immediately instead of re-running render_preview.
-    const cached = getCachedPreview(cacheKey);
+    const cached = getCachedPreview(cacheKey, content);
     if (cached) {
       clearTimeout(timeout);
       if (htmlContent !== cached) {
         htmlContent = cached;
       }
-      lastCacheKey = cacheKey;
+      lastRenderedContent = content;
       lastPath = docPath;
       return;
     }
@@ -121,40 +130,65 @@
       lastPath = docPath;
     }
     // Skip re-render if content hasn't actually changed
-    if (cacheKey === lastCacheKey && htmlContent !== "") {
+    if (content === lastRenderedContent && htmlContent !== "") {
       return;
     }
-    lastCacheKey = cacheKey;
+    lastRenderedContent = content;
     clearTimeout(timeout);
     isRendering = true;
     const renderStart = performance.now();
-    timeout = setTimeout(async () => {
-      try {
-        const rawHtml = await invoke<string>("render_preview", { markdown: content, docPath });
-        logRenderTiming("render_preview returned", renderStart);
-        const result = sanitizeHtml(rawHtml);
-        logRenderTiming("DOMPurify sanitized", renderStart);
-        // Guard: the content we started rendering must still match the
-        // current active document. If tabs were switched while we were
-        // rendering, discard.
-        if (content !== $activeDocumentStore.content) return;
-        if (myGen !== renderGen) return;
-        htmlContent = result;
-        setCachedPreview(cacheKey, result);
-      } catch (e) {
-        if (myGen === renderGen) {
-          htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
-        }
-      } finally {
-        setTimeout(() => {
-          isRendering = false;
-        }, 200);
-      }
-    }, 50); // Debounced render
+    // Rendering cost scales with document size, so the debounce does too: a
+    // burst of keystrokes in a large document must not queue a full
+    // parse/render/sanitize pass per key.
+    const debounceMs = Math.min(50 + Math.floor(content.length / 4000), 250);
+    timeout = setTimeout(() => {
+      void renderPreview(myGen, content, docPath, renderStart);
+    }, debounceMs);
     return () => {
       clearTimeout(timeout);
     };
   });
+
+  async function renderPreview(
+    gen: number,
+    content: string,
+    docPath: string | null,
+    renderStart: number
+  ) {
+    if (renderInFlight) {
+      pendingRender = { gen, content, docPath };
+      return;
+    }
+    renderInFlight = true;
+    try {
+      const rawHtml = await invoke<string>("render_preview", { markdown: content, docPath });
+      logRenderTiming("render_preview returned", renderStart);
+      const result = sanitizeHtml(rawHtml);
+      logRenderTiming("DOMPurify sanitized", renderStart);
+      // Guard: the content we started rendering must still match the current
+      // active document. If tabs were switched while we were rendering,
+      // discard the result.
+      if (gen === renderGen && content === $activeDocumentStore.content) {
+        htmlContent = result;
+        setCachedPreview(docPath ?? "null", content, result);
+      }
+    } catch (e) {
+      if (gen === renderGen) {
+        htmlContent = `<p style="color:var(--error)">Preview error: ${String(e)}</p>`;
+      }
+    } finally {
+      renderInFlight = false;
+      setTimeout(() => {
+        isRendering = false;
+      }, 200);
+      // Render whatever the newest edit asked for while we were busy.
+      const next = pendingRender;
+      pendingRender = null;
+      if (next) {
+        void renderPreview(next.gen, next.content, next.docPath, performance.now());
+      }
+    }
+  }
 
   function escapeHtml(text: string): string {
     return text
@@ -289,7 +323,7 @@
     if (!previewDiv) return;
     const scroller = document.querySelector(".cm-scroller") as HTMLElement | null;
     if (scroller) {
-      scrollSync.syncPreviewToEditor(previewDiv, scroller);
+      scrollSync.requestPreviewToEditor(previewDiv, scroller);
     }
   }
 
@@ -621,8 +655,7 @@
           $activeDocumentStore.path === docPath &&
           $activeDocumentStore.content === docContent
         ) {
-          const finalCacheKey = `${docPath ?? "null"}:${docContent}`;
-          setCachedPreview(finalCacheKey, container.innerHTML);
+          setCachedPreview(docPath ?? "null", docContent, container.innerHTML);
         }
         logRenderTiming("post-processing complete", postStart);
       });
@@ -907,10 +940,7 @@
               <button
                 class="float-btn"
                 onclick={() => {
-                  if (contentDiv) {
-                    const text = ttsStore.extractReadableText(contentDiv);
-                    if (text) ttsStore.speak(text);
-                  }
+                  if (contentDiv) ttsStore.speakElement(contentDiv);
                 }}
                 aria-label="Read aloud"
                 data-tooltip="Read aloud"
@@ -1268,6 +1298,61 @@
   }
 
   /* Content styles */
+  .preview-content :global(.frontmatter) {
+    margin: 0 0 var(--space-6);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--accent-muted);
+    border-radius: var(--radius-md);
+    font-size: 0.875em;
+    line-height: 1.5;
+  }
+  .preview-content :global(.frontmatter-row) {
+    display: grid;
+    grid-template-columns: minmax(5rem, max-content) 1fr;
+    gap: var(--space-1) var(--space-4);
+    padding: var(--space-1) 0;
+  }
+  .preview-content :global(.frontmatter-row + .frontmatter-row) {
+    border-top: 1px solid color-mix(in srgb, var(--border-subtle) 55%, transparent);
+  }
+  .preview-content :global(.frontmatter-key) {
+    font-family: var(--font-mono);
+    font-size: 0.8125em;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .preview-content :global(.frontmatter-value) {
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+  .preview-content :global(.frontmatter-raw) {
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: 0.8125em;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+  }
+  /* Read-along highlighting for TTS: block tint plus the sentence being spoken
+     and the estimated current word, painted through the CSS Custom Highlight
+     API (no DOM mutation, so the preview's structure is untouched). */
+  .preview-content :global(.tts-reading) {
+    background: color-mix(in srgb, var(--accent-default) 6%, transparent);
+    border-radius: var(--radius-sm);
+  }
+  .preview-content :global(::highlight(markz-tts-sentence)) {
+    background-color: color-mix(in srgb, var(--accent-default) 16%, transparent);
+  }
+  .preview-content :global(::highlight(markz-tts-word)) {
+    background-color: color-mix(in srgb, var(--accent-default) 42%, transparent);
+  }
   .preview-content :global(h1) {
     font-size: 1.75em;
     font-weight: 700;

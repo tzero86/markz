@@ -424,7 +424,7 @@
         const preview = document.querySelector(".preview-scroller") as HTMLElement | null;
         const scroller = container.querySelector(".cm-scroller") as HTMLElement | null;
         if (editorView && preview && scroller) {
-          scrollSync.syncEditorToPreview(editorView, scroller, preview);
+          scrollSync.requestEditorToPreview(editorView, scroller, preview);
         }
       },
     });

@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "markz"
-version = "0.8.76"
+version = "0.8.77"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2560,7 +2560,7 @@ dependencies = [
 
 [[package]]
 name = "markz-config"
-version = "0.8.76"
+version = "0.8.77"
 dependencies = [
  "dirs",
  "log",
@@ -2571,7 +2571,7 @@ dependencies = [
 
 [[package]]
 name = "markz-convert"
-version = "0.8.76"
+version = "0.8.77"
 dependencies = [
  "base64 0.22.1",
  "docx-rs",
@@ -2585,7 +2585,7 @@ dependencies = [
 
 [[package]]
 name = "markz-core"
-version = "0.8.76"
+version = "0.8.77"
 dependencies = [
  "htmd",
  "log",
@@ -2599,7 +2599,7 @@ dependencies = [
 
 [[package]]
 name = "markz-images"
-version = "0.8.76"
+version = "0.8.77"
 dependencies = [
  "chrono",
  "dirs",
@@ -2613,7 +2613,7 @@ dependencies = [
 
 [[package]]
 name = "markz-templates"
-version = "0.8.76"
+version = "0.8.77"
 dependencies = [
  "chrono",
  "dirs",
@@ -4086,6 +4086,7 @@ version = "1.0.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8014e44b4736ed0538adeecded0fce2a272f22dc9578a7eb6b2d9993c74cfb9"
 dependencies = [
+ "indexmap 2.14.0",
  "itoa",
  "memchr",
  "serde",
