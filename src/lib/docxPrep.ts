@@ -1,7 +1,9 @@
-import mermaid from "mermaid";
-import katex from "katex";
-import "katex/dist/katex.min.css";
-import { toPng } from "html-to-image";
+// Reachable only through a dynamic import (TitleBar export path), but this
+// chunk used to statically pull mermaid/katex and so ship a second copy
+// alongside the memoized preview renderers. Loading them lazily lets Rollup
+// place them in one shared chunk instead.
+import { loadKatex } from "./renderers/katex";
+import { loadMermaid } from "./renderers/mermaid";
 
 interface ImageItem {
   placeholder: string;
@@ -269,6 +271,8 @@ function sanitizeMermaidSvg(svgString: string): string {
 }
 
 async function renderMermaidToPng(content: string): Promise<string> {
+  const mermaid = await loadMermaid();
+
   // Save current theme and force light theme for the DOCX export.
   // setConfig() does NOT re-initialize theme CSS; initialize() does.
   const currentTheme = mermaid.mermaidAPI.getConfig().theme;
@@ -356,6 +360,10 @@ async function renderMermaidToPng(content: string): Promise<string> {
 }
 
 async function renderMathToPng(latex: string, isBlock: boolean): Promise<string> {
+  // Load KaTeX (and its stylesheet) before mounting the container so a failed
+  // chunk fetch cannot leave an empty node behind in the document.
+  const katex = await loadKatex();
+
   const container = document.createElement("div");
   container.style.cssText =
     "position:fixed;top:0;left:0;z-index:2147483646;" +
@@ -378,6 +386,10 @@ async function renderMathToPng(latex: string, isBlock: boolean): Promise<string>
     await document.fonts.ready;
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => setTimeout(r, 50));
+
+    // Static import would put html-to-image (452 KB on disk) in this chunk's
+    // eager graph even though only documents containing math reach this path.
+    const { toPng } = await import("html-to-image");
 
     return await toPng(container, {
       pixelRatio: 2,

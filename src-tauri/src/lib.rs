@@ -8,8 +8,9 @@ use log::LevelFilter;
 use tauri::{Emitter, Manager};
 use tauri_plugin_log::{Target, TargetKind, RotationStrategy};
 
-#[cfg(windows)]
+#[cfg(all(windows, feature = "tts"))]
 mod windows_tts;
+#[cfg(feature = "tts")]
 mod edge_tts_crate;
 mod commands;
 pub struct AppState {
@@ -316,10 +317,15 @@ pub fn run() {
             commands::convert::convert_to_slack,
             commands::convert::convert_to_github,
             commands::convert::convert_html_to_markdown,
+            #[cfg(feature = "tts")]
             commands::tts::tts_get_voices,
+            #[cfg(feature = "tts")]
             commands::tts::tts_speak,
+            #[cfg(feature = "docx")]
             commands::convert::export_to_docx,
+            #[cfg(feature = "git")]
             commands::git::git_status,
+            #[cfg(feature = "git")]
             commands::git::git_diff,
             commands::documents::compute_stats,
             commands::backlinks::get_backlinks,
@@ -333,8 +339,11 @@ pub fn run() {
             commands::logging::log_frontend,
             commands::session::save_session,
             commands::session::load_session,
+            #[cfg(feature = "pandoc")]
             commands::pandoc::pandoc_available,
+            #[cfg(feature = "pandoc")]
             commands::pandoc::export_via_pandoc,
+            #[cfg(feature = "pandoc")]
             commands::pandoc::copy_via_pandoc,
             commands::session::clear_session_disk,
             commands::workspace::open_folder_dialog,
@@ -345,9 +354,13 @@ pub fn run() {
             commands::workspace::rename_workspace_entry,
             commands::workspace::delete_workspace_entry,
             commands::workspace::search_workspace,
+            #[cfg(feature = "watcher")]
             commands::watcher::watch_workspace,
+            #[cfg(feature = "watcher")]
             commands::watcher::unwatch_workspace,
+            #[cfg(feature = "watcher")]
             commands::watcher::watch_open_files,
+            #[cfg(feature = "watcher")]
             commands::watcher::unwatch_open_files,
             commands::presentation::render_slides,
             commands::app::take_pending_open,

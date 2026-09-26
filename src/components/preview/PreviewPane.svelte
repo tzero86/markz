@@ -677,10 +677,22 @@
     }
   });
 
-  function checkPandoc() {
-    invoke("pandoc_available")
-      .then((available) => { pandocAvailable = Boolean(available); })
-      .catch(() => { pandocAvailable = false; });
+  // `pandoc_available` spawns `pandoc --version` in the backend, so only ask
+  // when the answer is actually needed — when the copy dropdown is opened —
+  // and reuse the result so repeated opens don't fork another process.
+  let pandocProbe: Promise<boolean> | null = null;
+
+  function toggleCopyDropdown() {
+    copyDropdownOpen = !copyDropdownOpen;
+    if (!copyDropdownOpen) return;
+    if (!pandocProbe) {
+      pandocProbe = invoke<boolean>("pandoc_available")
+        .then((available) => Boolean(available))
+        .catch(() => false);
+    }
+    // The state write re-renders the already-open menu, so the Pandoc entry
+    // appears as soon as the probe resolves instead of on the next open.
+    pandocProbe.then((available) => { pandocAvailable = available; });
   }
 
   function handleScrollToHeading(event: CustomEvent<{ anchor: string; line: number }>) {
@@ -693,8 +705,9 @@
   }
 
   onMount(() => {
-    checkPandoc();
-    const onSettingsChanged = () => checkPandoc();
+    // Changing export settings can repoint pandoc, so drop the cached probe;
+    // the next dropdown open re-probes rather than forking a process here.
+    const onSettingsChanged = () => { pandocProbe = null; };
     window.addEventListener("markz:settings-changed", onSettingsChanged);
     window.addEventListener("markz:scroll-to-heading", handleScrollToHeading as EventListener);
 
@@ -895,7 +908,7 @@
           <button
             class="float-btn"
             class:success={copyFeedback}
-            onclick={() => { copyDropdownOpen = !copyDropdownOpen; }}
+            onclick={toggleCopyDropdown}
             aria-label="Copy"
             aria-expanded={copyDropdownOpen}
             disabled={!$activeDocumentStore.path && !$activeDocumentStore.content}

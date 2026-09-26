@@ -283,9 +283,13 @@
     }
   }
 
-  function applyMinimap() {
+  async function applyMinimap() {
     if (editorView) {
-      setMinimap(editorView, showMinimap);
+      try {
+        await setMinimap(editorView, showMinimap);
+      } catch (e) {
+        console.error("Failed to apply minimap:", e);
+      }
     }
   }
 
@@ -295,9 +299,13 @@
     }
   }
 
-  function applyVimMode() {
+  async function applyVimMode() {
     if (editorView) {
-      setVimMode(editorView, vimModeEnabled);
+      try {
+        await setVimMode(editorView, vimModeEnabled);
+      } catch (e) {
+        console.error("Failed to apply vim mode:", e);
+      }
     }
   }
 

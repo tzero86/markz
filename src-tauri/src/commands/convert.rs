@@ -39,6 +39,7 @@ pub async fn convert_html_to_markdown(html: String) -> Result<String, String> {
     Ok(markz_core::html_to_markdown::convert(&html))
 }
 
+#[cfg(feature = "docx")]
 #[tauri::command]
 pub async fn export_to_docx(
     markdown: String,
@@ -53,7 +54,9 @@ pub async fn export_to_docx(
     Ok(warnings.join("\n"))
 }
 
-#[cfg(test)]
+// These exercise a real DOCX export; without the `docx` feature the command
+// only returns a feature-disabled error, so they have nothing to assert.
+#[cfg(all(test, feature = "docx"))]
 mod tests {
     use super::*;
 

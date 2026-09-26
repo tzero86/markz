@@ -8,23 +8,20 @@
   import TitleBar from "./components/layout/TitleBar.svelte";
   import TabBar from "./components/layout/TabBar.svelte";
   import StatusBar from "./components/layout/StatusBar.svelte";
-  import GitDiffModal from "./components/layout/GitDiffModal.svelte";
-  import PresentationMode from "./components/preview/PresentationMode.svelte";
   import SplitPane from "./components/layout/SplitPane.svelte";
   import OutlineSidebar from "./components/layout/OutlineSidebar.svelte";
   import ActivityBar from "./components/layout/ActivityBar.svelte";
-  import SettingsModal from "./components/settings/SettingsModal.svelte";
-  import TemplateBrowser from "./components/templates/TemplateBrowser.svelte";
-  import SaveTemplateDialog from "./components/templates/SaveTemplateDialog.svelte";
-import SearchPanel from "./components/layout/SearchPanel.svelte";
+  // DebugPanel renders a collapsed bar even when there is nothing to show, so
+  // it is always on screen and stays eager. Every other overlay renders nothing
+  // until opened, and those go through Lazy.
   import DebugPanel from "./components/layout/DebugPanel.svelte";
+  import Lazy from "./lib/lazy/Lazy.svelte";
   import { debugLogStore } from "./lib/debugLogStore";
   import { initKeyboardShortcuts, newDocument, openDocumentByPath, readDocument } from "./lib/keyboard";
   import { initDebugLogging, startupCheckpoint } from "./lib/debug";
   import { contentZoomStore } from "./lib/contentZoomStore";
   import { ttsStore, type TtsEngine } from "./lib/ttsStore";
   import { tabStore, activeDocumentStore } from "./lib/tabStore";
-  import CommandPalette from "./components/ui/CommandPalette.svelte";
   import type { PaletteMode } from "./lib/commandPalette";
   import { getSession } from "./lib/sessionStore";
   import { workspaceStore, IS_WINDOWS } from "./lib/workspaceStore";
@@ -739,15 +736,16 @@ import SearchPanel from "./components/layout/SearchPanel.svelte";
       }
     }).catch(() => {});
   }} onOpenGitDiff={() => { gitDiffOpen = true; }} />
-  <GitDiffModal bind:open={gitDiffOpen} docPath={$activeDocumentStore.path ?? ""} />
-  <SettingsModal bind:open={settingsOpen} initialTab={settingsInitialTab} />
-  <TemplateBrowser bind:open={templateBrowserOpen} />
-  <CommandPalette bind:open={paletteOpen} mode={paletteMode} onClose={() => (paletteOpen = false)} />
-  <SaveTemplateDialog bind:open={saveTemplateOpen} />
+  <Lazy loader={() => import("./components/layout/GitDiffModal.svelte")} bind:open={gitDiffOpen} docPath={$activeDocumentStore.path ?? ""} />
+  <Lazy loader={() => import("./components/settings/SettingsModal.svelte")} bind:open={settingsOpen} initialTab={settingsInitialTab} />
+  <Lazy loader={() => import("./components/templates/TemplateBrowser.svelte")} bind:open={templateBrowserOpen} />
+  <Lazy loader={() => import("./components/ui/CommandPalette.svelte")} bind:open={paletteOpen} mode={paletteMode} onClose={() => (paletteOpen = false)} />
+  <Lazy loader={() => import("./components/templates/SaveTemplateDialog.svelte")} bind:open={saveTemplateOpen} />
   {#if presentationOpen}
-    <PresentationMode deck={slideDeck} onClose={() => { presentationOpen = false; slideDeck = null; }} />
+    <!-- `open` here only tells Lazy to import; PresentationMode's own props are deck/onClose -->
+    <Lazy loader={() => import("./components/preview/PresentationMode.svelte")} open={presentationOpen} deck={slideDeck} onClose={() => { presentationOpen = false; slideDeck = null; }} />
   {/if}
-  <SearchPanel bind:open={searchPanelOpen} />
+  <Lazy loader={() => import("./components/layout/SearchPanel.svelte")} bind:open={searchPanelOpen} />
   {#if zenMode}
     <button
       class="zen-exit-btn"

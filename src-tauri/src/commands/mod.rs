@@ -7,8 +7,12 @@ pub mod session;
 pub mod settings;
 pub mod templates;
 pub mod presentation;
+#[cfg(feature = "pandoc")]
 pub mod pandoc;
+#[cfg(feature = "tts")]
 pub mod tts;
+#[cfg(feature = "git")]
 pub mod git;
+#[cfg(feature = "watcher")]
 pub mod watcher;
 pub mod workspace;

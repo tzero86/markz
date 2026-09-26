@@ -8,7 +8,6 @@ import {
   Decoration,
   ViewPlugin,
 } from "@codemirror/view";
-import { showMinimap } from "@replit/codemirror-minimap";
 
 if (typeof window !== "undefined") {
   (window as any).EditorView = EditorView;
@@ -25,8 +24,33 @@ import { indentSelection } from "./editorCommands";
 import { snippetKeymap, cycleSnippetTabStops } from "./snippets";
 import { markdownLinter, spellcheckFacet } from "./markdownLinter";
 import { closeBrackets } from "@codemirror/autocomplete";
-import { vim } from "@replit/codemirror-vim";
+import type { vim as vimExtension } from "@replit/codemirror-vim";
+import type { showMinimap as minimapFacet } from "@replit/codemirror-minimap";
 import { createSlideBreakExtension } from "./slideBreakGutter";
+
+let vimPromise: Promise<typeof vimExtension> | null = null;
+let minimapPromise: Promise<typeof minimapFacet> | null = null;
+
+/** Vim mode and the minimap both default to off, so their modules stay out of
+ *  the entry chunk and load on first enable. */
+function loadVim(): Promise<typeof vimExtension> {
+  if (!vimPromise) {
+    vimPromise = import("@replit/codemirror-vim").then((m) => m.vim);
+  }
+  return vimPromise;
+}
+
+function loadMinimap(): Promise<typeof minimapFacet> {
+  if (!minimapPromise) {
+    minimapPromise = import("@replit/codemirror-minimap").then((m) => m.showMinimap);
+  }
+  return minimapPromise;
+}
+
+/** Views whose vim/minimap is on or loading. Disabling removes the view first,
+ *  so a load that resolves late cannot re-enable what the user just turned off. */
+const vimEnabledViews = new WeakSet<EditorView>();
+const minimapEnabledViews = new WeakSet<EditorView>();
 
 /** Smart list continuation: pressing Enter on a list item continues the list.
  *  If the line is empty (only the marker), removes the marker and exits the list. */
@@ -245,7 +269,7 @@ export function initEditor(
     themeCompartment.of(createEditorTheme(isDark)),
     fontCompartment.of(createFontExtension(fontFamily, fontSize, lineHeight)),
     wrapCompartment.of([]),
-    minimapCompartment.of(createMinimapExtension(config.showMinimap ?? false)),
+    minimapCompartment.of([]),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightActiveLine(),
@@ -330,6 +354,12 @@ export function initEditor(
     parent,
   });
 
+  // The minimap module is loaded on demand, so an editor that starts with the
+  // minimap enabled starts the load once the view exists.
+  if (config.showMinimap) {
+    setMinimap(view, true).catch((e) => console.error("Failed to load minimap:", e));
+  }
+
   const scroller = parent.querySelector(".cm-scroller") as HTMLElement | null;
   if (scroller && config.onScroll) {
     scroller.addEventListener("scroll", config.onScroll, { passive: true });
@@ -379,8 +409,7 @@ export function setReadOnly(view: EditorView, readOnly: boolean) {
   });
 }
 
-function createMinimapExtension(enabled: boolean): Extension {
-  if (!enabled) return [];
+function createMinimapExtension(showMinimap: typeof minimapFacet): Extension {
   return showMinimap.of({
     create: () => {
       const dom = document.createElement("div");
@@ -391,9 +420,19 @@ function createMinimapExtension(enabled: boolean): Extension {
   });
 }
 
-export function setMinimap(view: EditorView, enabled: boolean) {
+/** The minimap module loads on first enable, so enabling is async. Disabling
+ *  stays synchronous and cancels any load still in flight. */
+export async function setMinimap(view: EditorView, enabled: boolean) {
+  if (!enabled) {
+    minimapEnabledViews.delete(view);
+    view.dispatch({ effects: minimapCompartment.reconfigure([]) });
+    return;
+  }
+  minimapEnabledViews.add(view);
+  const showMinimap = await loadMinimap();
+  if (!minimapEnabledViews.has(view)) return;
   view.dispatch({
-    effects: minimapCompartment.reconfigure(createMinimapExtension(enabled)),
+    effects: minimapCompartment.reconfigure(createMinimapExtension(showMinimap)),
   });
 }
 export function setSpellcheck(view: EditorView, enabled: boolean) {
@@ -407,9 +446,19 @@ export function setCustomDictionary(view: EditorView, words: string[]) {
   });
 }
 
-export function setVimMode(view: EditorView, enabled: boolean) {
+/** The vim module loads on first enable, so enabling is async. Disabling stays
+ *  synchronous and cancels any load still in flight. */
+export async function setVimMode(view: EditorView, enabled: boolean) {
+  if (!enabled) {
+    vimEnabledViews.delete(view);
+    view.dispatch({ effects: vimCompartment.reconfigure([]) });
+    return;
+  }
+  vimEnabledViews.add(view);
+  const vim = await loadVim();
+  if (!vimEnabledViews.has(view)) return;
   view.dispatch({
-    effects: vimCompartment.reconfigure(enabled ? vim() : []),
+    effects: vimCompartment.reconfigure(vim()),
   });
 }
 

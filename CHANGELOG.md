@@ -1,3 +1,21 @@
+## [0.8.78] - 2026-09-26
+
+### Performance
+
+The frontend already code-split its heavy renderers correctly, so the wins here are narrower than they look: shrink what every cold start has to parse, stop shipping libraries nobody asked for, and stop asking the OS questions whose answers are usually "no". As Vite reports it, the eager entry chunk drops from 1067 kB to 862 kB raw (356 kB → 294 kB gzip) and the shipped frontend from 6.17 MB to 5.79 MB. The analysis behind this release is in `docs/PLUGIN_ARCHITECTURE_ASSESSMENT.md`.
+
+- **Vim mode is no longer parsed unless you use it** — `@replit/codemirror-vim` was 10.7% of the eager entry chunk and defaults to off, so every startup compiled it for a feature most users never enable. It now loads the first time vim mode is switched on, and the existing Compartment keeps every later toggle instant. Turning vim off while its module is still loading cancels the load rather than letting it re-enable itself.
+- **The minimap loads on first use too**, following the same pattern. It also defaults to off.
+- **Syntax highlighting ships 36 languages instead of 192** — `highlight.js` was imported as the full bundle, so a document with one Rust block paid for 191 grammars nobody used. The common set is bundled and the rest is fetched the first time a code fence asks for one, so a Haskell or PowerShell block still highlights, just on demand. A fence naming a language nothing provides renders as plain text rather than guessing.
+- **Overlays load when you open them** — the settings modal, command palette, template browser, global search, git diff, save-template dialog and presentation mode were all compiled into the entry chunk despite rendering nothing while closed. They now import on first open. The debug panel stays eager: it shows a collapsed bar from first paint, so there is nothing to save.
+- **The DOCX export no longer bundles its own copy of Mermaid and KaTeX** — `docxPrep` imported both directly while the preview already loaded them lazily, so the export chunk carried a second copy of roughly a megabyte. Both now share one memoized loader, and `html-to-image` loads only when a document actually contains math.
+- **The preview no longer forks a process on every mount** — asking whether Pandoc is installed runs `pandoc --version`, and the preview asked that on every mount and every settings change, to decide whether to show one menu entry. It now asks when the copy dropdown is opened, reuses the answer, and re-asks only after export settings actually change.
+- **Two unused dependencies are gone** — the `codemirror` metapackage and `@tauri-apps/plugin-fs` were declared but imported nowhere.
+
+### Added
+
+- **The Rust workspace has Cargo feature flags** — `tts`, `git`, `watcher`, `docx`, `remote-images` and `pandoc` each gate their dependency and their command registrations, so a build can drop `git2` (and the vendored C library it compiles), `notify`, `tungstenite` and friends. All are on by default, so a normal build and `cargo test --workspace` behave exactly as before; `--no-default-features` produces a slimmer binary. A feature that is compiled out returns a clear error naming the missing feature rather than failing obscurely.
+
 ## [0.8.77] - 2026-09-24
 
 ### Added

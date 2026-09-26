@@ -1,15 +1,8 @@
+import { loadKatex } from "../../lib/renderers/katex";
 import type katexType from "katex";
 
-let katexPromise: Promise<typeof katexType> | null = null;
-
 async function getKatex(): Promise<typeof katexType> {
-  if (!katexPromise) {
-    katexPromise = Promise.all([
-      import("katex"),
-      import("katex/dist/katex.min.css"),
-    ]).then(([k]) => k.default);
-  }
-  return await katexPromise;
+  return await loadKatex();
 }
 
 async function renderBlock(block: Element) {

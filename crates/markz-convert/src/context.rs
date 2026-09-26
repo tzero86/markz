@@ -34,6 +34,10 @@ pub enum ImageError {
     TooLarge,
     /// A `data:` URL could not be base64-decoded.
     InvalidDataUrl,
+    /// Remote reference, but this build cannot download it because the
+    /// `remote-images` feature is not compiled in.
+    #[cfg(not(feature = "remote-images"))]
+    RemoteUnsupported,
 }
 
 impl fmt::Display for ImageError {
@@ -50,6 +54,8 @@ impl fmt::Display for ImageError {
             ImageError::NotAnImage => "file content does not match its image extension",
             ImageError::TooLarge => "image exceeds the 32 MiB embed limit",
             ImageError::InvalidDataUrl => "invalid data URL",
+            #[cfg(not(feature = "remote-images"))]
+            ImageError::RemoteUnsupported => "remote images cannot be embedded: this build has no remote-images support",
         };
         f.write_str(message)
     }
@@ -269,7 +275,8 @@ fn file_url_for_path(path: &Path) -> String {
 /// - `data:` URLs are base64-decoded.
 /// - Local files are read from disk, confined to the document directory and validated against
 ///   their image extension and magic bytes.
-/// - Remote URLs are downloaded when `ctx.embed_remote_images` is true.
+/// - Remote URLs are downloaded when `ctx.embed_remote_images` is true, and are refused
+///   with [`ImageError::RemoteUnsupported`] when this build lacks the `remote-images` feature.
 pub fn resolve_image_bytes(url: &str, ctx: &ConvertContext) -> Result<Vec<u8>, ImageError> {
     // Data URL (base64 embedded image)
     if url.starts_with("data:image/") {
@@ -285,6 +292,9 @@ pub fn resolve_image_bytes(url: &str, ctx: &ConvertContext) -> Result<Vec<u8>, I
         if !ctx.embed_remote_images {
             return Err(ImageError::RemoteNotEmbedded);
         }
+        #[cfg(not(feature = "remote-images"))]
+        return Err(ImageError::RemoteUnsupported);
+        #[cfg(feature = "remote-images")]
         return download_image(url).ok_or(ImageError::RemoteFetchFailed);
     }
 
@@ -310,6 +320,7 @@ pub fn resolve_image_bytes(url: &str, ctx: &ConvertContext) -> Result<Vec<u8>, I
     }
 }
 
+#[cfg(feature = "remote-images")]
 fn download_image(url: &str) -> Option<Vec<u8>> {
     let mut response = ureq::get(url).call().ok()?;
 

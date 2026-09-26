@@ -1,23 +1,26 @@
+import { loadMermaid } from "../../lib/renderers/mermaid";
 import type { default as MermaidType } from "mermaid";
 
 type MermaidApi = typeof MermaidType;
 
-let mermaidPromise: Promise<MermaidApi> | null = null;
 let currentMermaidTheme: "dark" | "default" = "dark";
 
 function getMermaidTheme(theme: "light" | "dark"): "dark" | "default" {
   return theme === "dark" ? "dark" : "default";
 }
 
+// initialize() must not be baked into the shared loader: mermaid keeps one
+// global config, and the DOCX export renders with its own theme. It runs once
+// here, on first use, so later theme changes go through setMermaidTheme.
+let initialized = false;
+
 async function getMermaid(): Promise<MermaidApi> {
-  if (!mermaidPromise) {
-    mermaidPromise = import("mermaid").then((m) => {
-      const mermaid = m.default;
-      mermaid.initialize({ startOnLoad: false, theme: currentMermaidTheme });
-      return mermaid;
-    });
+  const mermaid = await loadMermaid();
+  if (!initialized) {
+    initialized = true;
+    mermaid.initialize({ startOnLoad: false, theme: currentMermaidTheme });
   }
-  return await mermaidPromise;
+  return mermaid;
 }
 
 export async function renderMermaidBlocks(container: HTMLElement) {
