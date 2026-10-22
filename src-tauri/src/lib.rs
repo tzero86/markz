@@ -303,6 +303,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::documents::render_preview,
+            commands::documents::get_table_source,
             commands::documents::open_document,
             commands::documents::save_document,
             commands::documents::read_file_text,

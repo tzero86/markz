@@ -3,11 +3,29 @@ use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
 /// Preprocess math expressions before Markdown parsing.
 pub fn preprocess_math(text: &str) -> String {
+    preprocess_math_with_lines(text).0
+}
+
+/// Preprocess math expressions and report where each output line came from.
+///
+/// Source positions are only meaningful if we can undo the substitution: a
+/// multi-line `$$` block collapses several source lines into one synthetic
+/// `<div>` line, so any consumer that needs offsets into the *original* text
+/// (table ranges, diagnostics) must translate through this map instead of
+/// counting lines in the processed output.
+///
+/// The returned vector has one entry per physical line of the output
+/// (`output.split('\n')` indexing) giving the 0-based index into
+/// `text.lines()`. When the input ends with `\n` the output gains a trailing
+/// newline whose empty final physical line is intentionally not covered;
+/// consumers must clamp.
+pub(crate) fn preprocess_math_with_lines(text: &str) -> (String, Vec<usize>) {
     let mut result = String::new();
-    let mut lines = text.lines().peekable();
+    let mut line_map: Vec<usize> = Vec::new();
+    let mut lines = text.lines().enumerate();
     let mut first = true;
 
-    while let Some(line) = lines.next() {
+    while let Some((source_line, line)) = lines.next() {
         if !first {
             result.push('\n');
         }
@@ -21,14 +39,19 @@ pub fn preprocess_math(text: &str) -> String {
                 if after.trim().is_empty() {
                     let content = &trimmed_start[2..2 + end_pos];
                     result.push_str(&format!(r#"<div class="math-block">{}</div>"#, content));
+                    line_map.push(source_line);
                     continue;
                 }
             }
 
-            // Multi-line block
+            // Multi-line block. It spans source lines `source_line..=last_consumed`,
+            // so every emitted line after the first maps to its own source line
+            // and the last emitted line absorbs the closing `$$` line.
             let mut block_content = String::new();
             let mut first_content_line = true;
-            while let Some(block_line) = lines.next() {
+            let mut last_consumed = source_line;
+            for (content_line, block_line) in lines.by_ref() {
+                last_consumed = content_line;
                 let block_trimmed = block_line.trim_start();
                 if block_trimmed.starts_with("$$") && block_trimmed[2..].trim().is_empty() {
                     break;
@@ -40,17 +63,26 @@ pub fn preprocess_math(text: &str) -> String {
                 block_content.push_str(block_line);
             }
             result.push_str(&format!(r#"<div class="math-block">{}</div>"#, block_content));
+
+            let emitted = block_content.split('\n').count().max(1);
+            if emitted > 1 {
+                for offset in 0..emitted - 1 {
+                    line_map.push(source_line + 1 + offset);
+                }
+            }
+            line_map.push(last_consumed);
             continue;
         }
 
         result.push_str(&process_inline_math(line));
+        line_map.push(source_line);
     }
 
     if text.ends_with('\n') && !result.ends_with('\n') {
         result.push('\n');
     }
 
-    result
+    (result, line_map)
 }
 
 fn process_inline_math(line: &str) -> String {
@@ -990,5 +1022,25 @@ y = 2</div>"#);
             "Single variable was treated as math: {}", processed
         );
         assert!(processed.contains("$x "), "$x was not preserved");
+    }
+
+    #[test]
+    fn test_preprocess_math_lines_map_math_blocks() {
+        // Single-line block: one output line, mapped to its own source line.
+        let (output, map) = preprocess_math_with_lines("before\n$$x$$\nafter");
+        assert_eq!(output, "before\n<div class=\"math-block\">x</div>\nafter");
+        assert_eq!(map, vec![0, 1, 2]);
+
+        // Multi-line block with one content line: it collapses to the closing
+        // `$$` line, and the following line keeps its source index.
+        let (output, map) = preprocess_math_with_lines("before\n$$\nx\n$$\nafter");
+        assert_eq!(output, "before\n<div class=\"math-block\">x</div>\nafter");
+        assert_eq!(map, vec![0, 3, 4]);
+
+        // Multi-line block with two content lines: each emitted line maps to
+        // its own source line, the last one absorbing the closing `$$`.
+        let (output, map) = preprocess_math_with_lines("before\n$$\nx\ny\n$$\nafter");
+        assert_eq!(output.split('\n').count(), map.len());
+        assert_eq!(map, vec![0, 2, 4, 5]);
     }
 }

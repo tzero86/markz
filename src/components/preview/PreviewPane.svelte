@@ -214,14 +214,13 @@
   function handleTableDblClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
     const table = target.closest("table");
-    if (!table || !contentDiv) return;
-    const tables = contentDiv.querySelectorAll("table");
-    let idx = -1;
-    tables.forEach((t, i) => { if (t === table) idx = i; });
-    if (idx >= 0) {
-      tableEditorIndex = idx;
-      tableEditorOpen = true;
-    }
+    if (!table) return;
+    const raw = table.getAttribute("data-table-index");
+    if (raw === null) return; // raw-HTML tables are not editable
+    const idx = Number(raw);
+    if (!Number.isInteger(idx) || idx < 0) return;
+    tableEditorIndex = idx;
+    tableEditorOpen = true;
   }
 
   function clearSearchHighlights() {
@@ -513,6 +512,12 @@
     requestAnimationFrame(() => updateSlideBreakMarkers());
   });
 
+  /** Table edit anchors exist only so the preview can identify a table on
+   *  double-click. They must never leak into HTML pasted into another tool. */
+  function withoutTableAnchors(html: string): string {
+    return html.replace(/ data-table-index="\d+"/g, "");
+  }
+
   async function copyOutput(format: CopyFormat = "html") {
     try {
       if (format === "word-pandoc") {
@@ -522,7 +527,7 @@
           format: "html",
         });
         const plainText = renderedHtml.replace(/<[^>]+>/g, "");
-        const blobHtml = new Blob([renderedHtml], { type: "text/html" });
+        const blobHtml = new Blob([withoutTableAnchors(renderedHtml)], { type: "text/html" });
         const blobText = new Blob([plainText], { type: "text/plain" });
         const item = new ClipboardItem({
           "text/html": blobHtml,
@@ -543,7 +548,7 @@
             markdown: $activeDocumentStore.content,
             docPath: $activeDocumentStore.path,
           });
-          const blobHtml = new Blob([renderedHtml], { type: "text/html" });
+          const blobHtml = new Blob([withoutTableAnchors(renderedHtml)], { type: "text/html" });
           const blobText = new Blob([plainText], { type: "text/plain" });
           const item = new ClipboardItem({
             "text/html": blobHtml,

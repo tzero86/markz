@@ -166,6 +166,62 @@ pub async fn save_file_dialog(
     Ok(path.map(|p| p.to_string()))
 }
 
+/// Source slice of the table the preview tagged with `data-table-index="{index}"`.
+///
+/// The preview and the table editor must agree on *which* table the user
+/// double-clicked. The renderer numbers tables in render order and the editor
+/// asks for that same number here, so neither side re-derives table positions
+/// from the text (the old frontend scanner counted any line containing `|`,
+/// which desynced on code fences, prose pipes, frontmatter and footnotes).
+#[tauri::command]
+pub async fn get_table_source(
+    markdown: String,
+    index: usize,
+) -> Result<TableSourcePayload, String> {
+    let tables = markz_core::tables::table_sources(&markdown);
+    let count = tables.len();
+    let table = tables
+        .get(index)
+        .ok_or_else(|| format!("Table {} not found.", index + 1))?;
+
+    if table.nested {
+        return Err(
+            "This table is nested inside a list, block quote, or footnote. Edit it in the editor pane instead."
+                .to_string(),
+        );
+    }
+
+    // Defensive: a bad span would panic on slicing, and a Tauri command must
+    // never take the app down. Treat it as a missing table.
+    let source = markdown
+        .get(table.start..table.end)
+        .ok_or_else(|| format!("Table {} not found.", index + 1))?;
+
+    // The frontend slices the markdown with JavaScript string indexes, which
+    // count UTF-16 code units — not Rust's UTF-8 bytes. Convert once here.
+    let start = utf16_len(&markdown[..table.start]);
+    let end = start + utf16_len(source);
+
+    Ok(TableSourcePayload {
+        markdown: source.to_string(),
+        start,
+        end,
+        count,
+    })
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct TableSourcePayload {
+    markdown: String,
+    start: usize,
+    end: usize,
+    count: usize,
+}
+
+fn utf16_len(text: &str) -> usize {
+    text.encode_utf16().count()
+}
+
 #[tauri::command]
 pub async fn generate_toc(markdown: String) -> Result<Vec<markz_core::toc::TocEntry>, String> {
     let doc = markz_core::parser::parse_full(&markdown);
@@ -191,6 +247,52 @@ pub async fn compute_stats(markdown: String) -> Result<markz_core::stats::Docume
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn get_table_source_returns_the_requested_table() {
+        let md = "| A | B |\n|---|---|\n| 1 | 2 |\n\ntext | pipes\n\n| C | D |\n|---|---|\n| 3 | 4 |";
+
+        let first = get_table_source(md.to_string(), 0).await.unwrap();
+        assert_eq!(first.markdown, "| A | B |\n|---|---|\n| 1 | 2 |");
+        assert_eq!(first.start, 0);
+        assert_eq!(first.count, 2);
+
+        let second = get_table_source(md.to_string(), 1).await.unwrap();
+        assert_eq!(second.markdown, "| C | D |\n|---|---|\n| 3 | 4 |");
+        // Offsets are UTF-16 code units so the frontend can slice with them.
+        let expected_start = md[..md.find("| C | D |").unwrap()].encode_utf16().count();
+        assert_eq!(second.start, expected_start);
+        assert_eq!(
+            expected_start + second.markdown.encode_utf16().count(),
+            second.end
+        );
+    }
+
+    #[tokio::test]
+    async fn get_table_source_uses_utf16_offsets_for_non_ascii_text() {
+        let md = "Café 🚀\n\n| A | B |\n|---|---|";
+        let table = get_table_source(md.to_string(), 0).await.unwrap();
+        let prefix = &md[..md.find("| A | B |").unwrap()];
+        // Byte offsets and UTF-16 offsets differ here: the rocket is 4 bytes in
+        // Rust but a 2-unit surrogate pair in JavaScript.
+        assert_ne!(prefix.len(), prefix.encode_utf16().count());
+        assert_eq!(table.start, prefix.encode_utf16().count());
+        assert_eq!(table.markdown, "| A | B |\n|---|---|");
+    }
+
+    #[tokio::test]
+    async fn get_table_source_rejects_missing_and_nested_tables() {
+        let err = get_table_source("| A |\n|---|".to_string(), 1)
+            .await
+            .unwrap_err();
+        assert!(err.contains("not found"), "{err}");
+
+        let nested = "| A | B |\n|---|---|\n\n- item\n\n  | C | D |\n  |---|---|";
+        let err = get_table_source(nested.to_string(), 1)
+            .await
+            .unwrap_err();
+        assert!(err.contains("nested"), "{err}");
+    }
 
     #[tokio::test]
     async fn open_document_classifies_text_files() {

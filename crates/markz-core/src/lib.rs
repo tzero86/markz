@@ -6,6 +6,7 @@ pub mod toc;
 pub mod html_to_markdown;
 pub mod e2e_render_tests;
 pub mod stats;
+pub mod tables;
 pub mod slides;
 pub mod util;
 

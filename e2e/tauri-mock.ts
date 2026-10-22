@@ -606,6 +606,12 @@ export function injectTauriMock() {
       return null;
     },
     render_preview: () => Promise.resolve(MOCK_HTML),
+    get_table_source: () => ({
+      markdown: "| A | B |\n|---|---|\n| 1 | 2 |",
+      start: 0,
+      end: 29,
+      count: 1,
+    }),
     render_slides: (args) => {
       const override = localStorage.getItem("__e2e_slides_override");
       if (override) {
@@ -1024,6 +1030,12 @@ export const tauriMockInitFunc = new Function(
   '    return null;\n' +
   '  },\n' +
   '  render_preview: () => Promise.resolve(MOCK_HTML),\n' +
+  '  get_table_source: () => ({\n' +
+  '    markdown: "| A | B |\\n|---|---|\\n| 1 | 2 |",\n' +
+  '    start: 0,\n' +
+  '    end: 29,\n' +
+  '    count: 1,\n' +
+  '  }),\n' +
   '  render_slides: (args) => {\n' +
   '    const override = localStorage.getItem("__e2e_slides_override");\n' +
   '    if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }\n' +
@@ -1386,6 +1398,12 @@ export const tauriMockScriptString = `
       // Return comprehensive mock HTML regardless of content so test assertions work
       return Promise.resolve(MOCK_HTML);
     },
+    get_table_source: () => ({
+      markdown: "| A | B |\\n|---|---|\\n| 1 | 2 |",
+      start: 0,
+      end: 29,
+      count: 1,
+    }),
     render_slides: (args) => {
       const override = localStorage.getItem("__e2e_slides_override");
       if (override) { try { return JSON.parse(override); } catch { /* fall through */ } }

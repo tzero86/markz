@@ -10,11 +10,15 @@ pub fn render(document: &Document) -> String {
         render_frontmatter(&mut output, frontmatter);
     }
     let mut footnotes: Vec<&Block> = Vec::new();
+    // Render-order index stamped on each `<table data-table-index>`. The editor
+    // resolves it through `tables::table_sources`, so the two must agree on
+    // ordering (which is why footnote tables render last, here and there).
+    let mut table_index = 0usize;
     for block in &document.blocks {
         match block {
             Block::FootnoteDefinition { .. } => footnotes.push(block),
             _ => {
-                render_block(&mut output, block);
+                render_block(&mut output, block, &mut table_index);
                 output.push('\n');
             }
         }
@@ -24,7 +28,7 @@ pub fn render(document: &Document) -> String {
         for block in footnotes {
             if let Block::FootnoteDefinition { label: _, .. } = block {
                 output.push_str("<li>");
-                render_block(&mut output, block);
+                render_block(&mut output, block, &mut table_index);
                 output.push_str("</li>\n");
             }
         }
@@ -104,7 +108,7 @@ fn frontmatter_value_text(value: &serde_json::Value) -> String {
     }
 }
 
-fn render_block(output: &mut String, block: &Block) {
+fn render_block(output: &mut String, block: &Block, table_index: &mut usize) {
     match block {
         Block::Heading { level, text } => {
             let tag = match level {
@@ -143,7 +147,7 @@ fn render_block(output: &mut String, block: &Block) {
         Block::BlockQuote { blocks } => {
             output.push_str("<blockquote>\n");
             for b in blocks {
-                render_block(output, b);
+                render_block(output, b, table_index);
                 output.push('\n');
             }
             output.push_str("</blockquote>");
@@ -173,20 +177,20 @@ fn render_block(output: &mut String, block: &Block) {
                         }
                         output.push_str("</p>");
                         for b in &item.blocks[1..] {
-                            render_block(output, b);
+                            render_block(output, b, table_index);
                         }
                     } else {
                         output.push_str("<input type=\"checkbox\" disabled");
                         output.push_str(checked_attr);
                         output.push_str("> ");
                         for b in &item.blocks {
-                            render_block(output, b);
+                            render_block(output, b, table_index);
                         }
                     }
                 } else {
                     output.push_str("<li>");
                     for b in &item.blocks {
-                        render_block(output, b);
+                        render_block(output, b, table_index);
                     }
                 }
                 output.push_str("</li>\n");
@@ -198,7 +202,14 @@ fn render_block(output: &mut String, block: &Block) {
             }
         }
         Block::Table { header, rows } => {
-            output.push_str(r#"<table style="border-collapse:collapse;width:100%;border:1px solid #d1d5db;">"#);
+            let index = *table_index;
+            *table_index += 1;
+            // `data-table-index` keys the DOM table to the exact source range
+            // reported by `tables::table_sources`.
+            let _ = write!(
+                output,
+                r#"<table data-table-index="{index}" style="border-collapse:collapse;width:100%;border:1px solid #d1d5db;">"#
+            );
             output.push_str("\n<thead>\n<tr>\n");
             for cell in header {
                 output.push_str(r#"<th style="border:1px solid #d1d5db;padding:8px 12px;font-weight:600;"#);
@@ -249,7 +260,7 @@ fn render_block(output: &mut String, block: &Block) {
             escape_html(output, label);
             output.push_str("</sup> ");
             for b in blocks {
-                render_block(output, b);
+                render_block(output, b, table_index);
                 output.push('\n');
             }
             output.push_str("</div>");
@@ -690,6 +701,34 @@ mod tests {
         let fn_def_pos = html.find("<div class=\"footnote\" id=\"fn-1\">").unwrap();
         assert!(fn_def_pos > footnotes_pos);
 
+    }
+
+    #[test]
+    fn test_render_table_indices_match_table_sources() {
+        let markdown = "| head | b |\n|---|---|\n| 1 | 2 |\n\n[^1]: note\n\n    | foot | c |\n    |---|---|\n    | 3 | 4 |\n";
+        let rendered = render(&crate::parser::parse(markdown));
+        let sources = crate::tables::table_sources(markdown);
+        assert_eq!(sources.len(), 2, "rendered: {rendered}");
+
+        let first = rendered.find(r#"data-table-index="0""#).unwrap();
+        let second = rendered.find(r#"data-table-index="1""#).unwrap();
+        assert!(first < second, "render order broken: {rendered}");
+
+        // Same index must name the same table on both sides: compare the first
+        // header cell from the HTML with the first row of the sliced source.
+        for (index, source) in sources.iter().enumerate() {
+            let marker = format!(r#"data-table-index="{index}""#);
+            let table_start = rendered.find(&marker).expect("missing table marker");
+            let th_start = table_start + rendered[table_start..].find("<th ").unwrap();
+            let text_start = th_start + rendered[th_start..].find('>').unwrap() + 1;
+            let text_end = text_start + rendered[text_start..].find("</th>").unwrap();
+            let html_cell = &rendered[text_start..text_end];
+
+            let source_table = &markdown[source.start..source.end];
+            let first_row = source_table.lines().next().unwrap();
+            let source_cell = first_row.split('|').nth(1).unwrap().trim();
+            assert_eq!(html_cell, source_cell, "index {index}: {source_table:?}");
+        }
     }
 
     #[test]

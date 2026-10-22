@@ -4,7 +4,6 @@ export interface TableData {
   alignments: ("left" | "center" | "right" | null)[];
 }
 
-const TABLE_RE = /^\|?\s*([^|]+?)\s*\|/gm;
 const ALIGN_RE = /^\|?\s*:?-+:?\s*\|/;
 
 function parseAlignment(cell: string): "left" | "center" | "right" | null {
@@ -25,53 +24,10 @@ function splitRow(line: string): string[] {
   return inner2.split("|").map((c) => c.trim());
 }
 
-export function findTable(markdown: string, tableIndex: number): { table: TableData; start: number; end: number } | null {
-  const lines = markdown.split("\n");
-  let currentIdx = -1;
-  let tableStart = -1;
-  let tableEnd = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // A table starts with a line that looks like a table row
-    if (line.includes("|") && !line.trim().startsWith("```")) {
-      if (tableStart === -1) {
-        tableStart = i;
-      }
-      tableEnd = i;
-    } else {
-      if (tableStart !== -1) {
-        currentIdx++;
-        if (currentIdx === tableIndex) {
-          const tableLines = lines.slice(tableStart, tableEnd + 1);
-          const table = parseTableLines(tableLines);
-          if (table) {
-            const startPos = lines.slice(0, tableStart).join("\n").length + (tableStart > 0 ? 1 : 0);
-            const endPos = lines.slice(0, tableEnd + 1).join("\n").length;
-            return { table, start: startPos, end: endPos };
-          }
-        }
-        tableStart = -1;
-        tableEnd = -1;
-      }
-    }
-  }
-
-  // Handle table at end of document
-  if (tableStart !== -1) {
-    currentIdx++;
-    if (currentIdx === tableIndex) {
-      const tableLines = lines.slice(tableStart, tableEnd + 1);
-      const table = parseTableLines(tableLines);
-      if (table) {
-        const startPos = lines.slice(0, tableStart).join("\n").length + (tableStart > 0 ? 1 : 0);
-        const endPos = markdown.length;
-        return { table, start: startPos, end: endPos };
-      }
-    }
-  }
-
-  return null;
+export function parseTableSource(source: string): TableData | null {
+  const lines = source.split("\n");
+  if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  return parseTableLines(lines);
 }
 
 function parseTableLines(lines: string[]): TableData | null {

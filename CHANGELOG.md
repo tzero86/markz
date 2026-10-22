@@ -1,3 +1,9 @@
+## [0.8.79] - 2026-10-22
+
+### Fixed
+
+- **Double-clicking a table edits the table you clicked** — the preview numbered tables by DOM order while the editor re-scanned the Markdown source for lines containing `|`. Any pipe outside a table shifted that count — a shell command in a code fence, `a | b` in prose, frontmatter like `title: A | B` — so double-clicking the second table opened the first one's cells. The preview now tags each rendered table with `data-table-index`, and a new `get_table_source` command resolves that index against the same pulldown-cmark parse the preview renders from (`markz_core::tables::table_sources`), returning the table's exact source slice. Offsets are mapped back to original-file coordinates through the line map recorded during math preprocessing, and handed to the frontend as UTF-16 code units so splicing stays exact for non-ASCII text. Tables nested in lists, block quotes or footnotes now report a clear error instead of silently rewriting the wrong lines, and raw HTML tables are no longer mistaken for editable Markdown tables.
+
 ## [0.8.78] - 2026-09-26
 
 ### Performance

@@ -1,6 +1,14 @@
 <script lang="ts">
   import { trapFocus } from "../../lib/focusTrap";
-  import { findTable, tableToMarkdown, addRow, removeRow, addColumn, removeColumn, type TableData } from "../../lib/tableEditor";
+  import { invoke } from "@tauri-apps/api/core";
+  import { parseTableSource, tableToMarkdown, addRow, removeRow, addColumn, removeColumn, type TableData } from "../../lib/tableEditor";
+
+  interface TableSourceResponse {
+    markdown: string;
+    start: number;
+    end: number;
+    count: number;
+  }
 
   interface Props {
     open: boolean;
@@ -15,19 +23,49 @@
   let table = $state<TableData | null>(null);
   let tableRange = $state<{ start: number; end: number } | null>(null);
   let error = $state("");
+  let loading = $state(false);
+
+  // Monotonic token: a slow response for a previous open/index must never
+  // overwrite the state belonging to a newer one.
+  let loadGeneration = 0;
 
   $effect(() => {
-    if (open) {
-      const result = findTable(markdown, tableIndex);
-      if (result) {
-        table = result.table;
-        tableRange = { start: result.start, end: result.end };
+    const isOpen = open;
+    const md = markdown;
+    const index = tableIndex;
+    const gen = ++loadGeneration;
+
+    // Reset on every run so the previous table never flashes.
+    table = null;
+    tableRange = null;
+    error = "";
+    loading = false;
+
+    if (!isOpen) return;
+
+    loading = true;
+    invoke<TableSourceResponse>("get_table_source", { markdown: md, index })
+      .then((res) => {
+        if (gen !== loadGeneration || !open || index !== tableIndex) return;
+        const parsed = parseTableSource(res.markdown);
+        loading = false;
+        if (!parsed) {
+          table = null;
+          tableRange = null;
+          error = `Table ${index + 1} could not be parsed.`;
+          return;
+        }
+        table = parsed;
+        tableRange = { start: res.start, end: res.end };
         error = "";
-      } else {
+      })
+      .catch((err) => {
+        if (gen !== loadGeneration || !open || index !== tableIndex) return;
         table = null;
-        error = `Table ${tableIndex + 1} not found.`;
-      }
-    }
+        tableRange = null;
+        loading = false;
+        error = String(err);
+      });
   });
 
   function handleApply() {
@@ -100,7 +138,9 @@
         <button class="close-btn" onclick={onClose} aria-label="Close">×</button>
       </div>
 
-      {#if error}
+      {#if loading}
+        <p class="loading">Loading table…</p>
+      {:else if error}
         <p class="error">{error}</p>
       {:else if table}
         <div class="table-editor">
@@ -158,7 +198,7 @@
 
       <div class="modal-actions">
         <button class="btn secondary" onclick={onClose}>Cancel</button>
-        <button class="btn primary" onclick={handleApply} disabled={!table}>Apply</button>
+        <button class="btn primary" onclick={handleApply} disabled={!table || !tableRange}>Apply</button>
       </div>
     </div>
   </div>
@@ -320,6 +360,10 @@
   }
   .error {
     color: var(--error);
+    margin: 8px 0;
+  }
+  .loading {
+    color: var(--text-secondary);
     margin: 8px 0;
   }
 </style>
