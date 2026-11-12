@@ -34,8 +34,6 @@
   let touchStartX = $state(0);
   let containerEl: HTMLDivElement | undefined = $state();
   let slideScale = $state(1);
-  let slideOffsetX = $state(0);
-  let slideOffsetY = $state(0);
 
   let displayNumber = $derived(currentIndex + 1);
 
@@ -102,11 +100,6 @@
   }
 
   // ── Fixed canvas splitting + scale-to-fit ────────────────────────────────────
-  // We split heading-based slides so each fits within a 1024×768 canvas, then
-  // uniformly scale each canvas to the viewport. This guarantees no clipped
-  // content AND no viewport-dependent measurement (the canvas is always 1024×768).
-
-  // Shared offscreen measurer matching the real canvas CSS
   let measurer: HTMLDivElement | null = null;
 
   const MEASURER_STYLE = `
@@ -136,13 +129,8 @@
     return measurer;
   }
 
-  /** Split a single slide's HTML into blocks, measure each against the fixed
-   *  1024x768 canvas, and return slides that each fit within the canvas.
-   *  The heading is stripped from content since it's shown separately in the
-   *  .content-heading element. */
   function splitSlideContent(content: string, title: string | null): { title: string | null; content: string; overflow?: boolean }[] {
     const m = getMeasurer();
-    // Parse content into DOM and strip all headings (shown in .content-heading)
     const temp = document.createElement("div");
     temp.innerHTML = content;
     temp.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(h => h.remove());
@@ -153,7 +141,6 @@
       blocks.push(child.outerHTML);
     }
     if (blocks.length === 0) return [{ title, content: "" }];
-    // Build heading HTML if present
     let headingHtml = "";
     if (title) {
       headingHtml = `<div class="m-hrow"><h2 class="m-h2">${title}</h2></div>`;
@@ -162,7 +149,6 @@
       m.innerHTML = `<style>${MEASURER_STYLE}</style>${headingHtml}<div class="m-html">${contentHtml}</div>`;
       return m.scrollHeight;
     }
-    // Pack blocks into slides, measuring total height after each addition
     const results: { title: string | null; content: string; overflow?: boolean }[] = [];
     let currentBlocks: string[] = [];
     for (const block of blocks) {
@@ -174,12 +160,10 @@
           results.push({ title, content: currentBlocks.join("\n") });
           currentBlocks = [];
         }
-        // Check if this single block fits by itself
         const singleH = measure(block);
         if (singleH <= 768) {
           currentBlocks = [block];
         } else {
-          // Single block overflows — try to split it
           const subBlocks = trySplitBlock(block, measure);
           for (const sub of subBlocks) {
             if (sub.overflow) {
@@ -210,6 +194,7 @@
     m.innerHTML = "";
     return results.length > 0 ? results : [{ title, content }];
   }
+
   function trySplitBlock(blockHtml: string, measure: (html: string) => number): { content: string; overflow?: boolean }[] {
     const temp = document.createElement("div");
     temp.innerHTML = blockHtml;
@@ -225,28 +210,26 @@
     if (tag === "ul" || tag === "ol") {
       return trySplitList(el as HTMLUListElement | HTMLOListElement, measure);
     }
-    // Atomic: can't split
     return [{ content: blockHtml, overflow: true }];
   }
+
   function trySplitParagraph(p: HTMLParagraphElement, measure: (html: string) => number): { content: string; overflow?: boolean }[] {
     const text = p.textContent || "";
     if (!text.trim()) return [{ content: p.outerHTML }];
-    // Binary search for character count that fits
     let low = 0, high = text.length;
     let best = 0;
     const testP = document.createElement("p");
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
       testP.textContent = text.slice(0, mid);
-      const h = measure(testP.outerHTML);
-      if (h <= 768) {
+      const height = measure(testP.outerHTML);
+      if (height <= 768) {
         best = mid;
         low = mid + 1;
       } else {
         high = mid - 1;
       }
     }
-    // Find word boundary near best
     let splitAt = best;
     while (splitAt > 0 && !/\s/.test(text[splitAt])) splitAt--;
     if (splitAt < 1) splitAt = best;
@@ -265,12 +248,12 @@
     }
     return results;
   }
+
   function trySplitCodeBlock(pre: HTMLPreElement, measure: (html: string) => number): { content: string; overflow?: boolean }[] {
     const code = pre.querySelector("code");
     const text = code?.textContent || pre.textContent || "";
     const lines = text.split("\n");
     if (lines.length <= 1) return [{ content: pre.outerHTML, overflow: true }];
-    // Binary search for line count that fits
     let low = 1, high = lines.length;
     let best = 1;
     const testPre = pre.cloneNode(true) as HTMLPreElement;
@@ -303,10 +286,10 @@
     }
     return results;
   }
+
   function trySplitList(list: HTMLUListElement | HTMLOListElement, measure: (html: string) => number): { content: string; overflow?: boolean }[] {
     const items = Array.from(list.children).filter(c => c.tagName === "LI");
     if (items.length <= 1) return [{ content: list.outerHTML, overflow: true }];
-    // Binary search for item count that fits
     let low = 1, high = items.length;
     let best = 1;
     const testList = list.cloneNode() as HTMLUListElement | HTMLOListElement;
@@ -350,7 +333,6 @@
 
   $effect(() => {
     if (!deck) return;
-    // Split each heading-based slide into canvas-fitting slides
     const split: Slide[] = [];
     for (const slide of deck.slides) {
       if (slide.kind === "title" || slide.kind === "section") {
@@ -365,8 +347,6 @@
     fittedSlides = split;
   });
 
-  // Re-split on resize (in case CSS/fonts change)
-  // Use the fitted slides for display
   let displaySlides = $derived(fittedSlides.length > 0 ? fittedSlides : deck?.slides ?? []);
 
   let totalSlides = $derived(displaySlides.length);
@@ -381,21 +361,25 @@
     const scaleY = ch / SLIDE_H;
     const s = Math.min(scaleX, scaleY);
     slideScale = Math.min(s, 1.4);
-    slideOffsetX = (cw - SLIDE_W * s) / 2;
-    slideOffsetY = (ch - SLIDE_H * s) / 2;
   }
 
   $effect(() => {
     if (containerEl) {
-      computeScale();
-      const ro = new ResizeObserver(computeScale);
+      requestAnimationFrame(computeScale);
+      const ro = new ResizeObserver(() => {
+        requestAnimationFrame(computeScale);
+      });
       ro.observe(containerEl);
-      return () => ro.disconnect();
+      const handleWindowResize = () => requestAnimationFrame(computeScale);
+      window.addEventListener('resize', handleWindowResize);
+      return () => {
+        ro.disconnect();
+        window.removeEventListener('resize', handleWindowResize);
+      };
     }
   });
 
   onMount(() => {
-    // Clean up measurer
     return () => { if (measurer) { document.body.removeChild(measurer); measurer = null; } };
   });
 
@@ -462,7 +446,7 @@
       </button>
     </div>
     <div class="slide-container" bind:this={containerEl}>
-      <div class="slide-canvas" style="width:{SLIDE_W}px;height:{SLIDE_H}px;transform:scale({slideScale});left:{slideOffsetX}px;top:{slideOffsetY}px;">
+      <div class="slide-canvas" style="transform: translate(-50%, -50%) scale({slideScale});">
         {#key currentIndex}
           <div
             class="slide {slideClass(currentSlide?.kind ?? 'content')}"
@@ -490,14 +474,14 @@
                   <h1 class="section-heading">{@html currentSlide.title}</h1>
                 {/if}
               </div>
-          {:else}
-            <div class="slide-body content-layout">
-              <div class="content-heading-row">
-                <h2 class="content-heading">{@html currentSlide?.title ?? ""}</h2>
-                <span class="content-slide-num">{displayNumber}</span>
+            {:else}
+              <div class="slide-body content-layout">
+                <div class="content-heading-row">
+                  <h2 class="content-heading">{@html currentSlide?.title ?? ""}</h2>
+                  <span class="content-slide-num">{displayNumber}</span>
+                </div>
+                <div class="slide-html" class:overflow={currentSlide?.overflow}>{@html currentSlide?.content ?? ""}</div>
               </div>
-              <div class="slide-html" class:overflow={currentSlide?.overflow}>{@html currentSlide?.content ?? ""}</div>
-            </div>
             {/if}
           </div>
         {/key}
@@ -547,7 +531,10 @@
 
   .slide-canvas {
     position: absolute;
-    transform-origin: 0 0;
+    top: 50%;
+    left: 50%;
+    width: 1024px;
+    height: 768px;
     overflow: hidden;
   }
 

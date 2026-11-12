@@ -349,3 +349,80 @@ test.describe("Slide breaks", () => {
     await expect(page.locator(".presentation-overlay")).toBeVisible({ timeout: 5000 });
   });
 });
+
+test.describe("Slide alignment", () => {
+  const sizes = [
+    { width: 1920, height: 1080 },
+    { width: 1280, height: 720 },
+    { width: 800, height: 1100 },
+    { width: 640, height: 480 },
+  ];
+
+  test("slide stays centered and unclipped at every viewport size", async ({ page }) => {
+    await startWithDeck(page, [
+      { kind: "section", title: "Hi", content: "", level: 1, index: 0 },
+      { kind: "content", title: "Details", content: "<p>Body copy.</p>", level: 2, index: 1 },
+    ]);
+
+    for (const size of sizes) {
+      await page.setViewportSize(size);
+      // Let the ResizeObserver-driven scale settle, then the slide entrance animation.
+      await page.waitForTimeout(600);
+
+      const m = await page.evaluate(() => {
+        const box = (sel: string) => {
+          const el = document.querySelector(sel);
+          if (!el) throw new Error(`missing ${sel}`);
+          const r = el.getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height };
+        };
+        return {
+          container: box(".slide-container"),
+          canvas: box(".slide-canvas"),
+          heading: box(".section-heading"),
+          slide: box(".slide"),
+        };
+      });
+
+      const label = `${size.width}x${size.height}`;
+      const centerX = m.container.x + m.container.width / 2;
+      const centerY = m.container.y + m.container.height / 2;
+      expect(Math.abs(m.canvas.x + m.canvas.width / 2 - centerX), `canvas center x at ${label}`).toBeLessThanOrEqual(1);
+      expect(Math.abs(m.canvas.y + m.canvas.height / 2 - centerY), `canvas center y at ${label}`).toBeLessThanOrEqual(1);
+      expect(Math.abs(m.heading.x + m.heading.width / 2 - centerX), `heading center x at ${label}`).toBeLessThanOrEqual(1);
+
+      // The whole slide must be on screen and scaled to fit, never clipped by the canvas.
+      expect(m.slide.width, `slide width at ${label}`).toBeCloseTo(m.canvas.width, 1);
+      expect(m.slide.height, `slide height at ${label}`).toBeCloseTo(m.canvas.height, 1);
+      expect(m.canvas.width).toBeLessThanOrEqual(m.container.width + 1);
+      expect(m.canvas.height).toBeLessThanOrEqual(m.container.height + 1);
+      expect(m.canvas.x).toBeGreaterThanOrEqual(-1);
+      expect(m.canvas.y).toBeGreaterThanOrEqual(-1);
+      expect(m.canvas.x + m.canvas.width).toBeLessThanOrEqual(size.width + 1);
+      expect(m.canvas.y + m.canvas.height).toBeLessThanOrEqual(size.height + 1);
+      // Aspect ratio preserved (4:3 canvas).
+      expect(m.canvas.width / m.canvas.height).toBeCloseTo(1024 / 768, 2);
+    }
+  });
+
+  test("slide re-centers after navigating between slides", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await startWithDeck(page, [
+      { kind: "section", title: "Hi", content: "", level: 1, index: 0 },
+      { kind: "content", title: "Details", content: "<p>Body copy.</p>", level: 2, index: 1 },
+    ]);
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator(".slide-counter")).toHaveText("2 / 2");
+    await page.waitForTimeout(600);
+
+    const m = await page.evaluate(() => {
+      const box = (sel: string) => {
+        const r = document.querySelector(sel)!.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      };
+      return { container: box(".slide-container"), canvas: box(".slide-canvas") };
+    });
+    expect(Math.abs(m.canvas.x + m.canvas.width / 2 - (m.container.x + m.container.width / 2))).toBeLessThanOrEqual(1);
+    expect(Math.abs(m.canvas.y + m.canvas.height / 2 - (m.container.y + m.container.height / 2))).toBeLessThanOrEqual(1);
+  });
+});

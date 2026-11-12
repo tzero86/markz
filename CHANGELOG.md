@@ -1,3 +1,9 @@
+## [0.8.80] - 2026-11-12
+
+### Fixed
+
+- **Presentation slides stay centered at any window size** — the slide canvas was anchored at `left: 50%; top: 50%` but had no width or height of its own, so its `translate(-50%, -50%)` resolved against a shrink-wrapped box roughly half the viewport wide instead of the 1024×768 slide. Slides sat off-center in every window size — windowed, maximized and fullscreen alike — and the unsized canvas clipped them. The canvas now carries the slide's intrinsic 1024×768 size and the centering transform itself, so centering and scale-to-fit are exact at any size; the dead offset state is gone. A regression test asserts the slide's center and unclipped bounds at four viewport sizes.
+
 ## [0.8.79] - 2026-10-22
 
 ### Fixed
