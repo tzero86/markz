@@ -1,3 +1,9 @@
+## [0.8.81] - 2026-11-17
+
+### Fixed
+
+- **Preview zoom scales the whole document, not just headings** — zoom only set an inline `font-size` on the preview container, so tables (and the text inside them), code blocks, and every `rem`/`px`-sized element kept their old size while the 820 px column stayed fixed. The preview now uses CSS `zoom`, which scales layout uniformly: text, tables, code, images, math and Mermaid diagrams all grow together, and the column widens with the zoom level until it fills the pane. Mermaid no longer applies its own `transform: scale()` (that would double-scale); diagrams follow the container. Heading-aware scroll sync measures through `getBoundingClientRect()` instead of `offsetTop`, which stays in unzoomed coordinates under CSS zoom while `scrollTop` does not, and print still carries the current zoom level.
+
 ## [0.8.80] - 2026-11-12
 
 ### Fixed

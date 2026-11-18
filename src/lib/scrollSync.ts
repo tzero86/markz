@@ -188,7 +188,13 @@ export class ScrollSyncController {
       `#${CSS.escape(slug)}`
     ) as HTMLElement | null;
     if (!element) return null;
-    const top = element.offsetTop;
+    // Measure through rects rather than offsetTop: the preview uses CSS
+    // `zoom`, which leaves offsetTop in unzoomed coordinates while
+    // scroller.scrollTop is in zoomed ones. Rects are both in zoomed space.
+    const top =
+      element.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top +
+      scroller.scrollTop;
     cached.set(slug, { element, top });
     return top;
   }

@@ -292,6 +292,25 @@ test("zoom in and out with keyboard shortcuts", async ({ page }) => {
   await expect(zoomIndicator).toHaveText("100%");
 });
 
+test("preview zoom scales layout, not just font size", async ({ page }) => {
+  const content = page.locator(".preview-content");
+  const cell = page.locator(".preview-content td").first();
+  await expect(cell).toBeVisible({ timeout: 5000 });
+
+  const baseline = (await cell.boundingBox())?.height ?? 0;
+  expect(baseline).toBeGreaterThan(0);
+
+  await page.click(".app");
+  await page.keyboard.press("Control+Equal");
+  await page.waitForTimeout(300);
+
+  expect(await content.evaluate((el) => getComputedStyle(el).zoom)).toBe("1.1");
+
+  // Tables are sized in em/px, so only a real layout zoom grows them.
+  const scaled = (await cell.boundingBox())?.height ?? 0;
+  expect(scaled).toBeGreaterThan(baseline * 1.05);
+});
+
 test("zoom indicator resets zoom when clicked", async ({ page }) => {
   const zoomIndicator = page.locator(".zoom-badge span");
 

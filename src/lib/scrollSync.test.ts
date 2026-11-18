@@ -129,12 +129,21 @@ describe("ScrollSyncController", () => {
     // Create a heading element in the preview so heading sync activates
     const heading = document.createElement("h2");
     heading.id = "introduction";
-    Object.defineProperty(heading, "offsetTop", { value: 70, configurable: true });
     previewScroller.appendChild(heading);
 
     // Set preview already within 5 px of heading target (70 - 20 = 50)
     previewScroller.scrollTop = 52;
     editorScroller.scrollTop = 50; // 50 / 300 = 16.7%
+
+    // headingTop() measures through rects (zoom-safe), so mock the geometry:
+    // the heading sits 70px below the top of the scrolled content.
+    const headingOffset = 70;
+    Object.defineProperty(previewScroller, "getBoundingClientRect", {
+      value: () => ({ top: 0 } as DOMRect),
+    });
+    Object.defineProperty(heading, "getBoundingClientRect", {
+      value: () => ({ top: headingOffset - previewScroller.scrollTop } as DOMRect),
+    });
 
     const mockView = {
       state: {

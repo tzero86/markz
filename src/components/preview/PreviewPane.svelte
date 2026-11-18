@@ -574,64 +574,37 @@
     });
   }
 
-  /** Scale mermaid SVGs so they grow/shrink with the preview zoom level.
-   *  On first call we tighten the viewBox to the actual content bounds
-   *  (removes excess empty canvas space) and strip width="100%" so the
-   *  SVG has a predictable natural size. Zoom is applied via CSS
-   *  transform:scale() — this scales the entire rendering tree uniformly
-   *  without fighting viewBox / width / height interactions. */
-  function scaleMermaidDiagrams() {
+  /** Tighten mermaid SVGs to their content bounds.
+   *  On first call we set the viewBox to the actual drawing bounds (removes
+   *  excess empty canvas space) and strip the width/height attributes and
+   *  inline sizes. With only a viewBox the SVG fills its container width and
+   *  keeps its aspect ratio. Preview zoom is CSS `zoom` on an ancestor, so it
+   *  scales the diagram like any other content — no per-SVG transform. */
+  function tightenMermaidDiagrams() {
     if (!contentDiv) return;
-    const zoom = $contentZoomStore;
 
     contentDiv.querySelectorAll(".mermaid-diagram").forEach((divEl) => {
-      const div = divEl as HTMLElement;
-      const svg = div.querySelector("svg") as SVGSVGElement | null;
+      const svg = divEl.querySelector("svg") as SVGSVGElement | null;
       if (!svg) return;
+      if (svg.getAttribute("data-tightened")) return;
 
-      // ── First call: tighten viewBox, remove responsive width="100%" ──
-      if (!svg.getAttribute("data-tightened")) {
-        try {
-          const bbox = svg.getBBox();
-          if (bbox.width > 0 && bbox.height > 0) {
-            const pad = 16; // small padding so text isn't cramped
-            const vx = Math.max(0, bbox.x - pad);
-            const vy = Math.max(0, bbox.y - pad);
-            const vw = bbox.width + pad * 2;
-            const vh = bbox.height + pad * 2;
-            svg.setAttribute("viewBox", `${vx} ${vy} ${vw} ${vh}`);
-            svg.removeAttribute("width");
-            svg.removeAttribute("height");
-            svg.style.width = "";
-            svg.style.height = "";
-            svg.setAttribute("data-tightened", "true");
-          }
-        } catch (e) {
-          // getBBox can fail on unrendered SVGs; retry next call
+      try {
+        const bbox = svg.getBBox();
+        if (bbox.width > 0 && bbox.height > 0) {
+          const pad = 16; // small padding so text isn't cramped
+          const vx = Math.max(0, bbox.x - pad);
+          const vy = Math.max(0, bbox.y - pad);
+          const vw = bbox.width + pad * 2;
+          const vh = bbox.height + pad * 2;
+          svg.setAttribute("viewBox", `${vx} ${vy} ${vw} ${vh}`);
+          svg.removeAttribute("width");
+          svg.removeAttribute("height");
+          svg.style.width = "";
+          svg.style.height = "";
+          svg.setAttribute("data-tightened", "true");
         }
-      }
-
-      // ── Measure natural (unscaled) rendered size ──
-      let naturalWidth = parseFloat(svg.getAttribute("data-nat-w") || "0");
-      let naturalHeight = parseFloat(svg.getAttribute("data-nat-h") || "0");
-      if (!naturalWidth || !naturalHeight) {
-        const rect = svg.getBoundingClientRect();
-        naturalWidth = rect.width;
-        naturalHeight = rect.height;
-        if (naturalWidth > 0 && naturalHeight > 0) {
-          svg.setAttribute("data-nat-w", String(naturalWidth));
-          svg.setAttribute("data-nat-h", String(naturalHeight));
-        }
-      }
-
-      // ── Apply zoom via transform ──
-      if (naturalWidth > 0 && naturalHeight > 0) {
-        svg.style.transform = `scale(${zoom})`;
-        svg.style.transformOrigin = "center top";
-        // Resize parent so the scaled SVG doesn't get clipped
-        // and doesn't overlap following content.
-        div.style.width = `${naturalWidth * zoom}px`;
-        div.style.height = `${naturalHeight * zoom}px`;
+      } catch (e) {
+        // getBBox can fail on unrendered SVGs; retry next call
       }
     });
   }
@@ -650,7 +623,7 @@
       requestAnimationFrame(async () => {
         await renderMathBlocksChunked(container);
         renderMermaidBlocks(container)
-          .then(() => scaleMermaidDiagrams())
+          .then(() => tightenMermaidDiagrams())
           .catch(console.error);
         await highlightCodeBlocksChunked(container);
         // Cache the fully post-processed HTML so view-mode remounts can skip
@@ -665,13 +638,6 @@
         logRenderTiming("post-processing complete", postStart);
       });
     });
-  });
-
-  // Re-scale mermaid when zoom changes (content already rendered)
-  $effect(() => {
-    const zoom = $contentZoomStore;
-    if (!contentDiv) return;
-    scaleMermaidDiagrams();
   });
 
   $effect(() => {
@@ -789,6 +755,8 @@
       wrapper.className = "preview-content";
       const fontSize = contentDiv.style.fontSize;
       if (fontSize) wrapper.style.fontSize = fontSize;
+      const zoom = contentDiv.style.zoom;
+      if (zoom) wrapper.style.zoom = zoom;
       wrapper.innerHTML = contentDiv.innerHTML;
       doc.body.appendChild(wrapper);
 
@@ -1016,7 +984,8 @@
       onclick={handlePreviewClick}
       ondblclick={handleTableDblClick}
       role="presentation"
-      style:font-size="{Math.round((settings?.preview_font_size ?? 16) * $contentZoomStore)}px"
+      style:font-size="{(settings?.preview_font_size ?? 16)}px"
+      style:zoom={$contentZoomStore}
     >
   {#if !$activeDocumentStore.path && !$activeDocumentStore.content}
     <EmptyState
