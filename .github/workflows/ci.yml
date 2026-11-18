@@ -56,7 +56,9 @@ jobs:
 
   test-e2e:
     name: E2E Tests
-    runs-on: ubuntu-latest
+    # Playwright 1.60 refuses to install a browser on Ubuntu 26.04, which is
+    # what ubuntu-latest currently resolves to; pin a supported LTS image.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
